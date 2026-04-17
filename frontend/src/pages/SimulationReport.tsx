@@ -19,6 +19,7 @@ type Tab = "chart" | "table";
 export default function SimulationReport() {
   const nav = useNavigate();
   const result = useAppSelector((s) => s.simulation.result);
+  const status = useAppSelector((s) => s.simulation.status);
   const scenarios = useAppSelector((s) => s.draft.scenarios);
   const draftProfile = useAppSelector((s) => s.draft.profile);
   const [tab, setTab] = useState<Tab>("chart");
@@ -34,23 +35,43 @@ export default function SimulationReport() {
     }));
   }, [result]);
 
-  const scenarioCards =
-    scenarios.length > 0
-      ? scenarios.slice(0, 4).map((s, i) => ({
-          name: s.name,
-          probability: result
-            ? Math.min(
-                99,
-                Math.max(5, Math.round((result.probability_of_goal || 0.5) * 100 - i * 10))
-              )
-            : 50,
-        }))
-      : [
-          { name: "Invest 500k + 1M Loan", probability: 97 },
-          { name: "Invest 500k", probability: 13 },
-          { name: "Goal 1 + Goal 2", probability: 51 },
-          { name: "Goal 3 + Goal 4", probability: 51 },
-        ];
+  const scenarioCards = useMemo(() => {
+    if (scenarios.length === 0) return [];
+    return scenarios.slice(0, 4).map((s, i) => ({
+      name: s.name,
+      probability: result
+        ? Math.min(
+            99,
+            Math.max(1, Math.round((result.probability_of_goal || 0) * 100 - i * 10))
+          )
+        : 0,
+    }));
+  }, [scenarios, result]);
+
+  if (status === "loading") {
+    return (
+      <AppShell title="New Client">
+        <WizardTabs basePath="/clients/new" />
+        <div className="card py-16 text-center text-muted">Running simulation…</div>
+      </AppShell>
+    );
+  }
+
+  if (!result || scenarioCards.length === 0) {
+    return (
+      <AppShell title="New Client">
+        <WizardTabs basePath="/clients/new" />
+        <div className="card py-16 text-center">
+          <p className="text-muted mb-4">
+            No simulation has been run yet. Go back and run a scenario to see the report.
+          </p>
+          <button className="btn-primary" onClick={() => nav("/clients/new/scenario")}>
+            Back to Scenarios
+          </button>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="New Client">
@@ -77,10 +98,8 @@ export default function SimulationReport() {
         </svg>
         <div className="relative">
           <div className="text-xs font-semibold opacity-70 mb-1">Report</div>
-          <div className="text-xl font-bold">
-            {draftProfile.fullName || "Ahmed Ali Mohammed"}
-          </div>
-          <div className="text-xs opacity-80">{draftProfile.email || "ahmed.ali@gmail.com"}</div>
+          <div className="text-xl font-bold">{draftProfile.fullName || "New client"}</div>
+          <div className="text-xs opacity-80">{draftProfile.email || "—"}</div>
         </div>
       </section>
 
@@ -106,7 +125,7 @@ export default function SimulationReport() {
         </div>
         <div className="flex items-center gap-2 text-xs text-green-500 mb-5">
           <span className="w-2 h-2 rounded-full bg-green-500" />
-          1000 simulation are done for {scenarioCards.length} scenarios
+          10,000 simulations run for {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"}
         </div>
         <div className="text-xs text-primary-500 font-semibold mb-5">
           Probability of funding all goals
@@ -114,7 +133,7 @@ export default function SimulationReport() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {scenarioCards.map((sc, i) => (
-            <div key={i} className="flex flex-col items-center">
+            <div key={sc.name + i} className="flex flex-col items-center">
               <div className="text-sm font-medium mb-3 text-center">{sc.name}</div>
               <DonutChart percent={sc.probability} />
               <button
@@ -136,7 +155,7 @@ export default function SimulationReport() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="font-bold">{scenarioCards[activeScenario]?.name}</div>
-            <div className="text-xs text-muted">{scenarios.length || 4} Goals</div>
+            <div className="text-xs text-muted">{scenarios.length} scenarios</div>
           </div>
           <div className="flex items-center gap-1 bg-surface p-1 rounded-lg">
             <button
@@ -226,30 +245,40 @@ export default function SimulationReport() {
             <div className="text-center text-xs text-primary-500 font-semibold mb-3">
               Portfolio Value by the end of the year
             </div>
-            <table className="w-full text-sm">
-              <thead className="text-xs text-muted">
-                <tr>
-                  <th className="text-left font-medium pb-3">Earned at age</th>
-                  <th className="text-left font-medium pb-3">Year</th>
-                  <th className="text-left font-medium pb-3">Optimistic</th>
-                  <th className="text-left font-medium pb-3">Median</th>
-                  <th className="text-left font-medium pb-3">Pessimistic</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chartData.map((row, i) => (
-                  <tr key={i} className="border-t border-border/60">
-                    <td className="py-2">
-                      {48 + i} / {49 + i} years
-                    </td>
-                    <td className="py-2">{row.year}</td>
-                    <td className="py-2">{row.optimistic.toLocaleString()}</td>
-                    <td className="py-2">{row.median.toLocaleString()}</td>
-                    <td className="py-2">{row.pessimistic.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {(() => {
+              const birthYear = draftProfile.birthdate
+                ? new Date(draftProfile.birthdate).getFullYear()
+                : null;
+              const showAge = birthYear != null && !Number.isNaN(birthYear);
+              return (
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-muted">
+                    <tr>
+                      {showAge && (
+                        <th className="text-left font-medium pb-3">Client age</th>
+                      )}
+                      <th className="text-left font-medium pb-3">Year</th>
+                      <th className="text-left font-medium pb-3">Optimistic</th>
+                      <th className="text-left font-medium pb-3">Median</th>
+                      <th className="text-left font-medium pb-3">Pessimistic</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chartData.map((row) => (
+                      <tr key={row.year} className="border-t border-border/60">
+                        {showAge && (
+                          <td className="py-2">{row.year - (birthYear as number)} years</td>
+                        )}
+                        <td className="py-2">{row.year}</td>
+                        <td className="py-2">{row.optimistic.toLocaleString()}</td>
+                        <td className="py-2">{row.median.toLocaleString()}</td>
+                        <td className="py-2">{row.pessimistic.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
         )}
       </section>

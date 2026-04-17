@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { actions, Scenario } from "./draftSlice";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { runSimulation } from "../../store/slices/simulationSlice";
+import { toast } from "../../components/Toaster";
 
 function BaseReportPromoCard() {
   return (
@@ -339,16 +340,28 @@ export default function ScenarioStep() {
 
   async function runAll() {
     const s = scenarios[0];
-    const monthlyTotal =
-      s.monthlyInvestments.reduce((sum, m) => sum + m.amount, 0) || 1000;
-    const initial = s.investments.reduce((sum, inv) => sum + inv.amount, 0) || 50000;
+    if (!s) {
+      toast("Add at least one scenario before running a simulation", "error");
+      return;
+    }
+    const monthlyTotal = s.monthlyInvestments.reduce((sum, m) => sum + m.amount, 0);
+    const initial = s.investments.reduce((sum, inv) => sum + inv.amount, 0);
+    if (initial <= 0 && monthlyTotal <= 0) {
+      toast("Add at least one investment or monthly contribution", "error");
+      return;
+    }
+    if (goals.length === 0 || goals.every((g) => !g.name || !g.amount)) {
+      toast("Add at least one goal with a name and target amount", "error");
+      return;
+    }
     const annualIncrease =
       s.monthlyInvestments[0]?.annualIncrease != null
         ? s.monthlyInvestments[0].annualIncrease / 100
         : 0;
-    await dispatch(
+    const duration = Math.min(60, Math.max(1, totalYears));
+    const res = await dispatch(
       runSimulation({
-        duration_years: totalYears,
+        duration_years: duration,
         initial_investment: initial,
         monthly_investment: monthlyTotal,
         annual_increase_pct: annualIncrease,
@@ -356,7 +369,9 @@ export default function ScenarioStep() {
         risk_tolerance: profile.riskAppetite,
       })
     );
-    nav("/clients/new/report");
+    if (runSimulation.fulfilled.match(res)) {
+      nav("/clients/new/report");
+    }
   }
 
   return (
@@ -369,8 +384,8 @@ export default function ScenarioStep() {
       </div>
 
       <div className="flex flex-col gap-6">
-        {scenarios.map((_, i) => (
-          <ScenarioCard key={i} index={i} />
+        {scenarios.map((sc, i) => (
+          <ScenarioCard key={`${sc.name}-${i}`} index={i} />
         ))}
       </div>
 

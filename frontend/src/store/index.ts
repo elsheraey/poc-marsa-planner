@@ -4,6 +4,9 @@ import authReducer from "./slices/authSlice";
 import clientsReducer from "./slices/clientsSlice";
 import simulationReducer from "./slices/simulationSlice";
 import draftReducer from "../pages/NewClient/draftSlice";
+import { draftPersistenceMiddleware, loadDraft } from "./persistence";
+
+const persistedDraft = loadDraft();
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +15,10 @@ export const store = configureStore({
     simulation: simulationReducer,
     draft: draftReducer,
   },
+  preloadedState: persistedDraft
+    ? { draft: persistedDraft as ReturnType<typeof draftReducer> }
+    : undefined,
+  middleware: (getDefault) => getDefault().concat(draftPersistenceMiddleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
