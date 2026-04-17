@@ -1,24 +1,71 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { api, ClientRecord } from "../../api/client";
+import { ApiError, api, ClientRecord } from "../../api/client";
+import { toast } from "../../components/Toaster";
 
 type State = {
   list: ClientRecord[];
   byId: Record<string, ClientRecord>;
   status: "idle" | "loading" | "error";
+  error: string | null;
 };
 
-const initialState: State = { list: [], byId: {}, status: "idle" };
+const initialState: State = { list: [], byId: {}, status: "idle", error: null };
 
-export const fetchClients = createAsyncThunk("clients/list", () => api.listClients());
-export const fetchClient = createAsyncThunk("clients/get", (id: string) => api.getClient(id));
-export const createClient = createAsyncThunk(
-  "clients/create",
-  (payload: Partial<ClientRecord>) => api.createClient(payload)
+function errMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  if (e instanceof Error) return e.message;
+  return "Request failed";
+}
+
+export const fetchClients = createAsyncThunk<ClientRecord[], void, { rejectValue: string }>(
+  "clients/list",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await api.listClients();
+    } catch (e) {
+      return rejectWithValue(errMessage(e));
+    }
+  }
 );
-export const updateClient = createAsyncThunk(
-  "clients/update",
-  ({ id, data }: { id: string; data: Partial<ClientRecord> }) => api.updateClient(id, data)
+
+export const fetchClient = createAsyncThunk<ClientRecord, string, { rejectValue: string }>(
+  "clients/get",
+  async (id, { rejectWithValue }) => {
+    try {
+      return await api.getClient(id);
+    } catch (e) {
+      return rejectWithValue(errMessage(e));
+    }
+  }
 );
+
+export const createClient = createAsyncThunk<
+  ClientRecord,
+  Partial<ClientRecord>,
+  { rejectValue: string }
+>("clients/create", async (payload, { rejectWithValue }) => {
+  try {
+    return await api.createClient(payload);
+  } catch (e) {
+    const msg = errMessage(e);
+    toast(msg, "error");
+    return rejectWithValue(msg);
+  }
+});
+
+export const updateClient = createAsyncThunk<
+  ClientRecord,
+  { id: string; data: Partial<ClientRecord> },
+  { rejectValue: string }
+>("clients/update", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    return await api.updateClient(id, data);
+  } catch (e) {
+    const msg = errMessage(e);
+    toast(msg, "error");
+    return rejectWithValue(msg);
+  }
+});
 
 const slice = createSlice({
   name: "clients",
@@ -28,11 +75,16 @@ const slice = createSlice({
     builder
       .addCase(fetchClients.pending, (state) => {
         state.status = "loading";
+        state.error = null;
       })
       .addCase(fetchClients.fulfilled, (state, action) => {
         state.status = "idle";
         state.list = action.payload;
         state.byId = Object.fromEntries(action.payload.map((c) => [c.id, c]));
+      })
+      .addCase(fetchClients.rejected, (state, action) => {
+        state.status = "error";
+        state.error = action.payload ?? action.error.message ?? "Failed to load clients";
       })
       .addCase(fetchClient.fulfilled, (state, action) => {
         state.byId[action.payload.id] = action.payload;

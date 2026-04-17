@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-DATA_DIR = Path(__file__).parent / "data"
+DEFAULT_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 # Equity (variable) params from the PDF.
 EQUITY_MU = 0.006243724543093228
@@ -36,8 +36,9 @@ def _nav_from_returns(returns: np.ndarray, start: float = 100.0) -> np.ndarray:
     return start * np.cumprod(1.0 + returns)
 
 
-def _write_daily_nav(name: str, monthly_mu: float, monthly_sigma: float, months: int, seed: int) -> Path:
-    """Emit a daily-ish NAV series so the monthly-reduction step has work to do."""
+def _write_daily_nav(
+    data_dir: Path, name: str, monthly_mu: float, monthly_sigma: float, months: int, seed: int
+) -> Path:
     rng = np.random.default_rng(seed)
     dates = pd.date_range("2008-08-10", periods=months, freq="ME")
     monthly_returns = rng.normal(monthly_mu, monthly_sigma, size=months)
@@ -52,26 +53,29 @@ def _write_daily_nav(name: str, monthly_mu: float, monthly_sigma: float, months:
         for day, nav_val in zip(intra_days, intra_nav, strict=True):
             rows.append({"date": day.strftime("%Y-%m-%d"), "nav": round(float(nav_val), 4)})
 
-    path = DATA_DIR / f"{name}.csv"
+    path = data_dir / f"{name}.csv"
     pd.DataFrame(rows).to_csv(path, index=False)
     return path
 
 
-def _write_inflation(months: int, seed: int) -> Path:
+def _write_inflation(data_dir: Path, months: int, seed: int) -> Path:
     rng = np.random.default_rng(seed)
     dates = pd.date_range("2008-08-31", periods=months, freq="ME")
     rates = rng.normal(INFL_MU, INFL_SIGMA, size=months)
-    path = DATA_DIR / "inflation.csv"
-    pd.DataFrame({"date": dates.strftime("%Y-%m-%d"), "rate": np.round(rates, 6)}).to_csv(path, index=False)
+    path = data_dir / "inflation.csv"
+    pd.DataFrame({"date": dates.strftime("%Y-%m-%d"), "rate": np.round(rates, 6)}).to_csv(
+        path, index=False
+    )
     return path
 
 
-def generate(months: int = 180) -> dict[str, Path]:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+def generate(months: int = 180, data_dir: Path | None = None) -> dict[str, Path]:
+    target = Path(data_dir) if data_dir else DEFAULT_DATA_DIR
+    target.mkdir(parents=True, exist_ok=True)
     return {
-        "equity": _write_daily_nav("abc_equity_fund", EQUITY_MU, EQUITY_SIGMA, months, seed=1),
-        "money_market": _write_daily_nav("ebe_money_market_fund", MMF_MU, MMF_SIGMA, months, seed=2),
-        "inflation": _write_inflation(months, seed=3),
+        "equity": _write_daily_nav(target, "abc_equity_fund", EQUITY_MU, EQUITY_SIGMA, months, seed=1),
+        "money_market": _write_daily_nav(target, "ebe_money_market_fund", MMF_MU, MMF_SIGMA, months, seed=2),
+        "inflation": _write_inflation(target, months, seed=3),
     }
 
 

@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { api, SimulateRequest, SimulateResult } from "../../api/client";
+import { ApiError, api, SimulateRequest, SimulateResult } from "../../api/client";
+import { toast } from "../../components/Toaster";
 
 type State = {
   result: SimulateResult | null;
@@ -9,9 +10,24 @@ type State = {
 
 const initialState: State = { result: null, status: "idle", error: null };
 
-export const runSimulation = createAsyncThunk("simulation/run", async (body: SimulateRequest) => {
-  return await api.simulate(body);
-});
+function errMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  if (e instanceof Error) return e.message;
+  return "Simulation failed";
+}
+
+export const runSimulation = createAsyncThunk<SimulateResult, SimulateRequest, { rejectValue: string }>(
+  "simulation/run",
+  async (body, { rejectWithValue }) => {
+    try {
+      return await api.simulate(body);
+    } catch (e) {
+      const msg = errMessage(e);
+      toast(msg, "error");
+      return rejectWithValue(msg);
+    }
+  }
+);
 
 const slice = createSlice({
   name: "simulation",
@@ -35,7 +51,7 @@ const slice = createSlice({
       })
       .addCase(runSimulation.rejected, (state, action) => {
         state.status = "error";
-        state.error = action.error.message ?? "Simulation failed";
+        state.error = action.payload ?? action.error.message ?? "Simulation failed";
       });
   },
 });

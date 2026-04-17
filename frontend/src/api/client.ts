@@ -1,22 +1,64 @@
 const BASE = "/api";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json() as Promise<T>;
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  details?: unknown;
+  constructor(status: number, code: string, message: string, details?: unknown) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
+type RequestOpts = RequestInit & { retries?: number };
+
+async function request<T>(path: string, init: RequestOpts = {}): Promise<T> {
+  const { retries = 0, ...rest } = init;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${BASE}${path}`, {
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(rest.headers ?? {}) },
+        ...rest,
+      });
+      if (res.status === 204) return undefined as T;
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        const err = (body as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
+        throw new ApiError(
+          res.status,
+          err?.code ?? "http_error",
+          err?.message ?? `${res.status} ${res.statusText}`,
+          err?.details
+        );
+      }
+      return body as T;
+    } catch (e) {
+      lastErr = e;
+      const isNetwork = !(e instanceof ApiError);
+      if (!isNetwork || attempt === retries) throw e;
+      await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 export const api = {
+  register: (payload: { name: string; email: string; password: string }) =>
+    request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
   login: (email: string, password: string) =>
-    request<{ token: string; user: { name: string; email: string; avatar: string | null } }>(
-      "/auth/login",
-      { method: "POST", body: JSON.stringify({ email, password }) }
-    ),
-  listClients: () => request<ClientRecord[]>("/clients"),
-  getClient: (id: string) => request<ClientRecord>(`/clients/${id}`),
+    request<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  logout: () => request<void>("/auth/logout", { method: "POST" }),
+  me: () => request<User>("/auth/me", { retries: 1 }),
+
+  listClients: () => request<ClientRecord[]>("/clients", { retries: 1 }),
+  getClient: (id: string) => request<ClientRecord>(`/clients/${id}`, { retries: 1 }),
   createClient: (client: Partial<ClientRecord>) =>
     request<ClientRecord>("/clients", { method: "POST", body: JSON.stringify(client) }),
   updateClient: (id: string, client: Partial<ClientRecord>) =>
@@ -24,12 +66,18 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(client),
     }),
+  deleteClient: (id: string) => request<void>(`/clients/${id}`, { method: "DELETE" }),
+
   simulate: (payload: SimulateRequest) =>
     request<SimulateResult>("/simulate", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
 };
+
+export type User = { id: string; name: string; email: string };
+
+export type AuthResponse = { user: User; expires_at: string };
 
 export type ClientRecord = {
   id: string;

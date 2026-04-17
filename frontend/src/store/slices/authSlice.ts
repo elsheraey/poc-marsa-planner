@@ -1,60 +1,113 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { api } from "../../api/client";
-
-type User = { name: string; email: string; avatar: string | null };
+import { ApiError, api, User } from "../../api/client";
 
 type AuthState = {
-  token: string | null;
   user: User | null;
   status: "idle" | "loading" | "error";
+  initialized: boolean;
   error: string | null;
 };
 
 const initialState: AuthState = {
-  token: localStorage.getItem("token"),
-  user: JSON.parse(localStorage.getItem("user") || "null"),
+  user: null,
   status: "idle",
+  initialized: false,
   error: null,
 };
 
-export const login = createAsyncThunk(
+function errMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  if (e instanceof Error) return e.message;
+  return "Request failed";
+}
+
+export const login = createAsyncThunk<User, { email: string; password: string }, { rejectValue: string }>(
   "auth/login",
-  async (payload: { email: string; password: string }) => {
-    const res = await api.login(payload.email, payload.password);
-    localStorage.setItem("token", res.token);
-    localStorage.setItem("user", JSON.stringify(res.user));
-    return res;
+  async (payload, { rejectWithValue }) => {
+    try {
+      const res = await api.login(payload.email, payload.password);
+      return res.user;
+    } catch (e) {
+      return rejectWithValue(errMessage(e));
+    }
   }
 );
+
+export const register = createAsyncThunk<
+  User,
+  { name: string; email: string; password: string },
+  { rejectValue: string }
+>("auth/register", async (payload, { rejectWithValue }) => {
+  try {
+    const res = await api.register(payload);
+    return res.user;
+  } catch (e) {
+    return rejectWithValue(errMessage(e));
+  }
+});
+
+export const logout = createAsyncThunk("auth/logout", async () => {
+  try {
+    await api.logout();
+  } catch {
+    // ignore — we're clearing client state regardless
+  }
+});
+
+export const bootstrap = createAsyncThunk("auth/bootstrap", async () => {
+  try {
+    return await api.me();
+  } catch {
+    return null;
+  }
+});
 
 const slice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    logout(state) {
-      state.token = null;
-      state.user = null;
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+    clearError(state) {
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(bootstrap.fulfilled, (state, action: PayloadAction<User | null>) => {
+        state.user = action.payload;
+        state.initialized = true;
+      })
+      .addCase(bootstrap.rejected, (state) => {
+        state.initialized = true;
+      })
       .addCase(login.pending, (state) => {
         state.status = "loading";
         state.error = null;
       })
-      .addCase(login.fulfilled, (state, action: PayloadAction<{ token: string; user: User }>) => {
+      .addCase(login.fulfilled, (state, action) => {
         state.status = "idle";
-        state.token = action.payload.token;
-        state.user = action.payload.user;
+        state.user = action.payload;
       })
       .addCase(login.rejected, (state, action) => {
         state.status = "error";
-        state.error = action.error.message ?? "Login failed";
+        state.error = action.payload ?? action.error.message ?? "Login failed";
+      })
+      .addCase(register.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.status = "idle";
+        state.user = action.payload;
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.status = "error";
+        state.error = action.payload ?? action.error.message ?? "Registration failed";
+      })
+      .addCase(logout.fulfilled, (state) => {
+        state.user = null;
       });
   },
 });
 
-export const { logout } = slice.actions;
+export const { clearError } = slice.actions;
 export default slice.reducer;

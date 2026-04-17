@@ -9,10 +9,15 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from advisor import IMPORTANCE_PERCENTILES, UserGoal, advise
-from preprocessing import inflation_series, preprocess_asset
-from sample_data import generate as generate_sample_data
-from simulation import run_simulation
+from app.sim import (
+    IMPORTANCE_PERCENTILES,
+    UserGoal,
+    advise,
+    generate_sample_data,
+    inflation_series,
+    preprocess_asset,
+    run_simulation,
+)
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -23,7 +28,7 @@ def run(goal: UserGoal, seed: int = 42) -> None:
     infl_csv = DATA_DIR / "inflation.csv"
     if not (equity_csv.exists() and mmf_csv.exists() and infl_csv.exists()):
         print("No data found — generating synthetic sample data.")
-        generate_sample_data()
+        generate_sample_data(data_dir=DATA_DIR)
 
     variable_returns = preprocess_asset(equity_csv)
     fixed_returns = preprocess_asset(mmf_csv)
@@ -66,7 +71,7 @@ def run(goal: UserGoal, seed: int = 42) -> None:
     )
 
 
-def cli() -> UserGoal:
+def cli() -> tuple[UserGoal, int]:
     ap = argparse.ArgumentParser(description="Marsa RFA — robotic financial advisor simulation")
     ap.add_argument("--duration-years", type=int, default=5)
     ap.add_argument("--initial", type=float, default=50_000)
@@ -80,14 +85,17 @@ def cli() -> UserGoal:
     )
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
-    return UserGoal(
-        duration_years=args.duration_years,
-        initial_investment=args.initial,
-        monthly_investment=args.monthly,
-        annual_increase_pct=args.annual_increase,
-        importance=args.importance,
-        risk_tolerance=args.risk,
-    ), args.seed
+    return (
+        UserGoal(
+            duration_years=args.duration_years,
+            initial_investment=args.initial,
+            monthly_investment=args.monthly,
+            annual_increase_pct=args.annual_increase,
+            importance=args.importance,
+            risk_tolerance=args.risk,
+        ),
+        args.seed,
+    )
 
 
 if __name__ == "__main__":
