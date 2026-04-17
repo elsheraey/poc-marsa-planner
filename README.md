@@ -1,61 +1,113 @@
 # Marsa RFA
 
-Implementation of the **Robotic Financial Advisor Simulation** from
-`Marsa_RFA_Simulation_Overview.pdf`, with a React + Redux + Tailwind
-advisor portal matching the Figma design.
+Production-ready implementation of the **Robotic Financial Advisor Simulation**
+(`Marsa_RFA_Simulation_Overview.pdf`) with a multi-user FastAPI backend
+and a React + Redux + Tailwind advisor portal.
 
 ## Structure
 
 ```
-backend/   FastAPI service wrapping the Monte Carlo simulation
-frontend/  Vite + React + Redux Toolkit + Tailwind portal
+backend/   FastAPI + SQLAlchemy + Alembic + Monte Carlo simulation
+frontend/  Vite + React + Redux Toolkit + Tailwind
 ```
 
-## Backend
+## Quick start (Docker Compose)
 
-The simulation engine (Parts 1–3 from the PDF) lives in
-`preprocessing.py`, `simulation.py`, `advisor.py`. `api.py` exposes it
-over HTTP:
+1. Create a `.env` at the repo root from the template:
+   ```sh
+   cp .env.example .env
+   # Generate a real JWT secret:
+   python -c "import secrets; print('JWT_SECRET=' + secrets.token_urlsafe(64))" >> .env
+   ```
+2. Bring everything up:
+   ```sh
+   docker compose up --build
+   ```
+3. Open http://localhost:8080 and register an advisor account.
 
-- `POST /api/auth/login` — demo login (accepts any credentials)
-- `GET/POST /api/clients`, `GET/PATCH /api/clients/{id}`
-- `POST /api/simulate` — runs the advisor against a scenario and
-  returns the recommended allocation, candidate allocations,
-  year-by-year percentile bands, and probability of goal
+The backend runs Alembic migrations on startup, so Postgres comes up clean
+on first boot.
 
-Real Azimut NAV data is not included; `sample_data.py` writes synthetic
-CSVs with the equity μ/σ from the PDF. Drop real CSVs into
-`backend/data/` to replace them.
+## Local development
 
-### Run
+### Backend
 
-```
+```sh
 cd backend
-pip install -r requirements.txt
-uvicorn api:app --reload
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+cp .env.example .env           # edit JWT_SECRET
+alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
-## Frontend
+Runs on http://localhost:8000. OpenAPI docs at `/docs`.
 
-Advisor-facing portal with the screens from the Figma design:
+### Frontend
 
-- Landing → Login
-- Clients list (sidebar + table + search + pagination)
-- New Client wizard: Profile → Goals → Scenario Builder
-- Simulation Report (donut probabilities, stacked area chart or table)
-- Client Summary
-
-Redux slices: `auth`, `clients`, `simulation`, `draft` (in-flight
-wizard state). The Vite dev server proxies `/api/*` to the backend on
-port 8000.
-
-### Run
-
-```
+```sh
 cd frontend
 npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. Start the backend in another terminal
-(`uvicorn api:app`) so the Vite proxy can reach it.
+Runs on http://localhost:5173. The Vite dev server proxies `/api/*` to
+`http://localhost:8000`.
+
+### Tests
+
+```sh
+cd backend && pytest
+cd frontend && npm test
+```
+
+## API
+
+All endpoints are under `/api`. Auth is JWT over an HttpOnly cookie
+(`marsa_access`); `Authorization: Bearer <token>` is also accepted.
+
+| Endpoint                     | Auth | Description                         |
+| ---------------------------- | ---- | ----------------------------------- |
+| `POST /api/auth/register`    | —    | Create advisor account              |
+| `POST /api/auth/login`       | —    | Exchange credentials for a cookie   |
+| `POST /api/auth/logout`      | ✓    | Clear auth cookie                   |
+| `GET  /api/auth/me`          | ✓    | Current user                        |
+| `GET  /api/clients`          | ✓    | List caller's clients               |
+| `POST /api/clients`          | ✓    | Create a client                     |
+| `GET  /api/clients/{id}`     | ✓    | Fetch a client (own only)           |
+| `PATCH /api/clients/{id}`    | ✓    | Update a client (own only)          |
+| `DELETE /api/clients/{id}`   | ✓    | Delete a client (own only)          |
+| `POST /api/simulate`         | ✓    | Monte Carlo advisor run             |
+| `GET  /health`               | —    | Liveness probe                      |
+
+## Configuration
+
+See `backend/.env.example` for all supported settings. Key ones:
+
+- `JWT_SECRET` — required, min 32 chars
+- `DATABASE_URL` — Postgres in prod, SQLite for local dev
+- `CORS_ORIGINS` — comma-separated allowlist
+- `COOKIE_SECURE` — `true` when serving over HTTPS
+- `RATE_LIMIT_LOGIN` / `RATE_LIMIT_DEFAULT` — per-IP slowapi rules
+
+## Operations
+
+- **Logs** are structured (JSON in production, pretty in dev) with a
+  request ID bound to every log line.
+- **Migrations** live in `backend/alembic/versions/`. Create a new one
+  with `alembic revision --autogenerate -m "<msg>"`.
+- **Rate limits** apply per-IP; login and register are tighter than the
+  default. A reverse proxy should forward `X-Forwarded-For`.
+- **Simulation data**: the real Azimut NAVs are not included. Synthetic
+  CSVs with the PDF's equity μ/σ are generated on first call. Drop real
+  CSVs into `backend/data/` (or the compose `sim_data` volume) to
+  override.
+
+## Security notes
+
+- Passwords are pre-hashed with SHA-256 then bcrypt-ed (avoids bcrypt's
+  72-byte limit without silently truncating).
+- Auth cookies are HttpOnly + `SameSite=lax` by default; set
+  `COOKIE_SECURE=true` behind HTTPS.
+- CORS is a strict allowlist read from `CORS_ORIGINS`.
+- No credentials are stored in the repo; `.env` is gitignored.

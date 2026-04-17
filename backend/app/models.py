@@ -32,7 +32,7 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    clients: Mapped[list["Client"]] = relationship(
+    clients: Mapped[list[Client]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
 

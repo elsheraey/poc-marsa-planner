@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import structlog
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.exc import IntegrityError
@@ -44,7 +44,10 @@ def _clear_auth_cookie(response: Response) -> None:
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-def register(body: RegisterRequest, response: Response, db: DbSession) -> AuthResponse:
+@limiter.limit(lambda: get_settings().rate_limit_login)
+def register(
+    request: Request, body: RegisterRequest, response: Response, db: DbSession
+) -> AuthResponse:
     existing = db.query(User).filter(User.email == body.email.lower()).first()
     if existing:
         raise HTTPException(status.HTTP_409_CONFLICT, "email already registered")
@@ -57,9 +60,9 @@ def register(body: RegisterRequest, response: Response, db: DbSession) -> AuthRe
     db.add(user)
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise HTTPException(status.HTTP_409_CONFLICT, "email already registered")
+        raise HTTPException(status.HTTP_409_CONFLICT, "email already registered") from e
     db.refresh(user)
 
     token, expires = create_access_token(subject=user.id)
@@ -69,7 +72,10 @@ def register(body: RegisterRequest, response: Response, db: DbSession) -> AuthRe
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(body: LoginRequest, response: Response, db: DbSession) -> AuthResponse:
+@limiter.limit(lambda: get_settings().rate_limit_login)
+def login(
+    request: Request, body: LoginRequest, response: Response, db: DbSession
+) -> AuthResponse:
     user = db.query(User).filter(User.email == body.email.lower()).first()
     if not user or not verify_password(body.password, user.password_hash):
         # Same message for unknown email and bad password — no user enumeration.

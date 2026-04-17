@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+# bcrypt refuses inputs > 72 bytes. We hash a SHA-256 digest hex (64 chars) instead of the
+# raw password so arbitrarily long passwords are supported without truncation.
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -9,10 +12,6 @@ import bcrypt
 import jwt
 
 from .config import get_settings
-
-# bcrypt refuses inputs > 72 bytes. We hash a SHA-256 digest hex (64 chars) instead of the
-# raw password so arbitrarily long passwords are supported without truncation.
-import hashlib
 
 
 def _prehash(plain: str) -> bytes:
