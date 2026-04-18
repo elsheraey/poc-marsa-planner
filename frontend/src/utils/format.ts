@@ -45,6 +45,27 @@ export const fmtPct = (value: number | null) =>
  * caller decide whether the "± X pp" chrome is italic, bold, tailed on the
  * headline, etc., while rounding logic lives in one place.
  */
+/**
+ * Format an ISO date/timestamp string with the active locale. Returns an
+ * em-dash for empty / unparseable input so callers don't need to guard.
+ *
+ *   - ar → "ar-EG" (Arabic-Indic digits, Arabic month names)
+ *   - en → "en-EG" (Western digits, English month names, day-month-year order)
+ *
+ * We deliberately render with locale — never `toISOString().slice(0,10)`
+ * which forces UTC and silently shifts the day east of the dateline.
+ */
+export function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat(numberLocale(), {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(d);
+}
+
 export function fmtProbabilitySeTail(seDecimal: number | null | undefined): string | null {
   if (seDecimal == null) return null;
   if (!Number.isFinite(seDecimal)) return null;

@@ -3,12 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { fetchClients } from "../store/slices/clientsSlice";
 import { useAppDispatch, useAppSelector } from "../store";
-
-function formatDate(iso: string): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toISOString().slice(0, 10);
-}
+import { fmtDate } from "../utils/format";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -47,10 +42,6 @@ export default function ClientsList() {
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
     return clients.filter((c) => {
-      // ClientRecord types both fields as string, but the backend
-      // quick-add path can return a null email and names can be blank.
-      // Coerce to empty string before lowercasing so the whole page
-      // doesn't blank out inside the filter callback.
       const name = (c.name ?? "").toLowerCase();
       const email = (c.email ?? "").toLowerCase();
       return name.includes(needle) || email.includes(needle);
@@ -150,7 +141,7 @@ export default function ClientsList() {
                   </span>
                 </span>
                 <span className="hidden md:block text-sm text-az-ink-muted tabular shrink-0">
-                  {formatDate(c.lastModified)}
+                  {fmtDate(c.lastModified)}
                 </span>
                 <span
                   aria-hidden="true"
