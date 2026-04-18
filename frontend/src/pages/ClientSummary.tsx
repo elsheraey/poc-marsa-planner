@@ -3,23 +3,19 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { toast } from "../components/Toaster";
 import { fetchClient } from "../store/slices/clientsSlice";
+import { actions as draftActions } from "./NewClient/draftSlice";
 import { useAppDispatch, useAppSelector } from "../store";
-import { fmtEGP } from "../utils/format";
+import { fmtDate, fmtEGP } from "../utils/format";
 import { t } from "../i18n";
 import {
   ApiError,
   api,
   type Goal,
-  type SavedSimulation,
   type SavedSimulationListItem,
 } from "../api/client";
 
 // Shape we render per row in the Saved-simulations section.
-type SavedSimRow = SavedSimulationListItem & {
-  probability: number | null;
-  attainability: "attainable" | "aspirational" | "out_of_reach" | null;
-  detailStatus: "loading" | "ready" | "error";
-};
+type SavedSimRow = SavedSimulationListItem;
 
 // Azimut tinted pill colours. Mirrors SimulationReport.tsx so the same
 // visual language appears wherever attainability is surfaced.
@@ -37,15 +33,14 @@ function attainabilityLabel(
 ): string {
   const key = `report.${a}`;
   const localised = t(key);
-  return localised === key ? a.replace(/_/g, " ") : localised;
+  if (localised === key) {
+    const raw = a.replace(/_/g, " ");
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+  return localised;
 }
 
-function fmtDate(iso: string): string {
-  if (!iso) return "—";
-  return iso.slice(0, 10);
-}
-
-function fmtProbabilityPct(p: number | null): string {
+function fmtProbabilityPct(p: number | null | undefined): string {
   if (p == null) return "—";
   return `${Math.round(p * 100)}%`;
 }
@@ -172,41 +167,8 @@ export default function ClientSummary() {
       .listSimulations(id)
       .then((list) => {
         if (cancelled) return;
-        const initial: SavedSimRow[] = list.map((item) => ({
-          ...item,
-          probability: null,
-          attainability: null,
-          detailStatus: "loading",
-        }));
-        setSavedRows(initial);
+        setSavedRows(list);
         setSavedStatus("idle");
-        list.forEach((item) => {
-          api
-            .getSimulation(item.id)
-            .then((detail: SavedSimulation) => {
-              if (cancelled) return;
-              setSavedRows((prev) =>
-                prev.map((r) =>
-                  r.id === item.id
-                    ? {
-                        ...r,
-                        probability: detail.response.probability_of_goal,
-                        attainability: detail.response.attainability,
-                        detailStatus: "ready",
-                      }
-                    : r
-                )
-              );
-            })
-            .catch(() => {
-              if (cancelled) return;
-              setSavedRows((prev) =>
-                prev.map((r) =>
-                  r.id === item.id ? { ...r, detailStatus: "error" } : r
-                )
-              );
-            });
-        });
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -229,46 +191,21 @@ export default function ClientSummary() {
     if (!confirmed) return;
     try {
       await api.deleteSimulation(row.id);
-      if (id) {
-        const list = await api.listSimulations(id);
-        setSavedRows(
-          list.map((item) => ({
-            ...item,
-            probability: null,
-            attainability: null,
-            detailStatus: "loading",
-          }))
-        );
-        list.forEach((item) => {
-          api
-            .getSimulation(item.id)
-            .then((detail) => {
-              setSavedRows((prev) =>
-                prev.map((r) =>
-                  r.id === item.id
-                    ? {
-                        ...r,
-                        probability: detail.response.probability_of_goal,
-                        attainability: detail.response.attainability,
-                        detailStatus: "ready",
-                      }
-                    : r
-                )
-              );
-            })
-            .catch(() => {
-              setSavedRows((prev) =>
-                prev.map((r) =>
-                  r.id === item.id ? { ...r, detailStatus: "error" } : r
-                )
-              );
-            });
-        });
-      }
+      // Splice locally — the list endpoint is authoritative for the UI but
+      // we already hold the truth client-side, no need to re-waterfall.
+      setSavedRows((prev) => prev.filter((r) => r.id !== row.id));
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "Delete failed";
       toast(msg, "error");
     }
+  }
+
+  function handleModify() {
+    if (!client) return;
+    // Hydrate the wizard draft from the persisted client AND set
+    // draft.clientId so ScenarioStep.runAll takes the PATCH path.
+    dispatch(draftActions.hydrateFromClient(client));
+    nav("/clients/new/profile");
   }
 
   // 404 / fetch-error surface: once the detail fetch has settled as an
@@ -339,7 +276,7 @@ export default function ClientSummary() {
         <button
           type="button"
           className="text-az-white hover:text-az-gold hover:underline decoration-az-gold underline-offset-4 font-semibold transition"
-          onClick={() => nav("/clients/new/profile")}
+          onClick={handleModify}
         >
           {t("client.modify")}
         </button>
@@ -473,7 +410,7 @@ export default function ClientSummary() {
                     </span>
                     <span className="block text-sm text-az-ink-muted">
                       {dash(d.relation)}
-                      {d.birthdate ? ` · ${d.birthdate}` : ""}
+                      {d.birthdate ? ` · ${fmtDate(d.birthdate)}` : ""}
                     </span>
                   </span>
                 </div>
@@ -593,11 +530,9 @@ export default function ClientSummary() {
                     </span>
                   </span>
                   <span className="text-[15px] font-semibold tabular text-az-ink">
-                    {row.detailStatus === "loading"
-                      ? "…"
-                      : fmtProbabilityPct(row.probability)}
+                    {fmtProbabilityPct(row.probability_of_goal)}
                   </span>
-                  {row.detailStatus === "ready" && row.attainability ? (
+                  {row.attainability ? (
                     <span
                       className={`pill ${ATTAINABILITY_CLASS[row.attainability]}`}
                     >

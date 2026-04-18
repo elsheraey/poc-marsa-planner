@@ -218,12 +218,17 @@ export type SavedSimulation = {
 };
 
 // Lighter shape returned by GET /api/simulations (list). Backend omits the
-// big `request` / `response` blobs on the list endpoint, so we only surface
-// the fields the Saved-simulations card on ClientSummary actually renders.
+// big `request` / `response` blobs on the list endpoint, but lifts the four
+// scalar fields ClientSummary's Saved-simulations card needs up to the
+// top level — so the list is self-sufficient (no N+1 detail fetches).
 export type SavedSimulationListItem = {
   id: string;
   name: string;
   client_id: string | null;
   calibration_as_of?: string | null;
   created_at: string;
+  // Lifted from response_payload at serialisation time on the backend.
+  probability_of_goal: number | null;
+  probability_of_goal_se?: number | null;
+  attainability: "attainable" | "aspirational" | "out_of_reach" | null;
 };

@@ -219,6 +219,15 @@ class SimulationOut(BaseModel):
 
 
 class SimulationListOut(BaseModel):
+    """Lighter shape for GET /api/simulations list.
+
+    Omits the full `request` / `response` payloads, but lifts the four
+    scalar fields the frontend Saved-simulations card needs up to the
+    top level so the list is self-sufficient (no per-row detail fetches).
+    These are read out of `response_payload` at serialisation time — see
+    `list_simulations` in `routers/simulations.py`.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -226,3 +235,6 @@ class SimulationListOut(BaseModel):
     client_id: str | None = None
     calibration_as_of: str | None = None
     created_at: datetime
+    probability_of_goal: float | None = None
+    probability_of_goal_se: float | None = None
+    attainability: Attainability | None = None

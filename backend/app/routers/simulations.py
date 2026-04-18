@@ -88,12 +88,27 @@ def list_simulations(
     user: CurrentUser,
     db: DbSession,
     client_id: str | None = None,
-) -> list[Simulation]:
+) -> list[SimulationListOut]:
     stmt = select(Simulation).where(Simulation.owner_id == user.id)
     if client_id is not None:
         stmt = stmt.where(Simulation.client_id == client_id)
     stmt = stmt.order_by(Simulation.created_at.desc())
-    return list(db.execute(stmt).scalars().all())
+    rows = list(db.execute(stmt).scalars().all())
+    # Lift the four scalar fields the advisor UI renders up from the blob.
+    # Avoids the N+1 per-row detail fetch that ClientSummary used to do.
+    return [
+        SimulationListOut(
+            id=sim.id,
+            name=sim.name,
+            client_id=sim.client_id,
+            calibration_as_of=sim.calibration_as_of,
+            created_at=sim.created_at,
+            probability_of_goal=(sim.response_payload or {}).get("probability_of_goal"),
+            probability_of_goal_se=(sim.response_payload or {}).get("probability_of_goal_se"),
+            attainability=(sim.response_payload or {}).get("attainability"),
+        )
+        for sim in rows
+    ]
 
 
 @router.get("/simulations/{simulation_id}", response_model=SimulationOut)

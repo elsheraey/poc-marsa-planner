@@ -79,9 +79,33 @@ def test_list_returns_newest_first(authed_client):
     assert names == ["B", "A"]
     # List view excludes the heavy request/response blobs.
     assert "request" not in r.json()[0]
+    assert "response" not in r.json()[0]
     # But IDs stay stable.
     ids = {row["id"] for row in r.json()}
     assert ids == {a["id"], b["id"]}
+
+
+def test_list_includes_enriched_scalar_fields(authed_client):
+    """List endpoint should lift `probability_of_goal`,
+    `probability_of_goal_se`, `attainability`, and `calibration_as_of`
+    up from the response blob so the frontend avoids the N+1 detail
+    fetch it used to do on ClientSummary."""
+    authed_client.post(
+        "/api/simulations", json=_save_payload(authed_client, name="Enriched")
+    )
+    r = authed_client.get("/api/simulations")
+    assert r.status_code == 200
+    row = r.json()[0]
+    # The four enriched fields are all present at the top level.
+    assert "probability_of_goal" in row
+    assert "probability_of_goal_se" in row
+    assert "attainability" in row
+    assert "calibration_as_of" in row
+    # probability_of_goal is a float in [0, 1] for a run with a real goal.
+    assert isinstance(row["probability_of_goal"], float)
+    assert 0.0 <= row["probability_of_goal"] <= 1.0
+    # attainability is one of the three bands (or None on a no-goal run).
+    assert row["attainability"] in ("attainable", "aspirational", "out_of_reach", None)
 
 
 def test_list_filters_by_client_id(authed_client):
