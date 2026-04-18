@@ -523,25 +523,33 @@ def test_real_data_calibration_in_expected_range():
     with path.open("r", encoding="utf-8") as f:
         calib = json.load(f)
 
-    # The calibration manifest is expected to shape like:
-    #   {"equity": {"mu": <monthly>, "sigma": ...}, "mmf": {...}, "inflation": {...}}
-    # Be lenient on naming — the analyst may nest under a "marginals" key or
-    # use "fixed" instead of "mmf". Look up defensively.
-    def _mu(node_keys: tuple[str, ...]) -> float:
-        for key in node_keys:
-            if key in calib:
-                node = calib[key]
-                break
-            if "marginals" in calib and key in calib["marginals"]:
-                node = calib["marginals"][key]
-                break
-        else:  # pragma: no cover — raised with context for analyst to see
-            raise AssertionError(
-                f"calibration missing any of {node_keys} (top-level keys: "
-                f"{list(calib)})"
-            )
-        assert "mu" in node, f"calibration node for {node_keys} has no 'mu'"
-        return float(node["mu"])
+    # Analyst's calibration manifest shape (as of 2026-04):
+    #   {
+    #     "series": {
+    #       "equity":    {"mu_monthly": ..., "sigma_monthly": ..., ...},
+    #       "mmf":       {"mu_monthly": ..., ...},
+    #       "inflation": {"mu_monthly": ..., ...}
+    #     }, ...
+    #   }
+    # Look up defensively so a future rename (e.g. "variable"/"fixed"/"cpi")
+    # doesn't silently break this test — fail loudly with the actual top-level
+    # keys the analyst shipped.
+    def _mu(alias_keys: tuple[str, ...]) -> float:
+        # Try top-level first, then under "series" (current shape), then
+        # under "marginals" (alternative shape we prepared for).
+        for container in (calib, calib.get("series", {}), calib.get("marginals", {})):
+            for key in alias_keys:
+                if key in container:
+                    node = container[key]
+                    if isinstance(node, dict):
+                        for mu_key in ("mu_monthly", "mu", "mean"):
+                            if mu_key in node:
+                                return float(node[mu_key])
+        raise AssertionError(
+            f"calibration missing any of {alias_keys} with a mu field "
+            f"(top-level keys: {list(calib)}; "
+            f"series keys: {list(calib.get('series', {}))})"
+        )
 
     equity_mu = _mu(("equity", "variable", "abc_equity_fund"))
     mmf_mu = _mu(("mmf", "fixed", "ebe_money_market_fund", "money_market"))
