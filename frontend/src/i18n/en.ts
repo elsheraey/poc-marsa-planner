@@ -81,8 +81,6 @@ const en: Record<string, string> = {
     "Plan reaches the goal at ~{pct}% confidence.",
   "report.headline.shortfall":
     "At {monthly}/month, this plan reaches the goal with ~{pct}% confidence.",
-  "report.headline.unreachable":
-    "At {monthly}/month, {name}'s {goal} goal is out of reach under this plan.",
   "report.headline.no_goal":
     "No goal amount set — the projection below is informational.",
   "report.suggest.monthly":
@@ -136,6 +134,7 @@ const en: Record<string, string> = {
   "common.save": "Save",
 
   "client.modify": "Modify",
+  "client.notFound": "Client not found. It may have been deleted.",
   "client.section.info": "Client information",
   "client.section.coClient": "Co-client",
   "client.section.incomeSources": "Income sources",

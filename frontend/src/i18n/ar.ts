@@ -116,8 +116,6 @@ const ar: Record<string, string> = {
     "الخطة تحقق الهدف باحتمال ~{pct}٪.",
   "report.headline.shortfall":
     "بمساهمة شهرية {monthly}، تحقق الخطة الهدف باحتمال ~{pct}٪.",
-  "report.headline.unreachable":
-    "بمساهمة شهرية {monthly}، هدف {goal} للعميل {name} خارج نطاق التحقق ضمن هذه الخطة.",
   "report.headline.no_goal":
     "لم يُحدَّد مبلغ الهدف — الإسقاطات أدناه للعرض فقط.",
   // TODO: native-speaker review
@@ -183,6 +181,8 @@ const ar: Record<string, string> = {
   "common.save": "حفظ",
 
   "client.modify": "تعديل",
+  // TODO: native-speaker review
+  "client.notFound": "العميل غير موجود. قد يكون قد تم حذفه.",
   "client.section.info": "بيانات العميل",
   "client.section.coClient": "العميل المشارك",
   "client.section.incomeSources": "مصادر الدخل",
