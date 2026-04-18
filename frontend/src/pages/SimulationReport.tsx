@@ -131,13 +131,30 @@ export default function SimulationReport() {
   const [inversionByScenario, setInversionByScenario] = useState<
     Record<number, SimulateInvertResult | null>
   >({});
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
-    "idle"
+  // Per-scenario save state. A save on scenario N should not disable the
+  // Save button on scenario M, and "Saved" should not leak between
+  // scenarios when the advisor clicks between cards.
+  const [saveStateByScenario, setSaveStateByScenario] = useState<
+    Record<number, "idle" | "saving" | "saved">
+  >({});
+  const saveResetTimerRef = useRef<Record<number, ReturnType<typeof setTimeout>>>(
+    {}
   );
   const draftClientId = useAppSelector((s) => {
     const raw = (s.draft as unknown as { clientId?: string | null }).clientId;
     return typeof raw === "string" && raw.length > 0 ? raw : null;
   });
+
+  // Cleanup any in-flight "saved → idle" reset timers on unmount so we
+  // never setState on an unmounted component.
+  useEffect(() => {
+    const timers = saveResetTimerRef.current;
+    return () => {
+      for (const t of Object.values(timers)) {
+        clearTimeout(t);
+      }
+    };
+  }, []);
 
   const scenarioCards = useMemo(() => {
     let src: { name: string; result: SimulateResult }[] = [];
@@ -327,7 +344,8 @@ export default function SimulationReport() {
   }
 
   async function handleSave() {
-    if (saveState !== "idle" || !activeRequest || !activeResult) return;
+    const currentState = saveStateByScenario[activeScenario] ?? "idle";
+    if (currentState !== "idle" || !activeRequest || !activeResult) return;
     const todayIso = new Date().toISOString().slice(0, 10);
     const defaultName = reportTitle || `Simulation ${todayIso}`;
     const hasWindow = globalThis.window !== undefined;
@@ -337,7 +355,8 @@ export default function SimulationReport() {
     if (raw == null) return;
     const name = raw.trim();
     if (name.length === 0) return;
-    setSaveState("saving");
+    const scenarioIdx = activeScenario;
+    setSaveStateByScenario((prev) => ({ ...prev, [scenarioIdx]: "saving" }));
     try {
       await api.createSimulation({
         name,
@@ -345,10 +364,18 @@ export default function SimulationReport() {
         request: activeRequest,
         response: activeResult,
       });
-      setSaveState("saved");
+      setSaveStateByScenario((prev) => ({ ...prev, [scenarioIdx]: "saved" }));
       toast(t("report.save.toast.success", { name }), "success");
+      // Re-enable the Save button after 2.5s so the advisor can rename
+      // or re-save without refreshing the page.
+      const timers = saveResetTimerRef.current;
+      if (timers[scenarioIdx]) clearTimeout(timers[scenarioIdx]);
+      timers[scenarioIdx] = setTimeout(() => {
+        setSaveStateByScenario((prev) => ({ ...prev, [scenarioIdx]: "idle" }));
+        delete timers[scenarioIdx];
+      }, 2500);
     } catch (e) {
-      setSaveState("idle");
+      setSaveStateByScenario((prev) => ({ ...prev, [scenarioIdx]: "idle" }));
       const msg = e instanceof ApiError ? e.message : "Save failed";
       toast(msg, "error");
     }
@@ -449,17 +476,23 @@ export default function SimulationReport() {
             >
               {t("report.action.print")}
             </button>
-            <button
-              type="button"
-              data-testid="save-simulation-button"
-              onClick={handleSave}
-              disabled={saveState !== "idle"}
-              className="btn-plain"
-            >
-              {saveState === "saving" && t("report.action.saving")}
-              {saveState === "saved" && t("report.action.saved")}
-              {saveState === "idle" && t("report.action.save")}
-            </button>
+            {(() => {
+              const activeSaveState =
+                saveStateByScenario[activeScenario] ?? "idle";
+              return (
+                <button
+                  type="button"
+                  data-testid="save-simulation-button"
+                  onClick={handleSave}
+                  disabled={activeSaveState !== "idle"}
+                  className="btn-plain"
+                >
+                  {activeSaveState === "saving" && t("report.action.saving")}
+                  {activeSaveState === "saved" && t("report.action.saved")}
+                  {activeSaveState === "idle" && t("report.action.save")}
+                </button>
+              );
+            })()}
           </div>
         </div>
 
