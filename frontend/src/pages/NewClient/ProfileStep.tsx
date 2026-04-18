@@ -33,7 +33,7 @@ function Field({
     <div className="flex flex-col gap-2">
       <span className="label">
         {label}
-        {required && <span className="text-red-500"> *</span>}
+        {required && <span className="text-accent"> *</span>}
       </span>
       {children}
     </div>
@@ -54,7 +54,7 @@ function AdvancedDossier() {
           aria-pressed={p.hasCoClient}
           aria-label={t("profile.dossier.coClient")}
           className={`w-11 h-6 rounded-full transition ${
-            p.hasCoClient ? "bg-primary-500" : "bg-border"
+            p.hasCoClient ? "bg-accent" : "bg-rule"
           }`}
           onClick={() => upd({ hasCoClient: !p.hasCoClient })}
         >
@@ -427,9 +427,11 @@ export default function ProfileStep() {
 
   return (
     <>
-      <section className="card">
-        <h3 className="text-base font-bold mb-6">{t("profile.section.required")}</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <section>
+        <h3 className="font-serif text-2xl tracking-tight mb-6">
+          {t("profile.section.required")}
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
           <Field label={t("profile.field.fullName")} required>
             <input
               className="input"
@@ -493,31 +495,37 @@ export default function ProfileStep() {
         </div>
       </section>
 
-      <section className="card mt-6">
+      <section className="border-t border-rule pt-8 mt-12">
         <details
           open={advancedOpen}
           onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
         >
           <summary className="cursor-pointer list-none flex items-center gap-2 select-none">
-            <span aria-hidden="true" className="text-muted text-xs">
-              {advancedOpen ? "▾" : "▸"}
+            <span aria-hidden="true" className="text-ink-muted text-xs">
+              {advancedOpen ? "–" : "+"}
             </span>
-            <span className="text-base font-bold">{t("profile.section.dossier")}</span>
+            <span className="font-serif text-2xl tracking-tight">
+              {t("profile.section.dossier")}
+            </span>
           </summary>
-          <p className="text-xs text-muted mt-2">
+          <p className="text-xs text-ink-muted mt-2 leading-relaxed">
             {t("profile.section.dossier.help")}
           </p>
           <AdvancedDossier />
         </details>
       </section>
 
-      <div className="flex justify-end gap-3 mt-6">
-        <button type="button" className="btn-outline" onClick={() => nav("/clients")}>
+      <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-rule">
+        <button
+          type="button"
+          className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
+          onClick={() => nav("/clients")}
+        >
           {t("profile.cta.cancel")}
         </button>
         <button
           type="button"
-          className="btn-primary"
+          className="btn"
           onClick={() => nav("/clients/new/goals")}
         >
           {t("profile.cta.proceed")}

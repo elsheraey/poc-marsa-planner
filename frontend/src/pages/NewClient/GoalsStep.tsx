@@ -9,10 +9,15 @@ export default function GoalsStep() {
 
   return (
     <>
-      <section className="card">
-        <div className="flex items-center gap-3 mb-6">
-          <h3 className="text-base font-bold">Goals</h3>
-          <button className="icon-btn-add" onClick={() => dispatch(actions.addGoal())}>
+      <section>
+        <div className="flex items-center gap-4 mb-8">
+          <h3 className="font-serif text-2xl tracking-tight">Goals</h3>
+          <button
+            type="button"
+            className="icon-btn-add"
+            onClick={() => dispatch(actions.addGoal())}
+            aria-label="Add goal"
+          >
             +
           </button>
         </div>
@@ -20,7 +25,7 @@ export default function GoalsStep() {
         {goals.map((g, i) => (
           <div
             key={i}
-            className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-end mb-4"
+            className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-end mb-6 pb-6 border-b border-rule last:border-b-0"
           >
             <div className="flex flex-col gap-2">
               <span className="label">Name</span>
@@ -96,8 +101,10 @@ export default function GoalsStep() {
               />
             </div>
             <button
+              type="button"
               className="icon-btn-remove mb-2"
               onClick={() => dispatch(actions.removeGoal(i))}
+              aria-label="Remove goal"
             >
               −
             </button>
@@ -105,11 +112,19 @@ export default function GoalsStep() {
         ))}
       </section>
 
-      <div className="flex justify-end gap-3 mt-6">
-        <button className="btn-outline" onClick={() => nav("/clients/new/profile")}>
+      <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-rule">
+        <button
+          type="button"
+          className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
+          onClick={() => nav("/clients/new/profile")}
+        >
           Cancel
         </button>
-        <button className="btn-primary" onClick={() => nav("/clients/new/scenario")}>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => nav("/clients/new/scenario")}
+        >
           Save
         </button>
       </div>

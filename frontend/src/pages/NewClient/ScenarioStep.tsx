@@ -74,27 +74,27 @@ function GoalPicker({
   const [local, setLocal] = useState(selected);
   if (!open) return null;
   return (
-    <div className="border border-border rounded-xl p-4 mt-2 bg-white shadow-card">
-      <div className="text-xs font-semibold mb-3">Goals</div>
-      <table className="w-full text-sm">
-        <thead className="text-xs text-muted">
-          <tr>
+    <div className="border-t border-b border-rule py-4 mt-2 bg-paper-deep/40">
+      <div className="label mb-3 px-4">Goals</div>
+      <table className="w-full text-sm tabular">
+        <thead>
+          <tr className="text-xs uppercase tracking-widest text-ink-muted">
             <th></th>
-            <th className="text-left font-medium pb-2">Goal</th>
-            <th className="text-left font-medium pb-2">Amount</th>
-            <th className="text-left font-medium pb-2">Year</th>
-            <th className="text-left font-medium pb-2">Inflation rate</th>
+            <th className="text-start font-normal pb-2">Goal</th>
+            <th className="text-start font-normal pb-2">Amount</th>
+            <th className="text-start font-normal pb-2">Year</th>
+            <th className="text-start font-normal pb-2">Inflation rate</th>
           </tr>
         </thead>
         <tbody>
           {availableGoals.map((g, i) => {
             const checked = local.includes(g.name);
             return (
-              <tr key={i} className="border-t border-border/60">
+              <tr key={i} className="border-t border-rule">
                 <td className="py-2 w-10">
                   <input
                     type="checkbox"
-                    className="accent-primary-500 w-4 h-4"
+                    className="accent-ink w-4 h-4"
                     checked={checked}
                     onChange={() =>
                       setLocal((prev) =>
@@ -114,18 +114,19 @@ function GoalPicker({
           })}
         </tbody>
       </table>
-      <div className="flex justify-end gap-4 mt-3 text-xs font-semibold">
-        <button className="text-muted" onClick={onClose}>
-          CANCEL
+      <div className="flex justify-end gap-4 mt-3 px-4 text-xs uppercase tracking-widest">
+        <button type="button" className="text-ink-muted hover:text-ink" onClick={onClose}>
+          Cancel
         </button>
         <button
-          className="text-primary-500"
+          type="button"
+          className="text-ink underline decoration-accent underline-offset-4"
           onClick={() => {
             onSelect(local);
             onClose();
           }}
         >
-          SELECT
+          Select
         </button>
       </div>
     </div>
@@ -142,20 +143,20 @@ function ScenarioCard({ index }: { index: number }) {
     dispatch(actions.updateScenario({ index, patch }));
 
   return (
-    <section className="card">
-      <div className="flex items-center justify-between mb-5">
-        <div className="text-primary-500 font-bold">{scenario.name}</div>
-        <div className="flex items-center gap-2 text-xs">
+    <section className="border-t border-rule pt-8">
+      <div className="flex items-center justify-between mb-6">
+        <div className="font-serif text-2xl tracking-tight">{scenario.name}</div>
+        <div className="flex items-center gap-6 text-xs uppercase tracking-widest">
           <button
             type="button"
-            className="text-muted font-semibold"
+            className="text-ink-muted hover:text-ink"
             onClick={() => setCollapsed((c) => !c)}
           >
             {collapsed ? "Expand" : "Collapse"}
           </button>
           <button
             type="button"
-            className="px-3 h-7 rounded-md border border-red-300 text-red-500 font-semibold"
+            className="text-accent hover:underline underline-offset-4"
             onClick={() => dispatch(actions.removeScenario(index))}
           >
             Remove Scenario
@@ -190,23 +191,23 @@ function ScenarioCard({ index }: { index: number }) {
             </div>
           </div>
 
-          <div className="border-t border-border/70 pt-5 mb-5">
-            <div className="flex items-center gap-3 mb-3">
+          <div className="border-t border-rule pt-6 mb-6">
+            <div className="flex items-center gap-4 mb-3">
               <span className="label">Select Goals</span>
               <button
                 type="button"
-                className="px-3 h-7 rounded-md bg-primary-500 text-white text-xs font-semibold"
+                className="text-xs uppercase tracking-widest text-ink underline decoration-accent underline-offset-4"
                 onClick={() => setPickerOpen((o) => !o)}
               >
                 Select
               </button>
             </div>
             {scenario.goalNames.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex flex-wrap gap-3 mb-3">
                 {scenario.goalNames.map((name) => (
                   <span
                     key={name}
-                    className="px-3 py-1 rounded-full bg-primary-100 text-primary-600 text-xs font-medium"
+                    className="text-xs uppercase tracking-widest px-2 py-0.5 bg-accent-soft text-ink"
                   >
                     {name}
                   </span>
@@ -303,10 +304,10 @@ function GroupList<T extends Record<string, number>>({
 }) {
   const keys = Object.keys(items[0] ?? {}) as (keyof T)[];
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-sm font-semibold">{title}</span>
-        <button className="icon-btn-add" onClick={onAdd}>
+    <div className="mb-8">
+      <div className="flex items-center gap-4 mb-3">
+        <span className="label">{title}</span>
+        <button type="button" className="icon-btn-add" onClick={onAdd} aria-label={`Add ${title}`}>
           +
         </button>
       </div>
@@ -406,27 +407,31 @@ export default function ScenarioStep() {
 
   return (
     <>
-      <div className="flex justify-end mt-4 mb-4">
+      <div className="flex justify-end mt-4 mb-8">
         <button
           type="button"
-          className="btn-primary"
+          className="btn"
           onClick={() => dispatch(actions.addScenario())}
         >
           Add New Scenario
         </button>
       </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-0">
         {scenarios.map((sc, i) => (
           <ScenarioCard key={`${sc.name}-${i}`} index={i} />
         ))}
       </div>
 
-      <div className="flex justify-end gap-3 mt-6">
-        <button className="btn-outline" onClick={() => nav("/clients/new/goals")}>
+      <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-rule">
+        <button
+          type="button"
+          className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
+          onClick={() => nav("/clients/new/goals")}
+        >
           Save for later
         </button>
-        <button className="btn-primary" onClick={runAll}>
+        <button type="button" className="btn" onClick={runAll}>
           Run Simulation
         </button>
       </div>
