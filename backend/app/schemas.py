@@ -159,4 +159,5 @@ class SimulateResponse(BaseModel):
     candidates: list[PortfolioOut]
     projection: ProjectionOut
     probability_of_goal: float | None
+    probability_of_goal_se: float | None = None
     attainability: Attainability | None = None

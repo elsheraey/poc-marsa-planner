@@ -167,3 +167,18 @@ def test_attainability_present_with_target() -> None:
     goal = UserGoal(5, 10_000, 500, 0.0, "essential", "high")
     out = run_advisor(goal, goal_target_amount=50_000)
     assert out["attainability"] in {"attainable", "aspirational", "out_of_reach"}
+
+
+# ---------- 5. Monte Carlo standard error on probability_of_goal ----------
+
+
+def test_probability_of_goal_se_bound() -> None:
+    """Spec §4(c): SE = sqrt(p(1-p)/N) ≤ 0.005 at N=10,000."""
+    goal = UserGoal(5, 50_000, 1_000, 0.0, "essential", "high")
+    out = run_advisor(goal, goal_target_amount=100_000)
+    se = out["probability_of_goal_se"]
+    p = out["probability_of_goal"]
+    assert se is not None and p is not None
+    assert se <= 0.005, f"SE {se} exceeds spec §4(c) bound 0.005 at N=10k (p={p})"
+    # SE is null when no goal target is supplied.
+    assert run_advisor(goal)["probability_of_goal_se"] is None

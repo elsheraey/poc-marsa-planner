@@ -119,6 +119,7 @@ def run_advisor(
     # basis (real or nominal) as the projection. In real terms the goal
     # target is CPI-deflated per scenario at the target (final) year.
     prob: float | None
+    prob_se: float | None
     attainability: str | None
     if goal_target_amount is not None:
         target = float(goal_target_amount)
@@ -136,6 +137,11 @@ def run_advisor(
             prob = round(float((nominal_final >= target).mean()), 4)
             goal_real_at_target = target
 
+        # Monte Carlo standard error — Bernoulli: sqrt(p(1-p)/N).
+        # Spec §4(c): SE ≤ 0.005 at N=10,000 by construction.
+        n_scenarios = int(nominal_final.shape[0])
+        prob_se = round(float(np.sqrt(prob * (1.0 - prob) / n_scenarios)), 6)
+
         attainability = _classify_attainability(
             pessimistic_final=float(projection["pessimistic"][-1]),
             median_final=float(projection["median"][-1]),
@@ -143,6 +149,7 @@ def run_advisor(
         )
     else:
         prob = None
+        prob_se = None
         attainability = None
 
     return {
@@ -150,5 +157,6 @@ def run_advisor(
         "candidates": candidates,
         "projection": projection,
         "probability_of_goal": prob,
+        "probability_of_goal_se": prob_se,
         "attainability": attainability,
     }
