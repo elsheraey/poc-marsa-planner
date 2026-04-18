@@ -22,11 +22,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ASSETS = resolve(__dirname, "assets");
 const ENV_PATH = resolve(__dirname, ".env");
 
-// Voice IDs — pinned to the official ElevenLabs "Adam" for EN. AR falls
-// back to Adam if the /voices lookup can't find a multilingual-compatible
-// Arabic-labelled voice (Multilingual v2 handles Arabic from any voice).
-const EN_VOICE = "pNInz6obpgDQGcFmaJgB"; // Adam
+// Voice IDs.
+//   EN — Sarah ("Mature, Reassuring, Confident"). The trusted-narrator
+//        register a user might remember as "Rachel"; Rachel itself is
+//        paid-tier-only via the API since 2026, so Sarah is the free-
+//        tier-accessible substitute with the same feel.
+//   AR — tries to discover an Arabic-labelled voice via /v1/voices; falls
+//        back to Adam on Multilingual v2 (proven Arabic phoneme coverage).
+const EN_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
 const AR_VOICE_DEFAULT = "pNInz6obpgDQGcFmaJgB"; // Adam (fallback)
+
+// Model selection per language. v3 gives Rachel more natural pacing on
+// the English narration; Arabic stays on multilingual_v2 where native
+// coverage is proven.
+const EN_MODEL = "eleven_v3";
+const AR_MODEL = "eleven_multilingual_v2";
 
 const EN_SCRIPT = `Ahmed is 42. Senior manager at a multinational. Wife, two kids — seven and ten. Around 155,000 pounds come in each month. 3 million already invested; 40,000 saved on top.
 
@@ -111,7 +121,7 @@ async function findArabicVoice(apiKey) {
   }
 }
 
-async function tts({ apiKey, voiceId, text, outfile }) {
+async function tts({ apiKey, voiceId, modelId, text, outfile }) {
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`;
   const res = await fetch(url, {
     method: "POST",
@@ -122,14 +132,14 @@ async function tts({ apiKey, voiceId, text, outfile }) {
     },
     body: JSON.stringify({
       text,
-      model_id: "eleven_multilingual_v2",
+      model_id: modelId,
       voice_settings: { stability: 0.45, similarity_boost: 0.85, style: 0.15 },
     }),
   });
   if (!res.ok) {
     // NEVER leak the Authorization header; the error body is enough.
     const errBody = await res.text().catch(() => "");
-    throw new Error(`tts ${voiceId}: ${res.status} ${res.statusText} ${errBody.slice(0, 200)}`);
+    throw new Error(`tts ${voiceId} [${modelId}]: ${res.status} ${res.statusText} ${errBody.slice(0, 200)}`);
   }
   const buf = Buffer.from(await res.arrayBuffer());
   writeFileSync(outfile, buf);
@@ -148,15 +158,34 @@ async function main() {
   const apiKey = readApiKey();
   const totalStart = Date.now();
 
-  // English first — primary deliverable.
-  console.log("tts: EN → Adam (" + EN_VOICE.slice(0, 6) + "…)");
+  // English first — primary deliverable. Try v3 for better prosody;
+  // free tier may 402 on v3, in which case fall back to multilingual_v2
+  // automatically so the pipeline still lands a usable MP3.
+  console.log(`tts: EN → Sarah (${EN_VOICE.slice(0, 6)}…) · model ${EN_MODEL}`);
   const enStart = Date.now();
-  const enRes = await tts({
-    apiKey,
-    voiceId: EN_VOICE,
-    text: EN_SCRIPT,
-    outfile: resolve(ASSETS, "voiceover.en.mp3"),
-  });
+  let enRes;
+  try {
+    enRes = await tts({
+      apiKey,
+      voiceId: EN_VOICE,
+      modelId: EN_MODEL,
+      text: EN_SCRIPT,
+      outfile: resolve(ASSETS, "voiceover.en.mp3"),
+    });
+  } catch (err) {
+    if (/402|paid_plan_required|payment_required/i.test(err.message)) {
+      console.warn(`tts: EN ${EN_MODEL} refused by tier — retrying on multilingual_v2`);
+      enRes = await tts({
+        apiKey,
+        voiceId: EN_VOICE,
+        modelId: "eleven_multilingual_v2",
+        text: EN_SCRIPT,
+        outfile: resolve(ASSETS, "voiceover.en.mp3"),
+      });
+    } else {
+      throw err;
+    }
+  }
   console.log(
     `tts: EN ok — ${(enRes.bytes / 1024).toFixed(1)} KB, ${enRes.chars} chars in ${((Date.now() - enStart) / 1000).toFixed(1)}s`
   );
@@ -165,12 +194,13 @@ async function main() {
   const arVoiceHit = await findArabicVoice(apiKey);
   const arVoice = arVoiceHit?.id || AR_VOICE_DEFAULT;
   console.log(
-    `tts: AR → ${arVoiceHit?.name || "Adam (fallback)"} (${arVoice.slice(0, 6)}…) — ${arVoiceHit?.reason || "no arabic-labelled voice found"}`
+    `tts: AR → ${arVoiceHit?.name || "Adam (fallback)"} (${arVoice.slice(0, 6)}…) · model ${AR_MODEL} — ${arVoiceHit?.reason || "no arabic-labelled voice found"}`
   );
   const arStart = Date.now();
   const arRes = await tts({
     apiKey,
     voiceId: arVoice,
+    modelId: AR_MODEL,
     text: AR_SCRIPT,
     outfile: resolve(ASSETS, "voiceover.ar.mp3"),
   });
