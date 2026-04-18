@@ -29,12 +29,12 @@ export default function Toaster() {
         <div
           key={t.id}
           role="status"
-          className={`rounded-lg shadow-lg px-4 py-3 text-sm ${
+          className={`px-4 py-3 text-sm border ${
             t.kind === "error"
-              ? "bg-red-600 text-white"
+              ? "bg-paper border-accent text-accent"
               : t.kind === "success"
-              ? "bg-emerald-600 text-white"
-              : "bg-slate-800 text-white"
+              ? "bg-paper border-ink text-ink"
+              : "bg-paper border-rule text-ink"
           }`}
         >
           {t.message}

@@ -2,9 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Editorial baseline. Think "private banker's letter" — cream paper, ink
+  type, terracotta accent. Cards, shadows, rounded-2xl, gradients have all
+  left the building. A rule between sections is the entire visual
+  hierarchy.
+*/
+
 @layer base {
   body {
     -webkit-font-smoothing: antialiased;
+    line-height: 1.7;
+    background-color: #FBF8F1; /* paper */
+    color: #1A1816; /* ink */
+  }
+  /*
+    Serif display type for h1–h3. We use the system serif stack
+    (ui-serif → Georgia → Times New Roman) to keep things credible on
+    every OS without pulling a Google Font. h4+ keeps the sans body
+    stack so captions / small headings stay quiet.
+  */
+  h1, h2, h3 {
+    font-family: ui-serif, Georgia, "Times New Roman", serif;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
   }
   input,
   select,
@@ -14,33 +35,75 @@
 }
 
 @layer components {
+  /*
+    Newspaper caption style: small-caps-ish label above a form field or
+    a data row. Used in place of the old pill-shaped chip labels.
+  */
   .label {
-    @apply text-[11px] font-semibold uppercase tracking-wider text-ink/90;
+    @apply text-xs uppercase tracking-widest text-ink-muted;
   }
+  /*
+    Bottom-rule input. No border box, no rounded corners — type sits on
+    a hairline that darkens on focus. `px-0` so the typed text aligns
+    with the surrounding body copy; a small `py-2` keeps the touch
+    target tall enough to click.
+  */
   .input {
-    @apply w-full h-11 px-4 rounded-xl border border-border bg-white text-sm text-ink placeholder:text-muted/70 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition;
+    @apply w-full h-11 px-0 py-2 bg-transparent text-base text-ink placeholder:text-ink-muted/60
+           border-0 border-b border-rule rounded-none
+           outline-none transition
+           focus:border-ink focus:ring-0;
   }
+  /*
+    The `<select>` element renders a native caret on most browsers; we
+    drop the custom SVG background that the old .select had (it only
+    rendered inside a rounded box anyway). Same visual language as .input.
+  */
   .select {
-    @apply input pr-10 appearance-none bg-no-repeat;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5l3 3 3-3' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-    background-position: right 1rem center;
+    @apply input pr-6 appearance-none bg-transparent;
   }
+  /*
+    Editorial button. A single style for the whole app: 1px ink border,
+    no fill, inverts on hover. No `rounded-xl`, no shadow, no gradient.
+    Use a plain <Link> for secondary actions.
+  */
   .btn {
-    @apply inline-flex items-center justify-center h-10 px-5 rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center h-10 px-6 text-sm font-medium
+           border border-ink bg-transparent text-ink
+           transition
+           hover:bg-ink hover:text-paper
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
+  /*
+    Legacy names — collapsed into the single `.btn` treatment so callers
+    that still reference `btn-primary` / `btn-outline` don't 404 at JIT
+    time. Keeping the aliases one-liners makes `grep -r btn-primary` still
+    useful as a search for "action" sites.
+  */
   .btn-primary {
-    @apply btn bg-primary-500 text-white hover:bg-primary-600;
+    @apply btn;
   }
   .btn-outline {
-    @apply btn border border-primary-500 text-primary-500 bg-white hover:bg-primary-50;
+    @apply btn;
   }
-  .card {
-    @apply bg-white rounded-2xl shadow-card p-6;
-  }
+  /*
+    Small-add / remove action buttons in the wizard. Stripped to ink
+    outlines — same editorial ethos as `.btn`.
+  */
   .icon-btn-add {
-    @apply inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary-500 text-white text-base leading-none hover:bg-primary-600;
+    @apply inline-flex items-center justify-center w-6 h-6 border border-ink text-ink text-base leading-none
+           hover:bg-ink hover:text-paper transition;
   }
   .icon-btn-remove {
-    @apply inline-flex items-center justify-center w-6 h-6 rounded-full border border-red-400 text-red-500 text-sm leading-none hover:bg-red-50;
+    @apply inline-flex items-center justify-center w-6 h-6 border border-ink-muted text-ink-muted text-sm leading-none
+           hover:bg-ink-muted hover:text-paper transition;
+  }
+  /*
+    `.tabular` — numeric values (EGP amounts, percentages) line up cleanly
+    across rows. Useful anywhere columns of numbers appear next to each
+    other (the projection table, the ProbabilityBar label, etc.).
+  */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
