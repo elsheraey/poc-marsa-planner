@@ -1,6 +1,6 @@
-# Marsa RFA — Market Expectations Spec
+# Marsa — Market Expectations Spec
 
-**Author:** Quantitative Analyst (RFA team)
+**Author:** Quantitative Analyst
 **Date:** 2026-04-18
 **Status:** Contract. Engineer builds against this; QA tests against this. Every item is falsifiable.
 **Scope:** Egypt / EGP. Fit window is full-cycle 2015-2026 (spanning the 2016 float, 2022-2024 devaluation cycle, and 2025 CBE cut cycle) so the engine sees every regime an advisor plans against. Other markets require a separate spec.
@@ -170,7 +170,7 @@ Iteration 2 split this out of `docs/data-sources.md` so the cadence, ownership, 
 
 **Cadence.** Quarterly, on the 11th-15th of the quarter-closing month (Mar / Jun / Sep / Dec), after CAPMAS publishes the prior-month headline CPI bulletin. Monthly touch-ups to the CSV extension tables (§2, §3 of `data-sources.md`) are allowed between quarters without spec review — they do not change the acceptable-range contract in §1.
 
-**Owner.** Analyst (RFA team) runs the refresh. Analyst is sole author of `docs/market-spec.md` and `docs/data-sources.md`; no other role edits these without PR review from Analyst.
+**Owner.** Analyst runs the refresh. Analyst is sole author of `docs/market-spec.md` and `docs/data-sources.md`; no other role edits these without PR review from Analyst.
 
 **Procedure.** Analyst, from a clean checkout on `main`:
 

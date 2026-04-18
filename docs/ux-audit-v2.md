@@ -1,4 +1,4 @@
-# Marsa RFA — UX Audit v2
+# Marsa — UX Audit v2
 
 Reviewer: Senior UX lead, April 2026. Mandate: red-team the v1 audit, walk
 the app as an Egyptian advisor would, and decide what to kill before the

@@ -1,6 +1,6 @@
-# Marsa RFA — Calibration & Algorithm Review
+# Marsa — Calibration & Algorithm Review
 
-**Author:** Quantitative Analyst (RFA team)
+**Author:** Quantitative Analyst
 **Date:** 2026-04-18
 **Status:** Research report. No code changes included.
 

@@ -1,6 +1,6 @@
-# Marsa RFA — Data Sources & Provenance
+# Marsa — Data Sources & Provenance
 
-**Author:** Quantitative Analyst (RFA team)
+**Author:** Quantitative Analyst
 **Date:** 2026-04-18
 **Status:** Live. Updated with every calibration snapshot.
 **Pairs with:** `backend/data/calibration_YYYY-MM.json`.

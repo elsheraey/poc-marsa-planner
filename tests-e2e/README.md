@@ -1,6 +1,6 @@
 # tests-e2e
 
-Playwright end-to-end tests for Marsa RFA. Lives outside the frontend so
+Playwright end-to-end tests for Marsa. Lives outside the frontend so
 the heavy Playwright + browser tarballs don't get pulled into `frontend/`'s
 lockfile or production bundle.
 

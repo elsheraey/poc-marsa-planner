@@ -1,8 +1,20 @@
-# Marsa RFA
+# Marsa — Financial Planning for Wealth Advisors
 
-Production-ready implementation of the **Robotic Financial Advisor Simulation**
-(`Marsa_RFA_Simulation_Overview.pdf`) with a multi-user FastAPI backend
-and a React + Redux + Tailwind advisor portal.
+Marsa is a **financial planning tool** for independent wealth advisors:
+a goal-based Monte Carlo simulation engine with a React + Redux + Tailwind
+advisor portal on top of a multi-user FastAPI backend. The advisor enters a
+client profile, goals, and scenarios; Marsa runs 10,000-path simulations,
+returns inflation-adjusted probability-of-goal and suggested adjustments,
+and renders a presentable report.
+
+Marsa is **not a robo-advisor**. We do not hold custody, touch brokerage
+accounts, or execute trades. Nothing Marsa produces is an order; every
+output is a plan the human advisor walks through with the client.
+
+The simulation engine implements the algorithm originally specified in the
+Azimut academic paper `Marsa_RFA_Simulation_Overview.pdf` — preserved
+as a reference for the math (preprocessing, distribution fitting, copula
+sampling, importance percentiles) — not as a product positioning.
 
 The product name (`Marsa` — Arabic مرسى, "harbor") lives in a single
 constant in the frontend (`frontend/src/config.ts`) and an env-var-backed
@@ -83,7 +95,7 @@ All endpoints are under `/api`. Auth is JWT over an HttpOnly cookie
 | `GET  /api/clients/{id}`     | ✓    | Fetch a client (own only)           |
 | `PATCH /api/clients/{id}`    | ✓    | Update a client (own only)          |
 | `DELETE /api/clients/{id}`   | ✓    | Delete a client (own only)          |
-| `POST /api/simulate`         | ✓    | Monte Carlo advisor run             |
+| `POST /api/simulate`         | ✓    | Monte Carlo planning run            |
 | `GET  /health`               | —    | Liveness probe                      |
 
 ## Configuration

@@ -1,4 +1,4 @@
-# Marsa RFA — UX Audit
+# Marsa — UX Audit
 
 Reviewer: Senior UX designer, April 2026. Focus: advisor-facing portal, client
 onboarding, Monte Carlo report.
@@ -8,7 +8,7 @@ onboarding, Monte Carlo report.
 The skeleton is right — Clients → Profile → Goals → Scenario → Report — and
 the visual language is boardroom-polished. What is missing is the *advisory
 layer* on top of the data-entry layer. The product behaves like a form that
-computes a number; an RFA tool should behave like a partner that pushes back
+computes a number; a planning tool should behave like a partner that pushes back
 when inputs don't make sense. The flow never tells the advisor whether
 inputs are coherent (currency, units, magnitudes), whether a goal is
 feasible, or what 50/70/90% actually means for a 2028 down-payment. With

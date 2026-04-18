@@ -1,4 +1,4 @@
-# Marsa RFA — Iteration 2 Readiness Report
+# Marsa — Iteration 2 Readiness Report
 
 **Owner:** QA lead
 **Date:** 2026-04-18
