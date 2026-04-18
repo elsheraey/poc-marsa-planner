@@ -23,13 +23,12 @@ const ASSETS = resolve(__dirname, "assets");
 const ENV_PATH = resolve(__dirname, ".env");
 
 // Voice IDs.
-//   EN — Sarah ("Mature, Reassuring, Confident"). The trusted-narrator
-//        register a user might remember as "Rachel"; Rachel itself is
-//        paid-tier-only via the API since 2026, so Sarah is the free-
-//        tier-accessible substitute with the same feel.
+//   EN — Brian ("Deep, Resonant and Comforting"). Chose this over Sarah /
+//        Eric after A/B — Brian's register lands the gravitas the
+//        financial-planning narration wants. Free-tier-accessible.
 //   AR — tries to discover an Arabic-labelled voice via /v1/voices; falls
 //        back to Adam on Multilingual v2 (proven Arabic phoneme coverage).
-const EN_VOICE = "EXAVITQu4vr4xnSDxMaL"; // Sarah
+const EN_VOICE = "nPczCjzI2devNBz1zQrb"; // Brian
 const AR_VOICE_DEFAULT = "pNInz6obpgDQGcFmaJgB"; // Adam (fallback)
 
 // Model selection per language. v3 gives Rachel more natural pacing on
@@ -38,19 +37,19 @@ const AR_VOICE_DEFAULT = "pNInz6obpgDQGcFmaJgB"; // Adam (fallback)
 const EN_MODEL = "eleven_v3";
 const AR_MODEL = "eleven_multilingual_v2";
 
-const EN_SCRIPT = `Ahmed is 42. Senior manager at a multinational. Wife, two kids — seven and ten. Around 155,000 pounds come in each month. 3 million already invested; 40,000 saved on top.
+const EN_SCRIPT = `Omar is 42. Senior manager at a multinational. Wife, two kids — seven and ten. Around 155,000 pounds come in each month. 3 million already invested; 40,000 saved on top.
 
-Three goals. An apartment in Madinaty by 2028. University for the kids, 2033. Retirement at 60.
+Three goals. An apartment in New Cairo by 2028. University for the kids, 2033. Retirement at 60.
 
 But "university" means different things. AUC. Mid-tier private like GUC or BUE. Or Cairo University, government-supported. The numbers aren't the same. So the advisor runs three scenarios, side by side.
 
-Scenario one — AUC. Four million pounds for both kids. Marsa: out of reach. Retirement falls nine million short of what Ahmed needs.
+Scenario one — AUC. Four million pounds for both kids. Marsa: out of reach. Retirement falls nine million short of what Omar needs.
 
 Scenario two — GUC or BUE. Three million. Still out of reach. Seven million short.
 
 Scenario three — Cairo University. Five hundred thousand. Marsa: aspirational. The median just clears; the pessimistic path misses by two.
 
-Marsa's inversion: if Ahmed saves 60,000 a month instead of 40,000, all three scenarios become attainable. Or he pushes retirement to 63.
+Marsa's inversion: if Omar saves 60,000 a month instead of 40,000, all three scenarios become attainable. Or he pushes retirement to 63.
 
 Three choices. One honest conversation about what his plan needs to be.
 
@@ -59,19 +58,19 @@ Marsa. Egyptian planning, built for the real conversation.`;
 // Arabic translation by the build script. TRANSLATION-FLAG: reviewed for
 // meaning but not native-checked — flagged in the commit message for a
 // future native pass before this ships to a real client meeting.
-const AR_SCRIPT = `أحمد عمره 42 عامًا. مدير أول في شركة متعددة الجنسيات. متزوج ولديه طفلان في السابعة والعاشرة. دخل الأسرة حوالي 155 ألف جنيه شهريًا. لديه 3 ملايين جنيه مستثمرة، ويدّخر 40 ألف جنيه شهريًا.
+const AR_SCRIPT = `عمر عمره 42 عامًا. مدير أول في شركة متعددة الجنسيات. متزوج ولديه طفلان في السابعة والعاشرة. دخل الأسرة حوالي 155 ألف جنيه شهريًا. لديه 3 ملايين جنيه مستثمرة، ويدّخر 40 ألف جنيه شهريًا.
 
-ثلاثة أهداف. شقة في مدينتي بحلول 2028. تعليم جامعي للطفلين في 2033. التقاعد في سن الستين.
+ثلاثة أهداف. شقة في القاهرة الجديدة بحلول 2028. تعليم جامعي للطفلين في 2033. التقاعد في سن الستين.
 
 لكن "الجامعة" تعني أشياءً مختلفة. الجامعة الأمريكية. أو جامعات خاصة من الدرجة المتوسطة مثل الألمانية والبريطانية. أو جامعة القاهرة الحكومية. الأرقام ليست متساوية. لذا يُشغِّل المستشار ثلاثة سيناريوهات جنبًا إلى جنب.
 
-السيناريو الأول — الجامعة الأمريكية. أربعة ملايين جنيه للطفلين. مرسى: خارج النطاق. التقاعد يبعد تسعة ملايين عما يحتاجه أحمد.
+السيناريو الأول — الجامعة الأمريكية. أربعة ملايين جنيه للطفلين. مرسى: خارج النطاق. التقاعد يبعد تسعة ملايين عما يحتاجه عمر.
 
 السيناريو الثاني — الألمانية أو البريطانية. ثلاثة ملايين. ما زال خارج النطاق. يبعد سبعة ملايين.
 
 السيناريو الثالث — جامعة القاهرة. خمسمائة ألف جنيه. مرسى: طموح. الوسيط يتخطى الهدف بالكاد؛ السيناريو المتشائم يقصر بمليونين.
 
-اقتراح مرسى: لو ادّخر أحمد 60 ألف جنيه شهريًا بدلًا من 40 ألفًا، السيناريوهات الثلاثة تصبح قابلة للتحقيق. أو يُؤجِّل التقاعد إلى 63.
+اقتراح مرسى: لو ادّخر عمر 60 ألف جنيه شهريًا بدلًا من 40 ألفًا، السيناريوهات الثلاثة تصبح قابلة للتحقيق. أو يُؤجِّل التقاعد إلى 63.
 
 ثلاثة خيارات. محادثة صادقة واحدة حول ما تحتاجه خطته فعلًا.
 
@@ -161,7 +160,7 @@ async function main() {
   // English first — primary deliverable. Try v3 for better prosody;
   // free tier may 402 on v3, in which case fall back to multilingual_v2
   // automatically so the pipeline still lands a usable MP3.
-  console.log(`tts: EN → Sarah (${EN_VOICE.slice(0, 6)}…) · model ${EN_MODEL}`);
+  console.log(`tts: EN → Brian (${EN_VOICE.slice(0, 6)}…) · model ${EN_MODEL}`);
   const enStart = Date.now();
   let enRes;
   try {
