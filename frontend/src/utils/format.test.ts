@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmtEGP, fmtPct } from "./format";
+import { fmtEGP, fmtPct, fmtProbabilitySeTail } from "./format";
 
 describe("fmtEGP", () => {
   it("returns an em-dash for non-finite values", () => {
@@ -34,5 +34,33 @@ describe("fmtPct", () => {
   it("formats decimals as percent with at most one fraction digit", () => {
     expect(fmtPct(0.5)).toBe("50%");
     expect(fmtPct(0.123)).toBe("12.3%");
+  });
+});
+
+describe("fmtProbabilitySeTail", () => {
+  it("returns null for null / undefined SE", () => {
+    expect(fmtProbabilitySeTail(null)).toBeNull();
+    expect(fmtProbabilitySeTail(undefined)).toBeNull();
+  });
+
+  it("returns null for exact zero (don't fabricate a tail)", () => {
+    expect(fmtProbabilitySeTail(0)).toBeNull();
+  });
+
+  it("returns null for sub-threshold SE (< 0.001 decimal = < 0.1 pp)", () => {
+    // 0.05 pp would round to 0.1 pp on display, which reads as spurious
+    // precision on an N=10k Monte Carlo estimate.
+    expect(fmtProbabilitySeTail(0.0005)).toBeNull();
+  });
+
+  it("rounds measurable SE to one fractional pp digit", () => {
+    expect(fmtProbabilitySeTail(0.005)).toBe("0.5");
+    expect(fmtProbabilitySeTail(0.05)).toBe("5.0");
+    expect(fmtProbabilitySeTail(0.012)).toBe("1.2");
+  });
+
+  it("ignores non-finite values", () => {
+    expect(fmtProbabilitySeTail(Number.NaN)).toBeNull();
+    expect(fmtProbabilitySeTail(Number.POSITIVE_INFINITY)).toBeNull();
   });
 });

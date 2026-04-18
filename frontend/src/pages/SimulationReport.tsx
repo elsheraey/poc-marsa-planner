@@ -14,7 +14,7 @@ import AppShell from "../components/AppShell";
 import WizardTabs from "../components/WizardTabs";
 import DonutChart from "../components/DonutChart";
 import { useAppSelector } from "../store";
-import { fmtEGP } from "../utils/format";
+import { fmtEGP, fmtProbabilitySeTail } from "../utils/format";
 import { t } from "../i18n";
 import { computeInversion } from "../utils/inversion";
 import type { SimulateResult } from "../api/client";
@@ -206,6 +206,18 @@ export default function SimulationReport() {
       : "—",
   });
 
+  // Honest-SE tail on the moment-of-truth headline. The backend already
+  // attaches `probability_of_goal_se` to SimulateResponse; render it only
+  // when the engine returned a measurable SE (≥ 0.001 decimal = 0.1 pp)
+  // and only when we actually have a probability sentence to append to.
+  // Rounding lives in fmtProbabilitySeTail so the copy stays a dumb
+  // interpolation.
+  const seTailPp =
+    inversion.probabilityPct != null
+      ? fmtProbabilitySeTail(activeResult.probability_of_goal_se)
+      : null;
+  const seTail = seTailPp ? t("report.se.tail", { pp: seTailPp }) : null;
+
   const suggestions: string[] = [];
   if (!inversion.meetsEightyPct && inversion.requiredMonthly != null) {
     suggestions.push(
@@ -261,6 +273,17 @@ export default function SimulationReport() {
           data-testid="moment-of-truth-headline"
         >
           {headline}
+          {seTail && (
+            <>
+              {" "}
+              <em
+                className="text-base md:text-lg font-semibold italic opacity-90"
+                data-testid="moment-of-truth-se"
+              >
+                {seTail}
+              </em>
+            </>
+          )}
         </p>
 
         {suggestions.length > 0 && (
