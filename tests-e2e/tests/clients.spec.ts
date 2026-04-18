@@ -34,7 +34,11 @@ async function runWizard(
     .locator('select:has(option[value="very_high"])')
     .selectOption("high");
 
-  await page.getByRole("button", { name: /^save$/i }).click();
+  // Profile step CTA is "Proceed to Goals" after the Apple-HIG rebrand.
+  // Old-style "Save" was the pre-v2 label; match either for forward-compat.
+  await page
+    .getByRole("button", { name: /^(save|proceed to goals)$/i })
+    .click();
   await expect(page).toHaveURL(/\/clients\/new\/goals$/);
 
   // --- Goals step ---

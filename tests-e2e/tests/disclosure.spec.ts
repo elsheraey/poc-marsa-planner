@@ -29,7 +29,9 @@ async function runWizard(
   await page
     .locator('select:has(option[value="very_high"])')
     .selectOption("high");
-  await page.getByRole("button", { name: /^save$/i }).click();
+  await page
+    .getByRole("button", { name: /^(save|proceed to goals)$/i })
+    .click();
   await expect(page).toHaveURL(/\/clients\/new\/goals$/);
 
   await page.getByPlaceholder("Goal").first().fill(opts.goalName);

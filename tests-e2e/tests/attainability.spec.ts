@@ -37,7 +37,9 @@ async function runWizard(
   await page
     .locator('select:has(option[value="very_high"])')
     .selectOption("high");
-  await page.getByRole("button", { name: /^save$/i }).click();
+  await page
+    .getByRole("button", { name: /^(save|proceed to goals)$/i })
+    .click();
   await expect(page).toHaveURL(/\/clients\/new\/goals$/);
 
   await page.getByPlaceholder("Goal").first().fill(opts.goalName);
@@ -102,10 +104,14 @@ test.describe("attainability badge", () => {
     const el = badge(page);
     await expect(el).toBeVisible({ timeout: 15_000 });
 
-    // Colour mapping check — this is the stable contract and should always hold.
+    // Colour mapping check — stable contract. After the Apple-HIG rebrand
+    // the pill uses bg-system-red-tint / text-system-red (iOS tinted-badge
+    // pattern). We keep a forward-compat regex accepting the old
+    // bg-rose-\d+ / text-rose-\d+ tailwind classes too, so this test
+    // doesn't have to flip each time design iterates.
     const cls = (await el.getAttribute("class")) ?? "";
-    expect(cls).toMatch(/bg-rose-\d+/);
-    expect(cls).toMatch(/text-rose-\d+/);
+    expect(cls).toMatch(/bg-(rose-\d+|system-red-tint)/);
+    expect(cls).toMatch(/text-(rose-\d+|system-red)/);
 
     // Spec §5 display text is "Out of reach" (with a space between "of" and
     // "reach"). Current frontend uses `.replace("_", " ")` which only replaces
@@ -145,7 +151,7 @@ test.describe("attainability badge", () => {
     await expect(el).toHaveText(/attainable/i);
 
     const cls = (await el.getAttribute("class")) ?? "";
-    expect(cls).toMatch(/bg-emerald-\d+/);
-    expect(cls).toMatch(/text-emerald-\d+/);
+    expect(cls).toMatch(/bg-(emerald-\d+|system-green-tint)/);
+    expect(cls).toMatch(/text-(emerald-\d+|system-green)/);
   });
 });
