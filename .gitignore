@@ -46,3 +46,11 @@ backend/data/*.csv
 # Logs
 *.log
 logs/
+
+# Demo artifacts (binary)
+demo/out/
+demo/assets/*.mp3
+demo/assets/*.webm
+demo/assets/*.mp4
+demo/node_modules/
+demo/.env
