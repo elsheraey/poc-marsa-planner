@@ -48,6 +48,9 @@ type State = {
   };
   goals: Goal[];
   scenarios: Scenario[];
+  // Editable report title. Seeds the "Save simulation" prompt default
+  // and the inline <input> at the top of SimulationReport.
+  reportTitle: string;
 };
 
 const initialState: State = {
@@ -81,6 +84,7 @@ const initialState: State = {
       loans: [],
     },
   ],
+  reportTitle: "Simulation report 1",
 };
 
 const slice = createSlice({
@@ -185,6 +189,9 @@ const slice = createSlice({
         ...state.scenarios[action.payload.index],
         ...action.payload.patch,
       };
+    },
+    setReportTitle(state, action: PayloadAction<string>) {
+      state.reportTitle = action.payload;
     },
     reset: () => initialState,
   },

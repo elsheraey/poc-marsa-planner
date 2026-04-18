@@ -13,7 +13,8 @@ import AppShell from "../components/AppShell";
 import WizardTabs from "../components/WizardTabs";
 import ProbabilityBar from "../components/ProbabilityBar";
 import { toast } from "../components/Toaster";
-import { useAppSelector } from "../store";
+import { useAppDispatch, useAppSelector } from "../store";
+import { actions as draftActions } from "./NewClient/draftSlice";
 import { fmtEGP, fmtProbabilitySeTail } from "../utils/format";
 import { t } from "../i18n";
 import {
@@ -120,14 +121,18 @@ function attainabilityLabel(
 
 export default function SimulationReport() {
   const nav = useNavigate();
+  const dispatch = useAppDispatch();
   const results = useAppSelector((s) => s.simulation.results);
   const legacyResult = useAppSelector((s) => s.simulation.result);
   const status = useAppSelector((s) => s.simulation.status);
   const draftProfile = useAppSelector((s) => s.draft.profile);
+  const reportTitle = useAppSelector((s) => {
+    const rt = (s.draft as unknown as { reportTitle?: string }).reportTitle;
+    return typeof rt === "string" && rt.length > 0 ? rt : "Simulation report 1";
+  });
   const [tab, setTab] = useState<Tab>("chart");
   const [activeScenario, setActiveScenario] = useState(0);
   const [presenting, setPresenting] = useState(false);
-  const [reportTitle, setReportTitle] = useState("Simulation report 1");
   const [inversionByScenario, setInversionByScenario] = useState<
     Record<number, SimulateInvertResult | null>
   >({});
@@ -457,7 +462,9 @@ export default function SimulationReport() {
           <input
             aria-label="Report title"
             value={reportTitle}
-            onChange={(e) => setReportTitle(e.target.value)}
+            onChange={(e) =>
+              dispatch(draftActions.setReportTitle(e.target.value))
+            }
             className="text-[17px] font-semibold tracking-tight bg-transparent border-0 outline-none flex-1 min-w-0 focus:ring-0 focus:outline-none text-az-ink"
           />
           <div className="flex items-center gap-5">
