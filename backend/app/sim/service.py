@@ -121,14 +121,29 @@ def run_advisor(
     prob: float | None
     prob_se: float | None
     attainability: str | None
-    if goal_target_amount is not None:
+    if goal_target_amount is None:
+        prob = None
+        prob_se = None
+        attainability = None
+    elif float(goal_target_amount) == 0.0:
+        # Trivially-funded goal: any non-negative terminal value clears 0
+        # EGP, so short-circuit to a deterministic 1.0 / attainable. This
+        # also side-steps the `target / cum_infl_final` pathology below.
+        prob = 1.0
+        prob_se = 0.0
+        attainability = "attainable"
+    else:
         target = float(goal_target_amount)
         nominal_final = nominal_paths[:, -1]
         cum_infl_final = cum_infl_paths[:, -1]
         if return_in_real_terms:
-            # Equivalent: real_final >= target / cum_infl_final
+            # Equivalent: real_final >= target / cum_infl_final. Clip the
+            # per-scenario real goal to a 1e-6 EGP floor so extreme Egyptian
+            # CPI paths can't round `target / cum_infl_final` down to 0 and
+            # trivially satisfy `final_value >= 0` for empty portfolios.
             real_final = nominal_final / cum_infl_final
-            prob = round(float((real_final >= target / cum_infl_final).mean()), 4)
+            goal_real_per_scenario = np.maximum(target / cum_infl_final, 1e-6)
+            prob = round(float((real_final >= goal_real_per_scenario).mean()), 4)
             # For the attainability bucket we compare the (deterministic)
             # percentile bands of the real projection against the
             # median-inflation-deflated goal at the target year.
@@ -147,10 +162,6 @@ def run_advisor(
             median_final=float(projection["median"][-1]),
             goal_real_final=goal_real_at_target,
         )
-    else:
-        prob = None
-        prob_se = None
-        attainability = None
 
     return {
         "recommended": recommended,
