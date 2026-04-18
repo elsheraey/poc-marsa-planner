@@ -271,17 +271,7 @@ export default function ClientSummary() {
   const totalDebts = sumOrNull(debts, (d) => d.amount);
 
   return (
-    <AppShell
-      trailing={
-        <button
-          type="button"
-          className="text-az-white hover:text-az-gold hover:underline decoration-az-gold underline-offset-4 font-semibold transition"
-          onClick={handleModify}
-        >
-          {t("client.modify")}
-        </button>
-      }
-    >
+    <AppShell>
       <header className="px-6 pt-10 pb-6">
         <nav
           aria-label="Breadcrumb"
@@ -298,8 +288,15 @@ export default function ClientSummary() {
           </span>
           <span>{client.name}</span>
         </nav>
-        <h1 className="text-4xl font-bold tracking-tight">{client.name}</h1>
-        <p className="mt-1 text-base text-az-ink-muted">{client.email}</p>
+        <div className="flex items-end justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">{client.name}</h1>
+            <p className="mt-1 text-base text-az-ink-muted">{client.email}</p>
+          </div>
+          <button type="button" className="btn-primary" onClick={handleModify}>
+            {t("client.modify")}
+          </button>
+        </div>
       </header>
 
       <div className="px-6 space-y-6">
