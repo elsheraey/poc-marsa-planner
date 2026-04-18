@@ -1,8 +1,8 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "../components/Logo";
 import { toast } from "../components/Toaster";
-import { login } from "../store/slices/authSlice";
+import { clearError, login } from "../store/slices/authSlice";
 import { useAppDispatch, useAppSelector } from "../store";
 import { t } from "../i18n";
 
@@ -32,6 +32,14 @@ export default function Login() {
   const status = useAppSelector((s) => s.auth.status);
   const error = useAppSelector((s) => s.auth.error);
   const nav = useNavigate();
+
+  // Clear any banner left over from a sibling auth page (e.g. a failed
+  // Register → Sign in flow leaks an "email already registered" into Login,
+  // and vice versa) — the banner is cross-cutting redux state, so we reset
+  // it on mount instead of scoping it per page.
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
   function validate(): boolean {
     const errs: typeof fieldErrors = {};

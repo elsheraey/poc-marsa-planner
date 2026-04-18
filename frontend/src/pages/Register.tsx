@@ -1,8 +1,8 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "../components/Logo";
 import { toast } from "../components/Toaster";
-import { register } from "../store/slices/authSlice";
+import { clearError, register } from "../store/slices/authSlice";
 import { useAppDispatch, useAppSelector } from "../store";
 import { t } from "../i18n";
 
@@ -26,6 +26,13 @@ export default function Register() {
   const status = useAppSelector((s) => s.auth.status);
   const apiError = useAppSelector((s) => s.auth.error);
   const nav = useNavigate();
+
+  // Clear any banner left over from a sibling auth page. See matching
+  // comment in Login.tsx — without this, a failed Login → "Sign up" leaks
+  // the "invalid credentials" banner into a freshly-mounted Register form.
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
   function validate(): boolean {
     const e: Record<string, string> = {};
