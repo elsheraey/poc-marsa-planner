@@ -18,16 +18,17 @@ function initials(name: string): string {
 }
 
 /**
- * Clients list — Apple grouped-inset pattern.
+ * Clients list — Azimut grouped-inset pattern.
  *
  *   - Large Title "All Clients" + subtitle with live count
- *   - iOS search input with a leading magnifier inside the fill
- *   - `.btn-primary` "Add New" button on the inline-end of the header
- *   - Grouped-inset white list rounded on a bg-grouped canvas, one row
- *     per client. Each row is an avatar circle with initials in
- *     system-blue tint, name + email stacked, last-modified date in
- *     label-secondary, trailing chevron.
- *   - Pagination as plain "Showing X–Y of N" + two blue chevron buttons.
+ *   - Search input with a leading magnifier inside the canvas fill
+ *   - `.btn-primary` (black) "Add New" button on the inline-end of the
+ *     header
+ *   - Grouped-inset white list rounded on an az-canvas background, one
+ *     row per client. Each row is a gold-soft avatar circle with black
+ *     initials, name + email stacked, last-modified date in
+ *     az-ink-muted, trailing chevron.
+ *   - Pagination as plain "Showing X–Y of N" + two chevron buttons.
  */
 export default function ClientsList() {
   const dispatch = useAppDispatch();
@@ -59,7 +60,7 @@ export default function ClientsList() {
       <header className="px-6 pt-10 pb-6 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">All Clients</h1>
-          <p className="mt-1 text-base text-label-secondary">
+          <p className="mt-1 text-base text-az-ink-muted">
             {clients.length === 0
               ? "No clients yet."
               : `Manage your ${clients.length} client${clients.length === 1 ? "" : "s"}.`}
@@ -78,7 +79,7 @@ export default function ClientsList() {
         <div className="relative max-w-md">
           <span
             aria-hidden="true"
-            className="absolute inset-y-0 start-0 ps-3 flex items-center text-label-tertiary"
+            className="absolute inset-y-0 start-0 ps-3 flex items-center text-az-ink-subtle"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="7" />
@@ -101,12 +102,12 @@ export default function ClientsList() {
 
       <div className="px-6 pb-4">
         {status === "loading" && clients.length === 0 && (
-          <p className="py-16 text-center text-label-secondary">Loading clients…</p>
+          <p className="py-16 text-center text-az-ink-muted">Loading clients…</p>
         )}
 
         {status === "error" && (
           <div
-            className="rounded-xl bg-system-red-tint text-system-red px-4 py-3 text-sm"
+            className="rounded-xl bg-rose-100 text-rose-800 px-4 py-3 text-sm"
             role="alert"
           >
             {error ?? "Failed to load clients"}
@@ -114,7 +115,7 @@ export default function ClientsList() {
         )}
 
         {status !== "loading" && filtered.length === 0 && (
-          <div className="rounded-xl bg-bg-primary ring-1 ring-separator p-10 text-center text-label-secondary">
+          <div className="rounded-xl bg-az-white ring-1 ring-az-separator p-10 text-center text-az-ink-muted">
             {q ? "No clients match your search." : "No clients yet. Add your first one."}
           </div>
         )}
@@ -130,24 +131,24 @@ export default function ClientsList() {
               >
                 <span
                   aria-hidden="true"
-                  className="w-9 h-9 rounded-full bg-system-blue-tint text-system-blue font-semibold flex items-center justify-center shrink-0 text-sm"
+                  className="w-9 h-9 rounded-full bg-az-gold-soft text-az-black font-semibold flex items-center justify-center shrink-0 text-sm"
                 >
                   {initials(c.name)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold text-label truncate">
+                  <span className="block text-[15px] font-semibold text-az-ink truncate">
                     {c.name}
                   </span>
-                  <span className="block text-sm text-label-secondary truncate">
+                  <span className="block text-sm text-az-ink-muted truncate">
                     {c.email}
                   </span>
                 </span>
-                <span className="hidden md:block text-sm text-label-secondary tabular shrink-0">
+                <span className="hidden md:block text-sm text-az-ink-muted tabular shrink-0">
                   {formatDate(c.lastModified)}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="text-label-tertiary text-lg shrink-0"
+                  className="text-az-ink-subtle text-lg shrink-0"
                 >
                   ›
                 </span>
@@ -157,14 +158,14 @@ export default function ClientsList() {
         )}
 
         {filtered.length > 0 && (
-          <div className="flex items-center justify-between mt-4 text-sm text-label-secondary tabular">
+          <div className="flex items-center justify-between mt-4 text-sm text-az-ink-muted tabular">
             <span>
               Showing {rangeStart}–{rangeEnd} of {filtered.length}
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg bg-bg-primary ring-1 ring-separator text-system-blue disabled:text-label-quaternary disabled:ring-separator/60 hover:bg-bg-secondary transition"
+                className="w-8 h-8 rounded-lg bg-az-white ring-1 ring-az-separator text-az-black hover:text-az-gold disabled:text-az-ink-subtle disabled:ring-az-separator/60 hover:bg-az-canvas transition"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
                 aria-label="Previous page"
@@ -176,7 +177,7 @@ export default function ClientsList() {
               </span>
               <button
                 type="button"
-                className="w-8 h-8 rounded-lg bg-bg-primary ring-1 ring-separator text-system-blue disabled:text-label-quaternary disabled:ring-separator/60 hover:bg-bg-secondary transition"
+                className="w-8 h-8 rounded-lg bg-az-white ring-1 ring-az-separator text-az-black hover:text-az-gold disabled:text-az-ink-subtle disabled:ring-az-separator/60 hover:bg-az-canvas transition"
                 disabled={page >= pages}
                 onClick={() => setPage((p) => p + 1)}
                 aria-label="Next page"

@@ -43,9 +43,8 @@ function fmtCalibration(raw: string | null | undefined): string {
 }
 
 /**
- * Disclosure — Apple disclosure-row pattern. A rounded card with a
- * clickable header: icon chevron rotates 90° on open; the bullet list
- * slides into view below.
+ * Disclosure — rounded card with a clickable header: icon chevron
+ * rotates 90° on open; the bullet list slides into view below.
  */
 function DisclosureBanner({
   calibrationAsOf,
@@ -56,24 +55,24 @@ function DisclosureBanner({
   return (
     <section
       data-testid="simulation-disclosure"
-      className="mt-10 rounded-xl bg-bg-primary ring-1 ring-separator overflow-hidden"
+      className="mt-10 rounded-xl bg-az-white ring-1 ring-az-separator overflow-hidden"
     >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 text-[15px] font-semibold text-label hover:bg-bg-secondary transition"
+        className="w-full flex items-center justify-between px-5 py-4 text-[15px] font-semibold text-az-ink hover:bg-az-canvas transition"
         aria-expanded={open}
       >
         <span>{t("report.disclosure")}</span>
         <span
           aria-hidden="true"
-          className={`text-label-tertiary transition-transform ${open ? "rotate-90" : ""}`}
+          className={`text-az-ink-subtle transition-transform ${open ? "rotate-90" : ""}`}
         >
           ›
         </span>
       </button>
       {open && (
-        <ul className="px-5 pb-5 space-y-2 text-sm text-label-secondary leading-relaxed list-disc list-inside border-t border-separator pt-4">
+        <ul className="px-5 pb-5 space-y-2 text-sm text-az-ink-muted leading-relaxed list-disc list-inside border-t border-az-separator pt-4">
           <li>{t("report.disclosure.mc")}</li>
           <li>{t("report.disclosure.real")}</li>
           <li>{t("report.disclosure.past")}</li>
@@ -93,15 +92,14 @@ function DisclosureBanner({
 type Tab = "chart" | "table";
 
 /*
-  Attainability pill colours — iOS tinted-pill pattern. Each state uses a
-  system-* foreground on a system-*-tint background, reading as a soft
-  status chip rather than a saturated badge. See tailwind.config.js for
-  the exact hex triples.
+  Attainability pill colours — restrained Azimut status chips. Each
+  state uses a Tailwind 100+800 pair to read as a soft tinted badge
+  rather than a saturated mark.
 */
 const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach", string> = {
-  attainable: "bg-system-green-tint text-system-green",
-  aspirational: "bg-system-orange-tint text-system-orange",
-  out_of_reach: "bg-system-red-tint text-system-red",
+  attainable: "bg-emerald-100 text-emerald-800",
+  aspirational: "bg-amber-100 text-amber-800",
+  out_of_reach: "bg-rose-100 text-rose-800",
 };
 
 // Prefer the localised string; fall back to the backend label with
@@ -222,7 +220,7 @@ export default function SimulationReport() {
         </header>
         <div className="px-6">
           <WizardTabs basePath="/clients/new" />
-          <p className="text-center text-label-secondary py-16">
+          <p className="text-center text-az-ink-muted py-16">
             Running simulation…
           </p>
         </div>
@@ -240,8 +238,8 @@ export default function SimulationReport() {
         </header>
         <div className="px-6">
           <WizardTabs basePath="/clients/new" />
-          <div className="rounded-xl bg-bg-primary ring-1 ring-separator p-10 text-center">
-            <p className="text-label-secondary mb-4">
+          <div className="rounded-xl bg-az-white ring-1 ring-az-separator p-10 text-center">
+            <p className="text-az-ink-muted mb-4">
               No simulation has been run yet. Go back and run a scenario to see the report.
             </p>
             <button
@@ -344,7 +342,7 @@ export default function SimulationReport() {
           {clientName}
         </h1>
         {clientEmail && (
-          <p className="mt-1 text-base text-label-secondary">{clientEmail}</p>
+          <p className="mt-1 text-base text-az-ink-muted">{clientEmail}</p>
         )}
       </header>
 
@@ -352,17 +350,16 @@ export default function SimulationReport() {
         {!presenting && <WizardTabs basePath="/clients/new" />}
 
         {/*
-          Moment-of-truth card. System-blue accent via the attainability
-          pill when present. The sentence itself is a Title 2 on a white
-          card — iOS-y without being shouty.
+          Moment-of-truth card. Attainability pill provides the one hit
+          of colour; the sentence is a Title 2 on a white card.
         */}
         <section
           data-testid="moment-of-truth"
-          className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6"
+          className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6"
         >
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <p
-              className="text-2xl font-semibold tracking-tight leading-snug text-label flex-1"
+              className="text-2xl font-semibold tracking-tight leading-snug text-az-ink flex-1"
               data-testid="moment-of-truth-headline"
             >
               {headline}
@@ -370,7 +367,7 @@ export default function SimulationReport() {
                 <>
                   {" "}
                   <em
-                    className="text-lg text-label-secondary not-italic tabular font-normal"
+                    className="text-lg text-az-ink-muted not-italic tabular font-normal"
                     data-testid="moment-of-truth-se"
                   >
                     {seTail}
@@ -389,7 +386,7 @@ export default function SimulationReport() {
 
           {suggestions.length > 0 && (
             <ul
-              className="mt-4 space-y-1.5 text-[15px] text-label-secondary"
+              className="mt-4 space-y-1.5 text-[15px] text-az-ink-muted"
               data-testid="moment-of-truth-suggestions"
             >
               {suggestions.map((s) => (
@@ -410,7 +407,7 @@ export default function SimulationReport() {
             aria-label="Report title"
             value={reportTitle}
             onChange={(e) => setReportTitle(e.target.value)}
-            className="text-[17px] font-semibold tracking-tight bg-transparent border-0 outline-none flex-1 min-w-0 focus:ring-0 focus:outline-none text-label"
+            className="text-[17px] font-semibold tracking-tight bg-transparent border-0 outline-none flex-1 min-w-0 focus:ring-0 focus:outline-none text-az-ink"
           />
           <div className="flex items-center gap-5">
             <button
@@ -445,7 +442,7 @@ export default function SimulationReport() {
         {/*
           Scenario cards. Vertical stack of rounded cards; click to
           promote the row to "active". The active card gets a 2px
-          system-blue ring so the selection is unambiguous on the page.
+          az-black ring so the selection is unambiguous on the page.
         */}
         <section
           aria-live="polite"
@@ -466,13 +463,13 @@ export default function SimulationReport() {
                 data-probability={sc.probability}
                 aria-pressed={isActive}
                 onClick={() => setActiveScenario(i)}
-                className={`w-full text-start rounded-2xl bg-bg-primary p-5 ring-1 transition grid grid-cols-1 md:grid-cols-[2fr_3fr_auto] gap-5 items-center ${
+                className={`w-full text-start rounded-2xl bg-az-white p-5 ring-1 transition grid grid-cols-1 md:grid-cols-[2fr_3fr_auto] gap-5 items-center ${
                   isActive
-                    ? "ring-2 ring-system-blue"
-                    : "ring-separator hover:bg-bg-secondary"
+                    ? "ring-2 ring-az-black"
+                    : "ring-az-separator hover:bg-az-canvas"
                 }`}
               >
-                <div className="text-xl font-semibold tracking-tight text-label">
+                <div className="text-xl font-semibold tracking-tight text-az-ink">
                   {sc.name}
                 </div>
                 <ProbabilityBar
@@ -497,12 +494,13 @@ export default function SimulationReport() {
         </section>
 
         {/*
-          Projection card. Header row: Title 2 + iOS segmented control for
-          chart / table. Inside: Recharts chart restyled Apple (system-
-          blue median, gray-1 bounds, gray-5 horizontal grid, white
-          tooltip card).
+          Projection card. Header row: Title 2 + segmented control for
+          chart / table. Inside: Recharts chart restyled Azimut (black
+          median, muted grey bounds, az-separator horizontal grid, white
+          tooltip card). Gold is intentionally absent from the chart so
+          the accent stays rare.
         */}
-        <section className="rounded-2xl bg-bg-primary p-6 ring-1 ring-separator">
+        <section className="rounded-2xl bg-az-white p-6 ring-1 ring-az-separator">
           <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
             <h2 className="text-2xl font-semibold tracking-tight">
               {t("report.section.projection")}
@@ -526,7 +524,7 @@ export default function SimulationReport() {
               </button>
             </div>
           </div>
-          <div className="text-sm text-label-secondary mb-4">
+          <div className="text-sm text-az-ink-muted mb-4">
             {scenarioCards[activeScenario]?.name} · {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"} · N=10k
           </div>
 
@@ -538,27 +536,27 @@ export default function SimulationReport() {
                   margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
                 >
                   <CartesianGrid
-                    stroke="#E5E5EA"
+                    stroke="#E5E5E5"
                     strokeDasharray="3 3"
                     vertical={false}
                   />
                   <XAxis
                     dataKey="year"
-                    tick={{ fontSize: 11, fill: "#8E8E93" }}
-                    stroke="#D1D1D6"
-                    axisLine={{ stroke: "#D1D1D6", strokeWidth: 1 }}
+                    tick={{ fontSize: 11, fill: "#6B6B6B" }}
+                    stroke="#D4D4D4"
+                    axisLine={{ stroke: "#D4D4D4", strokeWidth: 1 }}
                     tickLine={false}
                   />
                   <YAxis
                     tickFormatter={(v) => fmtEGP(v, { compact: true })}
-                    tick={{ fontSize: 11, fill: "#8E8E93" }}
-                    stroke="#D1D1D6"
+                    tick={{ fontSize: 11, fill: "#6B6B6B" }}
+                    stroke="#D4D4D4"
                     axisLine={false}
                     tickLine={false}
                     width={72}
                   />
                   <Tooltip
-                    cursor={{ stroke: "#8E8E93", strokeWidth: 1, strokeDasharray: "2 4" }}
+                    cursor={{ stroke: "#6B6B6B", strokeWidth: 1, strokeDasharray: "2 4" }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload || payload.length === 0) return null;
                       const row = payload[0].payload as {
@@ -570,51 +568,51 @@ export default function SimulationReport() {
                         <div
                           style={{
                             background: "#FFFFFF",
-                            border: "1px solid #D1D1D6",
+                            border: "1px solid #E5E5E5",
                             borderRadius: 8,
                             padding: "10px 14px",
                             fontSize: 12,
-                            color: "#000000",
+                            color: "#212529",
                             fontVariantNumeric: "tabular-nums",
                             boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                           }}
                         >
-                          <div style={{ marginBottom: 4, fontSize: 11, color: "#8E8E93", fontWeight: 600 }}>
+                          <div style={{ marginBottom: 4, fontSize: 11, color: "#6B6B6B", fontWeight: 600 }}>
                             {label}
                           </div>
                           <div>Optimistic: {fmtEGP(row.optimistic)}</div>
-                          <div style={{ color: "#007AFF", fontWeight: 600 }}>Median: {fmtEGP(row.median)}</div>
+                          <div style={{ color: "#000000", fontWeight: 600 }}>Median: {fmtEGP(row.median)}</div>
                           <div>Pessimistic: {fmtEGP(row.pessimistic)}</div>
                         </div>
                       );
                     }}
                   />
-                  {/* P15 — dashed gray-1 */}
+                  {/* P15 — dashed az-ink-muted */}
                   <Line
                     type="monotone"
                     dataKey="pessimistic"
-                    stroke="#8E8E93"
+                    stroke="#6B6B6B"
                     strokeWidth={1}
                     strokeDasharray="4 4"
                     dot={false}
                     isAnimationActive={false}
                     name="Pessimistic"
                   />
-                  {/* Median — solid system-blue */}
+                  {/* Median — solid az-black */}
                   <Line
                     type="monotone"
                     dataKey="median"
-                    stroke="#007AFF"
+                    stroke="#000000"
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
                     name="Median"
                   />
-                  {/* P85 — dashed gray-1 */}
+                  {/* P85 — dashed az-ink-muted */}
                   <Line
                     type="monotone"
                     dataKey="optimistic"
-                    stroke="#8E8E93"
+                    stroke="#6B6B6B"
                     strokeWidth={1}
                     strokeDasharray="4 4"
                     dot={false}
@@ -634,7 +632,7 @@ export default function SimulationReport() {
                 return (
                   <table className="w-full text-sm tabular">
                     <thead>
-                      <tr className="text-xs font-semibold uppercase tracking-wider text-label-secondary">
+                      <tr className="text-xs font-semibold uppercase tracking-wider text-az-ink-muted">
                         {showAge && (
                           <th className="text-start font-semibold pb-3">Age</th>
                         )}
@@ -646,17 +644,17 @@ export default function SimulationReport() {
                     </thead>
                     <tbody>
                       {chartData.map((row) => (
-                        <tr key={row.year} className="border-t border-separator">
+                        <tr key={row.year} className="border-t border-az-separator">
                           {showAge && (
-                            <td className="py-2 text-label-secondary">
+                            <td className="py-2 text-az-ink-muted">
                               {row.year - (birthYear as number)}
                             </td>
                           )}
-                          <td className="py-2 text-label-secondary">{row.year}</td>
+                          <td className="py-2 text-az-ink-muted">{row.year}</td>
                           <td className="py-2" data-testid={`row-${row.year}-optimistic`}>
                             {fmtEGP(row.optimistic)}
                           </td>
-                          <td className="py-2 font-semibold text-system-blue" data-testid={`row-${row.year}-median`}>
+                          <td className="py-2 font-semibold text-az-black" data-testid={`row-${row.year}-median`}>
                             {fmtEGP(row.median)}
                           </td>
                           <td className="py-2" data-testid={`row-${row.year}-pessimistic`}>

@@ -21,15 +21,15 @@ type SavedSimRow = SavedSimulationListItem & {
   detailStatus: "loading" | "ready" | "error";
 };
 
-// iOS tinted pill colours. Mirrors SimulationReport.tsx so the same
+// Azimut tinted pill colours. Mirrors SimulationReport.tsx so the same
 // visual language appears wherever attainability is surfaced.
 const ATTAINABILITY_CLASS: Record<
   "attainable" | "aspirational" | "out_of_reach",
   string
 > = {
-  attainable: "bg-system-green-tint text-system-green",
-  aspirational: "bg-system-orange-tint text-system-orange",
-  out_of_reach: "bg-system-red-tint text-system-red",
+  attainable: "bg-emerald-100 text-emerald-800",
+  aspirational: "bg-amber-100 text-amber-800",
+  out_of_reach: "bg-rose-100 text-rose-800",
 };
 
 function attainabilityLabel(
@@ -96,10 +96,10 @@ function egpOrDash(value: number | undefined | null): string {
 function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="grouped-row">
-      <span className="text-sm text-label-secondary min-w-[140px] shrink-0">
+      <span className="text-sm text-az-ink-muted min-w-[140px] shrink-0">
         {label}
       </span>
-      <span className="text-[15px] text-label flex-1 truncate">{value}</span>
+      <span className="text-[15px] text-az-ink flex-1 truncate">{value}</span>
     </div>
   );
 }
@@ -112,7 +112,7 @@ function SectionHeader({ children }: Readonly<{ children: string }>) {
 
 function EmptyState({ message }: Readonly<{ message: string }>) {
   return (
-    <p className="text-[15px] text-label-secondary py-3 px-4">
+    <p className="text-[15px] text-az-ink-muted py-3 px-4">
       {message}
     </p>
   );
@@ -269,7 +269,7 @@ export default function ClientSummary() {
     return (
       <AppShell>
         <div className="px-6 pt-10">
-          <p className="text-label-secondary py-12 text-center">
+          <p className="text-az-ink-muted py-12 text-center">
             {t("common.loading")}
           </p>
         </div>
@@ -293,7 +293,7 @@ export default function ClientSummary() {
       trailing={
         <button
           type="button"
-          className="text-system-blue hover:text-system-blue-hover font-semibold"
+          className="text-az-white hover:text-az-gold hover:underline decoration-az-gold underline-offset-4 font-semibold transition"
           onClick={() => nav("/clients/new/profile")}
         >
           {t("client.modify")}
@@ -303,21 +303,21 @@ export default function ClientSummary() {
       <header className="px-6 pt-10 pb-6">
         <nav
           aria-label="Breadcrumb"
-          className="mb-3 text-sm text-label-secondary flex items-center gap-2"
+          className="mb-3 text-sm text-az-ink-muted flex items-center gap-2"
         >
           <Link
             to="/clients"
-            className="text-system-blue hover:text-system-blue-hover"
+            className="text-az-black hover:text-az-gold-hover"
           >
             {t("nav.clients")}
           </Link>
-          <span aria-hidden="true" className="text-label-tertiary">
+          <span aria-hidden="true" className="text-az-ink-subtle">
             ›
           </span>
           <span>{client.name}</span>
         </nav>
         <h1 className="text-4xl font-bold tracking-tight">{client.name}</h1>
-        <p className="mt-1 text-base text-label-secondary">{client.email}</p>
+        <p className="mt-1 text-base text-az-ink-muted">{client.email}</p>
       </header>
 
       <div className="px-6 space-y-6">
@@ -331,12 +331,12 @@ export default function ClientSummary() {
           ].map((tile) => (
             <div
               key={tile.label}
-              className="rounded-2xl bg-bg-primary ring-1 ring-separator p-4"
+              className="rounded-2xl bg-az-white ring-1 ring-az-separator p-4"
             >
-              <div className="text-xs font-semibold uppercase tracking-wider text-label-secondary">
+              <div className="text-xs font-semibold uppercase tracking-wider text-az-ink-muted">
                 {tile.label}
               </div>
-              <div className="mt-2 text-xl font-semibold tracking-tight tabular text-label">
+              <div className="mt-2 text-xl font-semibold tracking-tight tabular text-az-ink">
                 {tile.value}
               </div>
             </div>
@@ -400,10 +400,10 @@ export default function ClientSummary() {
               incomeSources.map((row, i) => (
                 <div key={`income-${i}`} className="grouped-row">
                   <span className="flex-1 text-[15px]">{dash(row.source)}</span>
-                  <span className="text-[15px] text-label-secondary tabular">
+                  <span className="text-[15px] text-az-ink-muted tabular">
                     {egpOrDash(row.amount)}
                   </span>
-                  <span className="text-sm text-label-tertiary tabular min-w-[80px] text-end">
+                  <span className="text-sm text-az-ink-subtle tabular min-w-[80px] text-end">
                     {row.annualIncrease != null && Number.isFinite(row.annualIncrease)
                       ? `${row.annualIncrease}%`
                       : "—"}
@@ -423,10 +423,10 @@ export default function ClientSummary() {
               dependents.map((d, i) => (
                 <div key={`dep-${i}`} className="grouped-row">
                   <span className="flex-1">
-                    <span className="block text-[15px] font-semibold text-label">
+                    <span className="block text-[15px] font-semibold text-az-ink">
                       {dash(d.name)}
                     </span>
-                    <span className="block text-sm text-label-secondary">
+                    <span className="block text-sm text-az-ink-muted">
                       {dash(d.relation)}
                       {d.birthdate ? ` · ${d.birthdate}` : ""}
                     </span>
@@ -447,7 +447,7 @@ export default function ClientSummary() {
                 assets.map((row, i) => (
                   <div key={`asset-${i}`} className="grouped-row">
                     <span className="flex-1 text-[15px]">{dash(row.name)}</span>
-                    <span className="text-[15px] tabular text-label-secondary">
+                    <span className="text-[15px] tabular text-az-ink-muted">
                       {egpOrDash(row.amount)}
                     </span>
                   </div>
@@ -465,10 +465,10 @@ export default function ClientSummary() {
                 debts.map((row, i) => (
                   <div key={`debt-${i}`} className="grouped-row">
                     <span className="flex-1">
-                      <span className="block text-[15px] font-semibold text-label">
+                      <span className="block text-[15px] font-semibold text-az-ink">
                         {dash(row.name)}
                       </span>
-                      <span className="block text-sm text-label-secondary tabular">
+                      <span className="block text-sm text-az-ink-muted tabular">
                         {row.duration != null && Number.isFinite(row.duration)
                           ? t("client.years", { n: row.duration })
                           : "—"}
@@ -478,7 +478,7 @@ export default function ClientSummary() {
                           : "—"}
                       </span>
                     </span>
-                    <span className="text-[15px] tabular text-label-secondary">
+                    <span className="text-[15px] tabular text-az-ink-muted">
                       {egpOrDash(row.amount)}
                     </span>
                   </div>
@@ -496,13 +496,13 @@ export default function ClientSummary() {
             ) : (
               goals.map((g, i) => (
                 <div key={`goal-${i}`} className="grouped-row">
-                  <span className="flex-1 text-[15px] font-semibold text-label">
+                  <span className="flex-1 text-[15px] font-semibold text-az-ink">
                     {dash(g.name)}
                   </span>
-                  <span className="text-[15px] tabular text-label-secondary">
+                  <span className="text-[15px] tabular text-az-ink-muted">
                     {egpOrDash(g.amount)}
                   </span>
-                  <span className="text-sm text-label-tertiary tabular min-w-[60px] text-end">
+                  <span className="text-sm text-az-ink-subtle tabular min-w-[60px] text-end">
                     {dash(g.year)}
                   </span>
                 </div>
@@ -521,7 +521,7 @@ export default function ClientSummary() {
           {savedStatus === "error" && (
             <div
               role="alert"
-              className="rounded-xl bg-system-red-tint text-system-red px-4 py-3 text-sm"
+              className="rounded-xl bg-rose-100 text-rose-800 px-4 py-3 text-sm"
             >
               {savedError ?? t("client.savedSims.error")}
             </div>
@@ -540,14 +540,14 @@ export default function ClientSummary() {
                   className="grouped-row"
                 >
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[15px] font-semibold text-label truncate">
+                    <span className="block text-[15px] font-semibold text-az-ink truncate">
                       {row.name}
                     </span>
-                    <span className="block text-sm text-label-secondary">
+                    <span className="block text-sm text-az-ink-muted">
                       {fmtDate(row.created_at)}
                     </span>
                   </span>
-                  <span className="text-[15px] font-semibold tabular text-label">
+                  <span className="text-[15px] font-semibold tabular text-az-ink">
                     {row.detailStatus === "loading"
                       ? "…"
                       : fmtProbabilityPct(row.probability)}
@@ -559,11 +559,11 @@ export default function ClientSummary() {
                       {attainabilityLabel(row.attainability)}
                     </span>
                   ) : (
-                    <span className="text-label-tertiary text-sm">—</span>
+                    <span className="text-az-ink-subtle text-sm">—</span>
                   )}
                   <button
                     type="button"
-                    className="text-system-red text-sm font-semibold hover:opacity-80"
+                    className="text-rose-700 text-sm font-semibold hover:text-rose-800"
                     data-testid={`delete-saved-sim-${row.id}`}
                     onClick={() => handleDeleteSaved(row)}
                   >
