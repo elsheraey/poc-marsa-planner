@@ -52,13 +52,13 @@ export default function GoalsStep() {
       <section className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6">
         <div className="flex items-center gap-3 mb-5">
           <span className="text-xl font-semibold tracking-tight text-az-ink">
-            Goals
+            {t("wizard.goals.title")}
           </span>
           <button
             type="button"
             className="icon-btn-add"
             onClick={() => dispatch(actions.addGoal())}
-            aria-label="Add goal"
+            aria-label={t("wizard.goals.add")}
           >
             +
           </button>
@@ -66,7 +66,9 @@ export default function GoalsStep() {
 
         {goals.length === 0 && (
           <p className="text-[15px] text-az-ink-muted py-6 text-center">
-            No goals yet. Tap <span className="text-az-black font-semibold">+</span> to add one.
+            {t("wizard.goals.empty.before")}{" "}
+            <span className="text-az-black font-semibold">+</span>{" "}
+            {t("wizard.goals.empty.after")}
           </p>
         )}
 
@@ -78,10 +80,12 @@ export default function GoalsStep() {
               className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-start mb-5 pb-5 border-b border-az-separator last:border-b-0 last:pb-0 last:mb-0"
             >
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-az-ink-muted">Name</span>
+                <span className="text-xs font-semibold text-az-ink-muted">
+                  {t("wizard.goals.col.name")}
+                </span>
                 <input
                   className="input"
-                  placeholder="Goal"
+                  placeholder={t("wizard.goals.placeholder.name")}
                   value={g.name}
                   aria-invalid={!!rErr.name}
                   onChange={(e) =>
@@ -93,10 +97,12 @@ export default function GoalsStep() {
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-az-ink-muted">Amount</span>
+                <span className="text-xs font-semibold text-az-ink-muted">
+                  {t("wizard.goals.col.amount")}
+                </span>
                 <input
                   className="input"
-                  placeholder="Amount"
+                  placeholder={t("wizard.goals.placeholder.amount")}
                   type="number"
                   value={g.amount || ""}
                   aria-invalid={!!rErr.amount}
@@ -111,10 +117,12 @@ export default function GoalsStep() {
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-az-ink-muted">Year</span>
+                <span className="text-xs font-semibold text-az-ink-muted">
+                  {t("wizard.goals.col.year")}
+                </span>
                 <input
                   className="input"
-                  placeholder="Year"
+                  placeholder={t("wizard.goals.placeholder.year")}
                   type="number"
                   value={g.year || ""}
                   aria-invalid={!!rErr.year}
@@ -129,10 +137,12 @@ export default function GoalsStep() {
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-az-ink-muted">Payments</span>
+                <span className="text-xs font-semibold text-az-ink-muted">
+                  {t("wizard.goals.col.payments")}
+                </span>
                 <input
                   className="input"
-                  placeholder="Number"
+                  placeholder={t("wizard.goals.placeholder.payments")}
                   type="number"
                   value={g.payments || ""}
                   onChange={(e) =>
@@ -146,10 +156,12 @@ export default function GoalsStep() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-az-ink-muted">Inflation %</span>
+                <span className="text-xs font-semibold text-az-ink-muted">
+                  {t("wizard.goals.col.inflation")}
+                </span>
                 <input
                   className="input"
-                  placeholder="%"
+                  placeholder={t("wizard.goals.placeholder.inflation")}
                   type="number"
                   value={g.inflationRate || ""}
                   onChange={(e) =>
@@ -166,7 +178,7 @@ export default function GoalsStep() {
                 type="button"
                 className="icon-btn-remove mb-1 mt-[26px]"
                 onClick={() => dispatch(actions.removeGoal(i))}
-                aria-label="Remove goal"
+                aria-label={t("wizard.goals.remove")}
               >
                 −
               </button>
@@ -181,14 +193,14 @@ export default function GoalsStep() {
           className="btn-plain"
           onClick={() => nav("/clients/new/profile")}
         >
-          Cancel
+          {t("wizard.goals.cta.cancel")}
         </button>
         <button
           type="button"
           className="btn-primary"
           onClick={onSave}
         >
-          Save
+          {t("wizard.goals.cta.save")}
         </button>
       </div>
     </>

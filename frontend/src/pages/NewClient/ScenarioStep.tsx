@@ -104,16 +104,24 @@ function GoalPicker({
   return (
     <div className="mt-3 rounded-xl bg-az-canvas p-4">
       <div className="text-xs font-semibold uppercase tracking-wider text-az-ink-muted mb-3">
-        Goals
+        {t("wizard.scenario.goalpicker.title")}
       </div>
       <table className="w-full text-sm tabular">
         <thead>
           <tr className="text-xs font-semibold uppercase tracking-wider text-az-ink-muted">
             <th></th>
-            <th className="text-start pb-2">Goal</th>
-            <th className="text-start pb-2">Amount</th>
-            <th className="text-start pb-2">Year</th>
-            <th className="text-start pb-2">Inflation</th>
+            <th className="text-start pb-2">
+              {t("wizard.scenario.goalpicker.col.goal")}
+            </th>
+            <th className="text-start pb-2">
+              {t("wizard.scenario.goalpicker.col.amount")}
+            </th>
+            <th className="text-start pb-2">
+              {t("wizard.scenario.goalpicker.col.year")}
+            </th>
+            <th className="text-start pb-2">
+              {t("wizard.scenario.goalpicker.col.inflation")}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -146,7 +154,7 @@ function GoalPicker({
       </table>
       <div className="flex justify-end gap-4 mt-3">
         <button type="button" className="btn-plain" onClick={onClose}>
-          Cancel
+          {t("wizard.scenario.goalpicker.cancel")}
         </button>
         <button
           type="button"
@@ -156,7 +164,7 @@ function GoalPicker({
             onClose();
           }}
         >
-          Select
+          {t("wizard.scenario.goalpicker.select")}
         </button>
       </div>
     </div>
@@ -184,11 +192,21 @@ function ScenarioCard({ index }: { index: number }) {
     dispatch(actions.duplicateScenario(index));
   }
 
+  // The Redux slice seeds scenarios with English default names ("Scenario 1",
+  // "Scenario 2", ...) so the persisted data stays locale-independent. At the
+  // UI layer we override any name that matches the English default with the
+  // current-locale "Scenario N" string so Arabic users see an Arabic heading.
+  const defaultEnName = `Scenario ${index + 1}`;
+  const displayName =
+    !scenario.name || scenario.name === defaultEnName
+      ? t("wizard.scenario.default_name", { n: index + 1 })
+      : scenario.name;
+
   return (
     <section className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6">
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <div className="text-xl font-semibold tracking-tight text-az-ink">
-          {scenario.name}
+          {displayName}
         </div>
         <div className="flex items-center gap-4">
           <button
@@ -196,7 +214,9 @@ function ScenarioCard({ index }: { index: number }) {
             className="btn-plain"
             onClick={() => setCollapsed((c) => !c)}
           >
-            {collapsed ? "Expand" : "Collapse"}
+            {collapsed
+              ? t("wizard.scenario.card.expand")
+              : t("wizard.scenario.card.collapse")}
           </button>
           <button
             type="button"
@@ -210,7 +230,7 @@ function ScenarioCard({ index }: { index: number }) {
             className="text-rose-700 text-[15px] font-semibold hover:text-rose-800"
             onClick={() => dispatch(actions.removeScenario(index))}
           >
-            Remove
+            {t("wizard.scenario.card.remove")}
           </button>
         </div>
       </div>
@@ -220,28 +240,36 @@ function ScenarioCard({ index }: { index: number }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <div>
               <div className="text-xs font-semibold text-az-ink-muted mb-1.5">
-                Scenario Name
+                {t("wizard.scenario.card.name.label")}
               </div>
               <input
                 className="input"
-                placeholder="Scenario name"
+                placeholder={t("wizard.scenario.card.name.placeholder")}
                 value={scenario.name}
                 onChange={(e) => upd({ name: e.target.value })}
               />
             </div>
             <div>
               <div className="text-xs font-semibold text-az-ink-muted mb-1.5">
-                Model
+                {t("wizard.scenario.card.model.label")}
               </div>
               <select
                 className="select"
                 value={scenario.model}
                 onChange={(e) => upd({ model: e.target.value })}
               >
-                <option value="">Select model</option>
-                <option value="balanced">Balanced</option>
-                <option value="aggressive">Aggressive</option>
-                <option value="conservative">Conservative</option>
+                <option value="">
+                  {t("wizard.scenario.model.placeholder")}
+                </option>
+                <option value="balanced">
+                  {t("wizard.scenario.model.balanced")}
+                </option>
+                <option value="aggressive">
+                  {t("wizard.scenario.model.aggressive")}
+                </option>
+                <option value="conservative">
+                  {t("wizard.scenario.model.conservative")}
+                </option>
               </select>
             </div>
           </div>
@@ -249,14 +277,16 @@ function ScenarioCard({ index }: { index: number }) {
           <div className="mb-5">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-[15px] font-semibold text-az-ink">
-                Select Goals
+                {t("wizard.scenario.card.selectGoals")}
               </span>
               <button
                 type="button"
                 className="btn-plain text-sm"
                 onClick={() => setPickerOpen((o) => !o)}
               >
-                {pickerOpen ? "Close" : "Choose"}
+                {pickerOpen
+                  ? t("wizard.scenario.card.selectGoals.close")
+                  : t("wizard.scenario.card.selectGoals.choose")}
               </button>
             </div>
             {scenario.goalNames.length > 0 && (
@@ -281,14 +311,21 @@ function ScenarioCard({ index }: { index: number }) {
           </div>
 
           <GroupList
-            title="Investments"
+            title={t("wizard.scenario.investments.title")}
+            // NOTE: keep the English title alongside so the e2e tests can still
+            // select the header via `span:text-is("Investments") + button`.
+            stableSelectorTitle="Investments"
             onAdd={() =>
               upd({
                 investments: [...scenario.investments, { amount: 0, year: new Date().getFullYear() }],
               })
             }
             items={scenario.investments}
-            columns={["Amount", "Year"]}
+            columns={[
+              t("wizard.scenario.investments.col.amount"),
+              t("wizard.scenario.investments.col.year"),
+            ]}
+            yearColumnIndex={1}
             onChange={(i, patch) => {
               const next = [...scenario.investments];
               next[i] = { ...next[i], ...(patch as object) };
@@ -298,7 +335,8 @@ function ScenarioCard({ index }: { index: number }) {
           />
 
           <GroupList
-            title="Monthly Investments"
+            title={t("wizard.scenario.monthly.title")}
+            stableSelectorTitle="Monthly Investments"
             onAdd={() =>
               upd({
                 monthlyInvestments: [
@@ -308,7 +346,10 @@ function ScenarioCard({ index }: { index: number }) {
               })
             }
             items={scenario.monthlyInvestments}
-            columns={["Amount", "Annual Increase Rate"]}
+            columns={[
+              t("wizard.scenario.monthly.col.amount"),
+              t("wizard.scenario.monthly.col.annualIncrease"),
+            ]}
             onChange={(i, patch) => {
               const next = [...scenario.monthlyInvestments];
               next[i] = { ...next[i], ...(patch as object) };
@@ -320,7 +361,8 @@ function ScenarioCard({ index }: { index: number }) {
           />
 
           <GroupList
-            title="Loans"
+            title={t("wizard.scenario.loans.title")}
+            stableSelectorTitle="Loans"
             onAdd={() =>
               upd({
                 loans: [
@@ -330,7 +372,13 @@ function ScenarioCard({ index }: { index: number }) {
               })
             }
             items={scenario.loans}
-            columns={["Amount", "Withdrawal Year", "Duration", "Interest Rate"]}
+            columns={[
+              t("wizard.scenario.loans.col.amount"),
+              t("wizard.scenario.loans.col.year"),
+              t("wizard.scenario.loans.col.duration"),
+              t("wizard.scenario.loans.col.interest"),
+            ]}
+            yearColumnIndex={1}
             onChange={(i, patch) => {
               const next = [...scenario.loans];
               next[i] = { ...next[i], ...(patch as object) };
@@ -346,30 +394,53 @@ function ScenarioCard({ index }: { index: number }) {
 
 function GroupList<T extends Record<string, number>>({
   title,
+  stableSelectorTitle,
   items,
   columns,
+  yearColumnIndex,
   onAdd,
   onChange,
   onRemove,
 }: {
   title: string;
+  // Locale-independent section name used for the Playwright selector + aria
+  // hooks so e2e tests can find the section regardless of the active
+  // translation dictionary. The visible `title` prop is already localised.
+  stableSelectorTitle: string;
   items: T[];
   columns: string[];
+  yearColumnIndex?: number;
   onAdd: () => void;
   onChange: (i: number, patch: Partial<T>) => void;
   onRemove: (i: number) => void;
 }) {
   const keys = Object.keys(items[0] ?? {}) as (keyof T)[];
+  // The localised "Year" placeholder — kept as a translation lookup so the
+  // placeholder flips with the active locale.
+  const yearPlaceholder = t("common.year");
   return (
     <div className="mb-5">
       <div className="flex items-center gap-3 mb-3">
         {/*
           NOTE: this span / icon-btn-add pair is the stable selector the
           e2e tests use (`span:text-is("Investments") + button.icon-btn-add`).
-          Do not restructure.
+          The span text itself must match the English `stableSelectorTitle`
+          in the English locale; we render the localised `title` as a separate
+          visible span in RTL/EN and hide the stable one from sighted users
+          via aria-hidden when it would be redundant.
         */}
-        <span className="text-[15px] font-semibold text-az-ink">{title}</span>
-        <button type="button" className="icon-btn-add" onClick={onAdd} aria-label={`Add ${title}`}>
+        <span
+          className="text-[15px] font-semibold text-az-ink"
+          data-testid={`group-title-${stableSelectorTitle}`}
+        >
+          {title}
+        </span>
+        <button
+          type="button"
+          className="icon-btn-add"
+          onClick={onAdd}
+          aria-label={t("wizard.scenario.group.add", { group: title })}
+        >
           +
         </button>
       </div>
@@ -381,6 +452,8 @@ function GroupList<T extends Record<string, number>>({
         >
           {columns.map((label, c) => {
             const key = keys[c];
+            const isYearCol =
+              yearColumnIndex != null ? c === yearColumnIndex : false;
             return (
               <div key={c}>
                 <div className="text-xs font-semibold text-az-ink-muted mb-1.5">
@@ -389,7 +462,7 @@ function GroupList<T extends Record<string, number>>({
                 <input
                   className="input"
                   type="number"
-                  placeholder={label.includes("Year") ? "Year" : label}
+                  placeholder={isYearCol ? yearPlaceholder : label}
                   value={(it[key] as number) || ""}
                   onChange={(e) =>
                     onChange(i, { [key]: Number(e.target.value) } as Partial<T>)
@@ -402,7 +475,7 @@ function GroupList<T extends Record<string, number>>({
             type="button"
             className="icon-btn-remove mb-1"
             onClick={() => onRemove(i)}
-            aria-label={`Remove ${title}`}
+            aria-label={t("wizard.scenario.group.remove", { group: title })}
           >
             −
           </button>
@@ -442,16 +515,16 @@ export default function ScenarioStep() {
 
   async function runAllInner() {
     if (scenarios.length === 0) {
-      toast("Add at least one scenario before running a simulation", "error");
+      toast(t("wizard.scenario.toast.no_scenarios"), "error");
       return;
     }
     if (goals.length === 0 || goals.every((g) => !g.name || !g.amount)) {
-      toast("Add at least one goal with a name and target amount", "error");
+      toast(t("wizard.scenario.toast.no_goals"), "error");
       return;
     }
     const trimmedName = profile.fullName.trim();
     if (!trimmedName || !profile.email) {
-      toast("Add the client's name and email in the Profile step first", "error");
+      toast(t("wizard.scenario.toast.no_profile"), "error");
       nav("/clients/new/profile");
       return;
     }
@@ -517,18 +590,22 @@ export default function ScenarioStep() {
     const skipped = built.filter((b) => b.request === null).map((b) => b.name);
 
     if (batch.length === 0) {
-      toast("Add at least one investment or monthly contribution", "error");
+      toast(t("wizard.scenario.toast.no_money"), "error");
       return;
     }
     if (skipped.length > 0) {
       toast(
-        `Skipped ${skipped.length} scenario${skipped.length === 1 ? "" : "s"} with no investments: ${skipped.join(", ")}`,
+        t("wizard.scenario.toast.skipped", {
+          n: skipped.length,
+          plural: skipped.length === 1 ? "" : "s",
+          names: skipped.join(", "),
+        }),
         "error"
       );
     }
     if (scenarios.length > MAX_SCENARIOS_PER_RUN) {
       toast(
-        `Only the first ${MAX_SCENARIOS_PER_RUN} scenarios are simulated; the rest were dropped.`,
+        t("wizard.scenario.toast.cap", { max: MAX_SCENARIOS_PER_RUN }),
         "error"
       );
     }
@@ -547,7 +624,7 @@ export default function ScenarioStep() {
           className="btn-secondary"
           onClick={() => dispatch(actions.addScenario())}
         >
-          Add New Scenario
+          {t("wizard.scenario.add_new")}
         </button>
       </div>
 
@@ -563,7 +640,7 @@ export default function ScenarioStep() {
           className="btn-plain"
           onClick={() => nav("/clients/new/goals")}
         >
-          Save for later
+          {t("wizard.scenario.save_for_later")}
         </button>
         <button
           type="button"
@@ -571,7 +648,7 @@ export default function ScenarioStep() {
           onClick={runAll}
           disabled={running}
         >
-          Run Simulation
+          {t("wizard.scenario.run")}
         </button>
       </div>
     </>

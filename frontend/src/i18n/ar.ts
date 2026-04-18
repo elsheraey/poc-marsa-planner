@@ -312,6 +312,189 @@ const ar: Record<string, string> = {
   "wizard.scenario.duplicate.atCap":
     "تعذّر التكرار: وصلت إلى الحد الأقصى {max} سيناريوهات",
 
+  // Wizard layout (title + subtitle at top of /clients/new/*)
+  // TODO: native-speaker review
+  "wizard.layout.title": "عميل جديد",
+  // TODO: native-speaker review
+  "wizard.layout.subtitle":
+    "ابنِ الملف الشخصي، وسجِّل الأهداف، وشغِّل السيناريو.",
+  // TODO: native-speaker review
+  "wizard.tabs.aria": "خطوات المعالج",
+
+  // Common UI labels reused across wizard steps.
+  // TODO: native-speaker review
+  "common.close": "إغلاق",
+  // TODO: native-speaker review
+  "common.add": "إضافة",
+  // TODO: native-speaker review
+  "common.remove": "حذف",
+  // TODO: native-speaker review
+  "common.select": "اختيار",
+  // TODO: native-speaker review
+  "common.choose": "اختر",
+  // TODO: native-speaker review
+  "common.amount": "المبلغ",
+  // TODO: native-speaker review
+  "common.year": "السنة",
+  // TODO: native-speaker review
+  "common.duration": "المدة",
+  // TODO: native-speaker review
+  "common.interestRate": "سعر الفائدة",
+  // TODO: native-speaker review
+  "common.name": "الاسم",
+
+  // Goals step — repeater labels, CTAs, empty-state, add / remove aria.
+  // TODO: native-speaker review
+  "wizard.goals.title": "الأهداف",
+  // TODO: native-speaker review
+  "wizard.goals.add": "إضافة هدف",
+  // TODO: native-speaker review
+  "wizard.goals.remove": "حذف الهدف",
+  // TODO: native-speaker review
+  "wizard.goals.empty.before": "لا توجد أهداف بعد. اضغط على",
+  // TODO: native-speaker review
+  "wizard.goals.empty.after": "لإضافة واحد.",
+  // TODO: native-speaker review
+  "wizard.goals.col.name": "الاسم",
+  // TODO: native-speaker review
+  "wizard.goals.col.amount": "المبلغ",
+  // TODO: native-speaker review
+  "wizard.goals.col.year": "السنة",
+  // TODO: native-speaker review
+  "wizard.goals.col.payments": "الدفعات",
+  // TODO: native-speaker review
+  "wizard.goals.col.inflation": "التضخم ٪",
+  // TODO: native-speaker review
+  "wizard.goals.placeholder.name": "الهدف",
+  // TODO: native-speaker review
+  "wizard.goals.placeholder.amount": "المبلغ",
+  // TODO: native-speaker review
+  "wizard.goals.placeholder.year": "السنة",
+  // TODO: native-speaker review
+  "wizard.goals.placeholder.payments": "العدد",
+  // TODO: native-speaker review
+  "wizard.goals.placeholder.inflation": "٪",
+  // TODO: native-speaker review
+  "wizard.goals.cta.cancel": "إلغاء",
+  // TODO: native-speaker review
+  "wizard.goals.cta.save": "حفظ",
+  // TODO: native-speaker review
+  "wizard.goals.cta.proceed": "المتابعة إلى السيناريو",
+
+  // Profile step — dossier placeholders & repeater add/remove aria.
+  // TODO: native-speaker review
+  "wizard.profile.placeholder.fullName": "الاسم الكامل",
+  // TODO: native-speaker review
+  "wizard.profile.placeholder.birthdate": "يوم/شهر/سنة",
+  // TODO: native-speaker review
+  "wizard.profile.repeater.add": "إضافة {group}",
+  // TODO: native-speaker review
+  "wizard.profile.repeater.remove": "حذف {group}",
+
+  // Scenario step — top-level buttons and guard-rail toasts.
+  // TODO: native-speaker review
+  "wizard.scenario.add_new": "إضافة سيناريو جديد",
+  // TODO: native-speaker review
+  "wizard.scenario.save_for_later": "حفظ لوقت لاحق",
+  // TODO: native-speaker review
+  "wizard.scenario.run": "تشغيل المحاكاة",
+  // TODO: native-speaker review
+  "wizard.scenario.default_name": "السيناريو {n}",
+
+  // Pre-run validation toasts surfaced by ScenarioStep.runAllInner.
+  // TODO: native-speaker review
+  "wizard.scenario.toast.no_scenarios":
+    "أضف سيناريو واحدًا على الأقل قبل تشغيل المحاكاة",
+  // TODO: native-speaker review
+  "wizard.scenario.toast.no_goals":
+    "أضف هدفًا واحدًا على الأقل باسم ومبلغ مستهدف",
+  // TODO: native-speaker review
+  "wizard.scenario.toast.no_profile":
+    "أضف اسم العميل وبريده الإلكتروني في خطوة الملف الشخصي أولًا",
+  // TODO: native-speaker review
+  "wizard.scenario.toast.no_money":
+    "أضف استثمارًا واحدًا على الأقل أو مساهمة شهرية",
+  // TODO: native-speaker review
+  "wizard.scenario.toast.skipped":
+    "تم تخطي {n} سيناريو بدون استثمارات: {names}",
+  // TODO: native-speaker review
+  "wizard.scenario.toast.cap":
+    "تُشغَّل أول {max} سيناريوهات فقط؛ تم إسقاط الباقي.",
+
+  // ScenarioCard header — per-card controls.
+  // TODO: native-speaker review
+  "wizard.scenario.card.expand": "توسيع",
+  // TODO: native-speaker review
+  "wizard.scenario.card.collapse": "طيّ",
+  // TODO: native-speaker review
+  "wizard.scenario.card.remove": "حذف",
+  // TODO: native-speaker review
+  "wizard.scenario.card.name.label": "اسم السيناريو",
+  // TODO: native-speaker review
+  "wizard.scenario.card.name.placeholder": "اسم السيناريو",
+  // TODO: native-speaker review
+  "wizard.scenario.card.model.label": "النموذج",
+  // TODO: native-speaker review
+  "wizard.scenario.card.selectGoals": "اختيار الأهداف",
+  // TODO: native-speaker review
+  "wizard.scenario.card.selectGoals.choose": "اختر",
+  // TODO: native-speaker review
+  "wizard.scenario.card.selectGoals.close": "إغلاق",
+
+  // Scenario model select — "Select model" placeholder + enum options.
+  // TODO: native-speaker review
+  "wizard.scenario.model.placeholder": "اختر النموذج",
+  // TODO: native-speaker review
+  "wizard.scenario.model.balanced": "متوازن",
+  // TODO: native-speaker review
+  "wizard.scenario.model.aggressive": "جريء",
+  // TODO: native-speaker review
+  "wizard.scenario.model.conservative": "متحفِّظ",
+
+  // GoalPicker — inline picker shown under each ScenarioCard.
+  // TODO: native-speaker review
+  "wizard.scenario.goalpicker.title": "الأهداف",
+  // TODO: native-speaker review
+  "wizard.scenario.goalpicker.col.goal": "الهدف",
+  // TODO: native-speaker review
+  "wizard.scenario.goalpicker.col.amount": "المبلغ",
+  // TODO: native-speaker review
+  "wizard.scenario.goalpicker.col.year": "السنة",
+  // TODO: native-speaker review
+  "wizard.scenario.goalpicker.col.inflation": "التضخم",
+  // TODO: native-speaker review
+  "wizard.scenario.goalpicker.cancel": "إلغاء",
+  // TODO: native-speaker review
+  "wizard.scenario.goalpicker.select": "اختيار",
+
+  // Per-section labels, columns and add/remove aria for GroupList rows.
+  // TODO: native-speaker review
+  "wizard.scenario.investments.title": "الاستثمارات",
+  // TODO: native-speaker review
+  "wizard.scenario.investments.col.amount": "المبلغ",
+  // TODO: native-speaker review
+  "wizard.scenario.investments.col.year": "السنة",
+  // TODO: native-speaker review
+  "wizard.scenario.monthly.title": "الاستثمارات الشهرية",
+  // TODO: native-speaker review
+  "wizard.scenario.monthly.col.amount": "المبلغ",
+  // TODO: native-speaker review
+  "wizard.scenario.monthly.col.annualIncrease": "معدل الزيادة السنوية",
+  // TODO: native-speaker review
+  "wizard.scenario.loans.title": "القروض",
+  // TODO: native-speaker review
+  "wizard.scenario.loans.col.amount": "المبلغ",
+  // TODO: native-speaker review
+  "wizard.scenario.loans.col.year": "سنة السحب",
+  // TODO: native-speaker review
+  "wizard.scenario.loans.col.duration": "المدة",
+  // TODO: native-speaker review
+  "wizard.scenario.loans.col.interest": "سعر الفائدة",
+  // TODO: native-speaker review
+  "wizard.scenario.group.add": "إضافة {group}",
+  // TODO: native-speaker review
+  "wizard.scenario.group.remove": "حذف {group}",
+
   "report.se.tail": "± {pp} نقطة مئوية",
 };
 

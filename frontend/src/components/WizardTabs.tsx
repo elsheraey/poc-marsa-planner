@@ -28,7 +28,7 @@ export default function WizardTabs({ basePath }: Readonly<{ basePath: string }>)
   return (
     <nav
       className="mb-8 segmented w-fit"
-      aria-label="Wizard steps"
+      aria-label={t("wizard.tabs.aria")}
     >
       {steps.map((step) => {
         const href = `${basePath}/${step.to}`;

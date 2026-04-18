@@ -158,7 +158,7 @@ function AdvancedDossier() {
           <Field label={t("profile.field.fullName")}>
             <input
               className="input"
-              placeholder="Full name"
+              placeholder={t("wizard.profile.placeholder.fullName")}
               value={p.coClient.fullName}
               onChange={(e) =>
                 dispatch(actions.updateCoClient({ fullName: e.target.value }))
@@ -182,7 +182,7 @@ function AdvancedDossier() {
           <Field label={t("profile.field.birthdate")}>
             <input
               className="input"
-              placeholder="dd/mm/yyyy"
+              placeholder={t("wizard.profile.placeholder.birthdate")}
               value={p.coClient.birthdate}
               onChange={(e) =>
                 dispatch(actions.updateCoClient({ birthdate: e.target.value }))
@@ -253,7 +253,7 @@ function AdvancedDossier() {
             <Field label={t("profile.field.birthdate")}>
               <input
                 className="input"
-                placeholder="dd/mm/yyyy"
+                placeholder={t("wizard.profile.placeholder.birthdate")}
                 value={d.birthdate}
                 onChange={(e) =>
                   dispatch(
@@ -266,7 +266,9 @@ function AdvancedDossier() {
               type="button"
               className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeDependent(i))}
-              aria-label="remove"
+              aria-label={t("wizard.profile.repeater.remove", {
+                group: t("profile.dossier.dependents"),
+              })}
             >
               −
             </button>
@@ -338,7 +340,9 @@ function AdvancedDossier() {
               type="button"
               className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeIncome(i))}
-              aria-label="remove"
+              aria-label={t("wizard.profile.repeater.remove", {
+                group: t("profile.dossier.incomeSources"),
+              })}
             >
               −
             </button>
@@ -395,7 +399,9 @@ function AdvancedDossier() {
               type="button"
               className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeAsset(i))}
-              aria-label="remove"
+              aria-label={t("wizard.profile.repeater.remove", {
+                group: t("profile.dossier.assets"),
+              })}
             >
               −
             </button>
@@ -482,7 +488,9 @@ function AdvancedDossier() {
               type="button"
               className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeDebt(i))}
-              aria-label="remove"
+              aria-label={t("wizard.profile.repeater.remove", {
+                group: t("profile.dossier.debts"),
+              })}
             >
               −
             </button>
@@ -542,7 +550,7 @@ export default function ProfileStep() {
           >
             <input
               className="input"
-              placeholder="Full name"
+              placeholder={t("wizard.profile.placeholder.fullName")}
               value={p.fullName}
               aria-invalid={!!fieldErrors.fullName}
               onChange={(e) => upd({ fullName: e.target.value })}
@@ -568,7 +576,7 @@ export default function ProfileStep() {
           >
             <input
               className="input"
-              placeholder="dd/mm/yyyy"
+              placeholder={t("wizard.profile.placeholder.birthdate")}
               value={p.birthdate}
               aria-invalid={!!fieldErrors.birthdate}
               onChange={(e) => upd({ birthdate: e.target.value })}

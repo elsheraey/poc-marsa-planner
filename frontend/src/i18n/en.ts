@@ -241,6 +241,113 @@ const en: Record<string, string> = {
   "wizard.scenario.duplicate.atCap":
     "Cannot duplicate: already at {max} scenarios",
 
+  // Wizard layout (top-of-page title + subtitle on /clients/new/*)
+  "wizard.layout.title": "New Client",
+  "wizard.layout.subtitle":
+    "Build a profile, capture goals, run a scenario.",
+  "wizard.tabs.aria": "Wizard steps",
+
+  // Common UI labels reused across wizard steps.
+  "common.close": "Close",
+  "common.add": "Add",
+  "common.remove": "Remove",
+  "common.select": "Select",
+  "common.choose": "Choose",
+  "common.amount": "Amount",
+  "common.year": "Year",
+  "common.duration": "Duration",
+  "common.interestRate": "Interest rate",
+  "common.name": "Name",
+
+  // Goals step — repeater labels, CTAs, empty-state, add / remove aria.
+  "wizard.goals.title": "Goals",
+  "wizard.goals.add": "Add goal",
+  "wizard.goals.remove": "Remove goal",
+  "wizard.goals.empty.before":
+    "No goals yet. Tap",
+  "wizard.goals.empty.after":
+    "to add one.",
+  "wizard.goals.col.name": "Name",
+  "wizard.goals.col.amount": "Amount",
+  "wizard.goals.col.year": "Year",
+  "wizard.goals.col.payments": "Payments",
+  "wizard.goals.col.inflation": "Inflation %",
+  "wizard.goals.placeholder.name": "Goal",
+  "wizard.goals.placeholder.amount": "Amount",
+  "wizard.goals.placeholder.year": "Year",
+  "wizard.goals.placeholder.payments": "Number",
+  "wizard.goals.placeholder.inflation": "%",
+  "wizard.goals.cta.cancel": "Cancel",
+  "wizard.goals.cta.save": "Save",
+  "wizard.goals.cta.proceed": "Proceed to Scenario",
+
+  // Profile step — dossier placeholders & repeater add/remove aria.
+  "wizard.profile.placeholder.fullName": "Full name",
+  "wizard.profile.placeholder.birthdate": "dd/mm/yyyy",
+  "wizard.profile.repeater.add": "Add {group}",
+  "wizard.profile.repeater.remove": "Remove {group}",
+
+  // Scenario step — top-level buttons and guard-rail toasts.
+  "wizard.scenario.add_new": "Add New Scenario",
+  "wizard.scenario.save_for_later": "Save for later",
+  "wizard.scenario.run": "Run Simulation",
+  "wizard.scenario.default_name": "Scenario {n}",
+
+  // Pre-run validation toasts surfaced by ScenarioStep.runAllInner.
+  "wizard.scenario.toast.no_scenarios":
+    "Add at least one scenario before running a simulation",
+  "wizard.scenario.toast.no_goals":
+    "Add at least one goal with a name and target amount",
+  "wizard.scenario.toast.no_profile":
+    "Add the client's name and email in the Profile step first",
+  "wizard.scenario.toast.no_money":
+    "Add at least one investment or monthly contribution",
+  "wizard.scenario.toast.skipped":
+    "Skipped {n} scenario{plural} with no investments: {names}",
+  "wizard.scenario.toast.cap":
+    "Only the first {max} scenarios are simulated; the rest were dropped.",
+
+  // ScenarioCard header — per-card controls.
+  "wizard.scenario.card.expand": "Expand",
+  "wizard.scenario.card.collapse": "Collapse",
+  "wizard.scenario.card.remove": "Remove",
+  "wizard.scenario.card.name.label": "Scenario Name",
+  "wizard.scenario.card.name.placeholder": "Scenario name",
+  "wizard.scenario.card.model.label": "Model",
+  "wizard.scenario.card.selectGoals": "Select Goals",
+  "wizard.scenario.card.selectGoals.choose": "Choose",
+  "wizard.scenario.card.selectGoals.close": "Close",
+
+  // Scenario model select — "Select model" placeholder + enum options.
+  "wizard.scenario.model.placeholder": "Select model",
+  "wizard.scenario.model.balanced": "Balanced",
+  "wizard.scenario.model.aggressive": "Aggressive",
+  "wizard.scenario.model.conservative": "Conservative",
+
+  // GoalPicker — inline picker shown under each ScenarioCard.
+  "wizard.scenario.goalpicker.title": "Goals",
+  "wizard.scenario.goalpicker.col.goal": "Goal",
+  "wizard.scenario.goalpicker.col.amount": "Amount",
+  "wizard.scenario.goalpicker.col.year": "Year",
+  "wizard.scenario.goalpicker.col.inflation": "Inflation",
+  "wizard.scenario.goalpicker.cancel": "Cancel",
+  "wizard.scenario.goalpicker.select": "Select",
+
+  // Per-section labels, columns and add/remove aria for GroupList rows.
+  "wizard.scenario.investments.title": "Investments",
+  "wizard.scenario.investments.col.amount": "Amount",
+  "wizard.scenario.investments.col.year": "Year",
+  "wizard.scenario.monthly.title": "Monthly Investments",
+  "wizard.scenario.monthly.col.amount": "Amount",
+  "wizard.scenario.monthly.col.annualIncrease": "Annual Increase Rate",
+  "wizard.scenario.loans.title": "Loans",
+  "wizard.scenario.loans.col.amount": "Amount",
+  "wizard.scenario.loans.col.year": "Withdrawal Year",
+  "wizard.scenario.loans.col.duration": "Duration",
+  "wizard.scenario.loans.col.interest": "Interest Rate",
+  "wizard.scenario.group.add": "Add {group}",
+  "wizard.scenario.group.remove": "Remove {group}",
+
   "report.se.tail": "± {pp} pp",
 };
 

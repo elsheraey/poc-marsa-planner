@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import AppShell from "../../components/AppShell";
 import WizardTabs from "../../components/WizardTabs";
+import { t } from "../../i18n";
 
 /**
  * New-client wizard layout.
@@ -13,9 +14,11 @@ export default function NewClientLayout() {
   return (
     <AppShell>
       <header className="px-6 pt-10 pb-6">
-        <h1 className="text-4xl font-bold tracking-tight">New Client</h1>
+        <h1 className="text-4xl font-bold tracking-tight">
+          {t("wizard.layout.title")}
+        </h1>
         <p className="mt-1 text-base text-az-ink-muted">
-          Build a profile, capture goals, run a scenario.
+          {t("wizard.layout.subtitle")}
         </p>
       </header>
       <div className="px-6 space-y-6">
