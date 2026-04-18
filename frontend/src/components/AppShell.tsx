@@ -15,32 +15,30 @@ function toggleLocale() {
 
 type Props = Readonly<{
   /*
-    `title` used to render inside a dashboard "TopBar"; now the page
-    itself renders its own display headline inside the editorial column,
-    so the shell doesn't put a title bar above the content at all. Kept
-    on the prop surface so every existing caller still type-checks.
+    `title` kept on the prop surface so old callers still type-check.
+    Each page now renders its own Large Title inside the content column,
+    so the shell never renders a title bar above the outlet.
   */
   title?: ReactNode;
   trailing?: ReactNode;
   children: ReactNode;
-  // `focus` was the old "presentation mode" flag that hid the sidebar.
-  // There is no sidebar any more, so the flag only controls whether the
-  // top nav is rendered — useful on the report page when the advisor
-  // turns the laptop to the client.
+  // `focus` hides the top nav — the old "presentation mode" flag for
+  // when an advisor turns the laptop around on the report page.
   focus?: boolean;
 }>;
 
 /**
- * Editorial AppShell.
+ * Apple-style AppShell.
  *
- * A single-column document layout. One hairline-separated nav at the top
- * (logo + the two real router destinations + locale toggle + Sign out),
- * then the page renders its own rhythm inside a 5xl editorial column. No
- * sidebar, no card wrapper around children, no drop-shadowed chrome.
+ * Translucent sticky nav at the top (Marsa wordmark on the inline-start,
+ * blue text links, locale toggle + Sign out on the inline-end). Content
+ * canvas is bg-grouped — the iOS default for list-style pages. No
+ * sidebar. The shell does not wrap children in a card; pages compose
+ * their own cards / grouped lists inside the content column.
  *
- * RTL: the nav uses `gap-*` + flex ordering, not `ml/mr`, so mirroring
- * into Arabic (`<html dir="rtl">`) happens automatically. The logo stays
- * at the logical "start" side of the flex row regardless of direction.
+ * RTL: the nav is a flex row with `gap-*` — directionality flips via
+ * the `<html dir="rtl">` attribute set by `applyHtmlDir()`. No `ml-*` /
+ * `mr-*` to undo.
  */
 export default function AppShell({ trailing, children, focus = false }: Props) {
   const user = useAppSelector((s) => s.auth.user);
@@ -54,25 +52,25 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
 
   const year = new Date().getFullYear();
   return (
-    <div className="min-h-screen bg-paper text-ink flex flex-col">
+    <div className="min-h-screen bg-bg-grouped text-label flex flex-col">
       {!focus && (
-        <header className="border-b border-rule print:hidden">
-          <div className="max-w-5xl mx-auto px-8 h-16 flex items-center justify-between gap-6">
+        <header className="app-nav print:hidden">
+          <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-6">
             <Link
               to={user ? "/clients" : "/"}
-              className="font-serif text-xl tracking-tight text-ink"
+              className="font-display text-[17px] font-semibold tracking-tight text-label"
               aria-label={APP_NAME}
             >
               {APP_NAME}
             </Link>
-            <nav className="flex items-center gap-6 text-sm">
+            <nav className="flex items-center gap-6 text-[15px] font-semibold">
               {user && (
                 <>
                   <NavLink
                     to="/clients"
                     className={({ isActive }) =>
-                      `text-ink hover:underline underline-offset-4 ${
-                        isActive ? "underline decoration-accent" : ""
+                      `text-system-blue hover:text-system-blue-hover transition ${
+                        isActive ? "text-system-blue-hover" : ""
                       }`
                     }
                   >
@@ -81,8 +79,8 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
                   <NavLink
                     to="/clients/new/profile"
                     className={({ isActive }) =>
-                      `text-ink hover:underline underline-offset-4 ${
-                        isActive ? "underline decoration-accent" : ""
+                      `text-system-blue hover:text-system-blue-hover transition ${
+                        isActive ? "text-system-blue-hover" : ""
                       }`
                     }
                   >
@@ -94,7 +92,7 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
               <button
                 type="button"
                 onClick={toggleLocale}
-                className="text-ink-muted hover:text-ink hover:underline underline-offset-4"
+                className="text-system-blue hover:text-system-blue-hover transition"
                 aria-label="Toggle language"
                 data-testid="locale-toggle"
               >
@@ -104,7 +102,7 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="text-ink-muted hover:text-ink hover:underline underline-offset-4"
+                  className="text-system-blue hover:text-system-blue-hover transition"
                 >
                   {t("nav.signout")}
                 </button>
@@ -113,10 +111,10 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
           </div>
         </header>
       )}
-      <main className="flex-1 w-full max-w-5xl mx-auto px-8 py-12 print:py-6">
+      <main className="flex-1 w-full max-w-6xl mx-auto pb-12 print:pb-4">
         {children}
       </main>
-      <footer className="max-w-5xl mx-auto w-full px-8 py-6 text-xs uppercase tracking-widest text-ink-muted print:hidden">
+      <footer className="max-w-6xl mx-auto w-full px-6 py-6 text-xs text-label-tertiary print:hidden">
         {t("shell.footer", { year })}
       </footer>
     </div>

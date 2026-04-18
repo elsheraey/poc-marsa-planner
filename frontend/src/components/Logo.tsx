@@ -5,20 +5,16 @@ type Props = Readonly<{ variant?: "light" | "dark"; className?: string }>;
 /**
  * Marsa wordmark.
  *
- * An editorial serif wordmark — nothing else. The previous iteration paired
- * a navy "Marsa" with an ochre mooring-anchor glyph; the new visual system
- * is a private-banker letterhead and a serif name is all the mark the
- * document needs.
- *
- * `variant="light"` flips the ink colour to cream for placement on a dark
- * surface (there are none left in the app, but the prop is retained so
- * callers don't break).
+ * Apple-style wordmark: SF-semibold, tight tracking, inherits text colour
+ * from context so it can sit on a light or dark surface. No glyph, no
+ * serif. `variant="light"` flips to white for rare dark-surface placement
+ * (not used in the current app, but the prop is retained for callers).
  */
 export default function Logo({ variant = "dark", className = "" }: Props) {
-  const colour = variant === "light" ? "text-paper" : "text-ink";
+  const colour = variant === "light" ? "text-white" : "text-label";
   return (
     <span
-      className={`font-serif text-xl tracking-tight ${colour} ${className}`}
+      className={`font-display text-[17px] font-semibold tracking-tight ${colour} ${className}`}
       aria-label={APP_NAME}
     >
       {APP_NAME}

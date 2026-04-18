@@ -19,7 +19,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const initialized = useAppSelector((s) => s.auth.initialized);
   if (!initialized) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-ink-muted font-serif italic">
+      <div className="min-h-screen flex items-center justify-center bg-bg-grouped text-label-secondary text-base">
         Loading…
       </div>
     );
