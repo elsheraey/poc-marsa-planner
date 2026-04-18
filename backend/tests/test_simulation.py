@@ -30,7 +30,60 @@ def test_simulate_returns_projection(authed_client):
     body = r.json()
     assert "recommended" in body
     assert len(body["projection"]["years"]) == 5
+    # Without goal_target_amount the probability is null (no fallback to the
+    # old tautological percentile-based metric).
+    assert body["probability_of_goal"] is None
+
+
+def test_simulate_probability_with_target(authed_client):
+    r = authed_client.post(
+        "/api/simulate", json={**VALID_SIM, "goal_target_amount": 100_000}
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["probability_of_goal"] is not None
     assert 0.0 <= body["probability_of_goal"] <= 1.0
+
+
+def test_simulate_unreachable_goal_low_probability(authed_client):
+    """1M EGP goal in 5y with 50k initial + 1k/month is unreachable -> prob < 0.05."""
+    r = authed_client.post(
+        "/api/simulate", json={**VALID_SIM, "goal_target_amount": 1_000_000}
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["probability_of_goal"] is not None
+    assert body["probability_of_goal"] < 0.05, body["probability_of_goal"]
+
+
+def test_simulate_easy_goal_high_probability(authed_client):
+    """A goal well below projected final values (50k initial alone exceeds it)
+    should be very likely -> prob > 0.95."""
+    r = authed_client.post(
+        "/api/simulate", json={**VALID_SIM, "goal_target_amount": 50_000}
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["probability_of_goal"] is not None
+    assert body["probability_of_goal"] > 0.95, body["probability_of_goal"]
+
+
+def test_simulate_probability_varies_with_goal_amount(authed_client):
+    """Probability must depend on the goal amount, not be stuck at a constant."""
+    targets = [50_000, 100_000, 250_000, 500_000, 1_000_000]
+    probs: list[float] = []
+    for t in targets:
+        r = authed_client.post(
+            "/api/simulate", json={**VALID_SIM, "goal_target_amount": t}
+        )
+        assert r.status_code == 200, r.text
+        probs.append(r.json()["probability_of_goal"])
+    # Strictly decreasing as the target grows; and the range must span more
+    # than any single percentile bucket could produce (proving it's not stuck).
+    assert probs == sorted(probs, reverse=True), probs
+    assert max(probs) - min(probs) > 0.5, probs
+    # And not stuck at the old 0.70 "essential" tautology.
+    assert not all(abs(p - 0.70) < 0.01 for p in probs), probs
 
 
 def test_simulate_validates_duration(authed_client):
@@ -98,5 +151,18 @@ def test_advisor_handles_all_risk_levels(risk):
         importance="essential",
         risk_tolerance=risk,
     )
-    result = run_advisor(goal)
+    result = run_advisor(goal, goal_target_amount=100_000)
     assert 0.0 <= result["probability_of_goal"] <= 1.0
+
+
+def test_run_advisor_without_target_returns_none():
+    goal = UserGoal(
+        duration_years=5,
+        initial_investment=10_000,
+        monthly_investment=500,
+        annual_increase_pct=0.0,
+        importance="essential",
+        risk_tolerance="high",
+    )
+    result = run_advisor(goal)
+    assert result["probability_of_goal"] is None

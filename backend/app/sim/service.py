@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 
 from ..config import get_settings
-from .advisor import IMPORTANCE_PERCENTILES, UserGoal, advise
+from .advisor import UserGoal, advise
 from .engine import run_simulation
 from .preprocessing import inflation_series, preprocess_asset
 from .sample_data import generate as generate_sample_data
@@ -50,7 +50,7 @@ def reset_cache() -> None:
         _cache.clear()
 
 
-def run_advisor(goal: UserGoal) -> dict[str, Any]:
+def run_advisor(goal: UserGoal, goal_target_amount: float | None = None) -> dict[str, Any]:
     sim = load_simulation()
     best, all_results = advise(sim["variable_monthly"], sim["fixed_monthly"], goal)
 
@@ -86,12 +86,18 @@ def run_advisor(goal: UserGoal) -> dict[str, Any]:
         "optimistic": np.percentile(paths, 85, axis=0).tolist(),
     }
 
-    target = best.percentiles[IMPORTANCE_PERCENTILES[goal.importance]]
-    prob = float((best.final_values >= target).mean())
+    # Probability of goal: P(final_portfolio_value >= goal_target_amount).
+    # `importance` still steers the advisor's allocation pick (which percentile
+    # to optimize for), but is decoupled from this probability metric.
+    prob: float | None
+    if goal_target_amount is not None:
+        prob = round(float((best.final_values >= float(goal_target_amount)).mean()), 4)
+    else:
+        prob = None
 
     return {
         "recommended": recommended,
         "candidates": candidates,
         "projection": projection,
-        "probability_of_goal": round(prob, 4),
+        "probability_of_goal": prob,
     }

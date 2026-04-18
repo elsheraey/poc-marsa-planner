@@ -116,6 +116,7 @@ export type SimulateRequest = {
   annual_increase_pct: number;
   importance: "worst" | "essential" | "medium" | "best";
   risk_tolerance: "very_low" | "low" | "moderate" | "high" | "very_high";
+  goal_target_amount?: number;
 };
 
 export type Portfolio = {
@@ -132,5 +133,5 @@ export type SimulateResult = {
     median: number[];
     optimistic: number[];
   };
-  probability_of_goal: number;
+  probability_of_goal: number | null;
 };

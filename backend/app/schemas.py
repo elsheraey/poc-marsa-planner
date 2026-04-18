@@ -135,6 +135,7 @@ class SimulateRequest(BaseModel):
     annual_increase_pct: Annotated[float, Field(ge=-1.0, le=1.0)] = 0.0
     importance: Literal["worst", "essential", "medium", "best"] = "essential"
     risk_tolerance: Literal["very_low", "low", "moderate", "high", "very_high"] = "high"
+    goal_target_amount: Annotated[float | None, Field(ge=0, le=1e12)] = None
 
 
 class PortfolioOut(BaseModel):
@@ -153,4 +154,4 @@ class SimulateResponse(BaseModel):
     recommended: PortfolioOut
     candidates: list[PortfolioOut]
     projection: ProjectionOut
-    probability_of_goal: float
+    probability_of_goal: float | None

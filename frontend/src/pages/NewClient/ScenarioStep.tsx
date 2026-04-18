@@ -359,6 +359,20 @@ export default function ScenarioStep() {
         ? s.monthlyInvestments[0].annualIncrease / 100
         : 0;
     const duration = Math.min(60, Math.max(1, totalYears));
+
+    // Total goal amount = sum of goal amounts, each inflated from today's
+    // value to its target year using simple compound inflation if provided.
+    const nowYear = new Date().getFullYear();
+    const selectedGoals = s.goalNames.length
+      ? goals.filter((g) => s.goalNames.includes(g.name))
+      : goals;
+    const goalTargetAmount = selectedGoals.reduce((sum, g) => {
+      const years = Math.max(0, (g.year || nowYear) - nowYear);
+      const rate = (g.inflationRate ?? 0) / 100;
+      const inflated = (g.amount || 0) * Math.pow(1 + rate, years);
+      return sum + inflated;
+    }, 0);
+
     const res = await dispatch(
       runSimulation({
         duration_years: duration,
@@ -367,6 +381,7 @@ export default function ScenarioStep() {
         annual_increase_pct: annualIncrease,
         importance: "essential",
         risk_tolerance: profile.riskAppetite,
+        goal_target_amount: goalTargetAmount > 0 ? goalTargetAmount : undefined,
       })
     );
     if (runSimulation.fulfilled.match(res)) {
