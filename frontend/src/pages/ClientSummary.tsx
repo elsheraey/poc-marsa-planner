@@ -4,6 +4,7 @@ import AppShell from "../components/AppShell";
 import WizardTabs from "../components/WizardTabs";
 import { fetchClient } from "../store/slices/clientsSlice";
 import { useAppDispatch, useAppSelector } from "../store";
+import { fmtEGP } from "../utils/format";
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -66,7 +67,7 @@ export default function ClientSummary() {
           />
           <InfoRow
             label="Employment income"
-            value={`$${Number(profile.employmentIncome ?? 0).toLocaleString()}`}
+            value={fmtEGP(Number(profile.employmentIncome ?? 0))}
           />
         </section>
 
@@ -84,7 +85,7 @@ export default function ClientSummary() {
             ))}
           </svg>
           <div className="relative text-xs font-semibold tracking-[0.2em] mb-2">NET WORTH</div>
-          <div className="relative text-3xl font-extrabold">$530,000</div>
+          <div className="relative text-3xl font-extrabold">{fmtEGP(530000)}</div>
         </section>
 
         <section className="card">
@@ -92,7 +93,7 @@ export default function ClientSummary() {
           <InfoRow label="Full Name" value="Nada Omar Ismail" />
           <InfoRow label="Birthdate" value="15/09/1970" />
           <InfoRow label="Employment status" value="Employed" />
-          <InfoRow label="Employment income" value="$8,000" />
+          <InfoRow label="Employment income" value={fmtEGP(8000)} />
         </section>
       </div>
 
@@ -103,15 +104,15 @@ export default function ClientSummary() {
         </div>
         <div className="card">
           <div className="text-xs font-semibold text-muted mb-1">TOTAL ASSETS</div>
-          <div className="font-bold">$509,000,000</div>
+          <div className="font-bold">{fmtEGP(509_000_000)}</div>
         </div>
         <div className="card">
           <div className="text-xs font-semibold text-red-500 mb-1">TOTAL DEBTS</div>
-          <div className="font-bold">$33,000</div>
+          <div className="font-bold">{fmtEGP(33_000)}</div>
         </div>
         <div className="card">
           <div className="text-xs font-semibold text-primary-500 mb-1">MONTHLY EXPENSES</div>
-          <div className="font-bold">$33,000</div>
+          <div className="font-bold">{fmtEGP(33_000)}</div>
         </div>
       </div>
 
@@ -128,9 +129,9 @@ export default function ClientSummary() {
             </thead>
             <tbody>
               {["My Spouse's income", "Properties", "Properties", "Properties"].map((n, i) => (
-                <tr key={i} className="border-t border-border/60">
+                <tr key={`income-${i}`} className="border-t border-border/60">
                   <td className="py-2">{n}</td>
-                  <td className="py-2">50,000</td>
+                  <td className="py-2">{fmtEGP(50000)}</td>
                   <td className="py-2">+ 1%</td>
                 </tr>
               ))}
@@ -165,9 +166,9 @@ export default function ClientSummary() {
             </thead>
             <tbody>
               {["Property owner", "Asset", "Asset"].map((n, i) => (
-                <tr key={i} className="border-t border-border/60">
+                <tr key={`asset-${i}`} className="border-t border-border/60">
                   <td className="py-2">{n}</td>
-                  <td className="py-2 text-right">50,000</td>
+                  <td className="py-2 text-right">{fmtEGP(50000)}</td>
                 </tr>
               ))}
             </tbody>
@@ -186,16 +187,15 @@ export default function ClientSummary() {
             </thead>
             <tbody>
               {[
-                ["Loan from Bank", "50,000", "1 year", "2%"],
-                ["Loan from bank", "50,000", "3 years", "2%"],
-                ["loan from bank", "50,000", "6 years", "2%"],
+                { name: "Loan from Bank", amount: 50_000, duration: "1 year", rate: "2%" },
+                { name: "Loan from bank", amount: 50_000, duration: "3 years", rate: "2%" },
+                { name: "loan from bank", amount: 50_000, duration: "6 years", rate: "2%" },
               ].map((row, i) => (
-                <tr key={i} className="border-t border-border/60">
-                  {row.map((c, j) => (
-                    <td key={j} className="py-2">
-                      {c}
-                    </td>
-                  ))}
+                <tr key={`debt-${i}`} className="border-t border-border/60">
+                  <td className="py-2">{row.name}</td>
+                  <td className="py-2">{fmtEGP(row.amount)}</td>
+                  <td className="py-2">{row.duration}</td>
+                  <td className="py-2">{row.rate}</td>
                 </tr>
               ))}
             </tbody>

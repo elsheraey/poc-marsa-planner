@@ -108,9 +108,15 @@ describe("SimulationReport stacking", () => {
       const medCell = await screen.findByTestId(`row-${year}-median`);
       const optCell = await screen.findByTestId(`row-${year}-optimistic`);
 
-      // Extract the numeric value from each cell; the formatter strips
-      // non-digits except digits themselves.
-      const parse = (el: HTMLElement) => Number(el.textContent?.replace(/\D/g, ""));
+      // Extract the numeric value from each cell. The ar-EG formatter
+      // renders Arabic-Indic digits (U+0660–U+0669) or Extended
+      // Arabic-Indic (U+06F0–U+06F9); normalise to ASCII before parsing.
+      const normaliseDigits = (s: string) =>
+        s
+          .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+          .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0));
+      const parse = (el: HTMLElement) =>
+        Number(normaliseDigits(el.textContent ?? "").replace(/\D/g, ""));
       const pessVal = parse(pessCell);
       const medVal = parse(medCell);
       const optVal = parse(optCell);

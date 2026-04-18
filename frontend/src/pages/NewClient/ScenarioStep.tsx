@@ -4,6 +4,7 @@ import { actions, Scenario } from "./draftSlice";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { runSimulation } from "../../store/slices/simulationSlice";
 import { toast } from "../../components/Toaster";
+import { fmtEGP } from "../../utils/format";
 
 function BaseReportPromoCard() {
   return (
@@ -82,7 +83,7 @@ function GoalPicker({
                   />
                 </td>
                 <td className="py-2">{g.name || "—"}</td>
-                <td className="py-2">{g.amount.toLocaleString()}</td>
+                <td className="py-2">{fmtEGP(g.amount)}</td>
                 <td className="py-2">{g.year}</td>
                 <td className="py-2">{g.inflationRate}%</td>
               </tr>

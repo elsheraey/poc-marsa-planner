@@ -14,6 +14,7 @@ import AppShell from "../components/AppShell";
 import WizardTabs from "../components/WizardTabs";
 import DonutChart from "../components/DonutChart";
 import { useAppSelector } from "../store";
+import { fmtEGP } from "../utils/format";
 
 type Tab = "chart" | "table";
 
@@ -21,15 +22,6 @@ const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach"
   attainable: "bg-emerald-100 text-emerald-700",
   aspirational: "bg-amber-100 text-amber-700",
   out_of_reach: "bg-rose-100 text-rose-700",
-};
-
-// Inline currency formatter used until the shared EGP util lands.
-const fmtEGP = (v: number, opts: { compact?: boolean } = {}) => {
-  if (!Number.isFinite(v)) return "—";
-  return new Intl.NumberFormat("en-US", {
-    notation: opts.compact ? "compact" : "standard",
-    maximumFractionDigits: 0,
-  }).format(v);
 };
 
 export default function SimulationReport() {
