@@ -1,29 +1,25 @@
 import {
   AbsoluteFill,
-  // Remotion 4.x flags <Audio> as deprecated in favour of <Audio> from the
-  // dedicated @remotion/media bundle; the top-level component is still
-  // shipped and fully supported — the deprecation is a warning, not an
-  // error. Keep using it for now; a migration would pull in a new dep for
-  // zero gain on a 90s render.
+  // Remotion 4.x flags <Audio> as deprecated in favour of <Audio> from
+  // the dedicated @remotion/media bundle; the top-level component is
+  // still shipped and fully supported — the deprecation is a warning,
+  // not an error. Keep using it for now; a migration would pull in a
+  // new dep for zero gain on a ~90s render.
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   Audio,
+  Img,
   interpolate,
-  OffthreadVideo,
   Sequence,
-  spring,
   staticFile,
   useCurrentFrame,
-  useVideoConfig,
 } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Cairo";
+import manifest from "./voiceover.manifest.json";
 
-// Load only the weights we actually render (500 body, 700/800 headlines) in
-// both Latin and Arabic subsets. Without these options the loader pulls all
-// 9 weights × both subsets = 24 network requests per render tab, which the
-// Remotion runtime warns about.
+// Load only the weights we render — 500 body, 700 subtitles, 800 head.
 const { fontFamily } = loadFont("normal", {
   weights: ["500", "700", "800"],
-  subsets: ["latin", "arabic"],
+  subsets: ["latin"],
   ignoreTooManyRequestsWarning: true,
 });
 
@@ -38,122 +34,168 @@ const BRAND = {
   inkMuted: "#6B6B6B",
 } as const;
 
+const FPS = 30;
+
+// Title + end-card buffers. The voiceover starts at frame 0 of section
+// 01; we prepend a short title card and append a short end card so the
+// rendered MP4 opens and closes on brand, not on a cold UI shot. Both
+// buffers play in silence — the voiceover Audio starts at TITLE_FRAMES.
+const TITLE_FRAMES = 36; // 1.2s brand card before narration
+const END_FRAMES = 48; // 1.6s logo-mark outro after narration
+
+// Derive per-section frame counts + cumulative starts from the TTS
+// manifest. `total_ms` is the ffprobe-measured duration of the
+// concatenated voiceover, which is what the <Audio> tag plays against.
+// The section frame counts sum to `sum_of_sections_ms`, which equals
+// `total_ms` modulo sub-frame rounding.
+const en = manifest.en;
+const sectionFrames: number[] = en.sections.map((s) =>
+  Math.round((s.duration_ms / 1000) * FPS)
+);
+const cumulativeStart: number[] = sectionFrames.reduce<number[]>(
+  (acc, f, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + sectionFrames[i - 1]);
+    return acc;
+  },
+  []
+);
+const NARRATION_FRAMES = sectionFrames.reduce((s, f) => s + f, 0);
+export const TOTAL_FRAMES = TITLE_FRAMES + NARRATION_FRAMES + END_FRAMES;
+
+// Lower-third copy per section. Empty string = no lower-third (the
+// section is carried by the still alone, e.g. intro / goals / closing).
+// Gold-underlined black bar at the bottom — matches the brand's
+// wayfinding pill treatment used throughout the product.
+const LOWER_THIRD: Record<string, { title: string; caption?: string } | null> =
+  {
+    "01_intro": null,
+    "02_goals": { title: "Three goals", caption: "Apartment · University · Retirement" },
+    "03_setup": { title: "Three scenarios, side by side" },
+    "04_auc": { title: "Scenario one — AUC", caption: "Four million, for both kids" },
+    "05_guc": { title: "Scenario two — GUC or BUE", caption: "Three million" },
+    "06_cairo": {
+      title: "Scenario three — Cairo University",
+      caption: "Five hundred thousand",
+    },
+    "07_inversion": {
+      title: "Marsa's inversion",
+      caption: "60,000 a month — all three scenarios attainable",
+    },
+    "08_closing": null,
+    "09_tag": null,
+  };
+
 type Props = {
-  lang: "en" | "ar";
-  // Asset availability flags — populated by the render wrapper from the
-  // contents of `demo/assets/`. `staticFile()` only returns a URL string;
-  // it has no existence check, so a missing file would 404 at render time.
-  // The wrapper passes these booleans via `--props` so the <Audio> / video
-  // components are conditionally rendered. Defaults to `true` for the
-  // primary assets so a direct `remotion render` without the wrapper still
-  // works when all files are present.
-  hasVideo?: boolean;
+  lang?: "en"; // AR is deferred this pass; kept for forward-compat so
+  // Root.tsx's MarsaAR composition continues to accept the prop without
+  // a schema change when we re-enable Arabic.
   hasVoice?: boolean;
-  hasMusic?: boolean;
 };
 
-// ---------------------------------------------------------------------------
-// Scene 1 — Title card (0-3s / 0-90f). Black background, giant Cairo wordmark
-// that fades in and settles with a small spring-driven scale-up.
-// ---------------------------------------------------------------------------
-const TitleCard: React.FC<{ lang: "en" | "ar" }> = ({ lang }) => {
+// ---------------------------------------------------------------------
+// SectionScene — renders one still image with a subtle Ken-Burns zoom
+// and a bottom lower-third callout where configured. The image is
+// pre-sized at 1920×1080 by the Playwright capture, so it fills the
+// frame with `object-fit: cover` without loss.
+// ---------------------------------------------------------------------
+const SectionScene: React.FC<{
+  id: string;
+  index: number;
+  duration: number;
+}> = ({ id, index, duration }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const opacity = interpolate(frame, [0, 18], [0, 1], { extrapolateRight: "clamp" });
-  const scale = spring({ frame, fps, config: { damping: 200 } }) * 0.05 + 0.95;
+  // Fade in over 12 frames (0.4s) then hold. The previous section's
+  // scene unmounts at the same frame as this one mounts, so the
+  // crossfade is implicit — Remotion renders both inside their own
+  // <Sequence>, but only one is on-screen at a time.
+  const opacity = interpolate(frame, [0, 12], [0, 1], {
+    extrapolateRight: "clamp",
+  });
+  // Gentle zoom from 1.00 → 1.025 over the section — the Ken-Burns
+  // effect that makes a still feel cinematic without being distracting.
+  // 2.5% zoom over 10–15s is the Apple keynote default.
+  const scale = interpolate(frame, [0, duration], [1, 1.025], {
+    extrapolateRight: "clamp",
+  });
 
-  const subtitle =
-    lang === "ar"
-      ? "تخطيط مالي قائم على الأهداف لمستشاري الثروة في مصر."
-      : "Goal-based financial planning for Egyptian wealth advisors.";
+  const caption = LOWER_THIRD[id];
 
   return (
     <AbsoluteFill
       style={{
-        backgroundColor: BRAND.black,
-        color: BRAND.white,
-        justifyContent: "center",
-        alignItems: "center",
+        backgroundColor: BRAND.canvas,
         fontFamily,
-        direction: lang === "ar" ? "rtl" : "ltr",
-        textAlign: "center",
+        opacity,
       }}
     >
-      <div style={{ opacity, transform: `scale(${scale})` }}>
-        <div
+      <AbsoluteFill
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: index % 2 === 0 ? "center center" : "center top",
+        }}
+      >
+        <Img
+          src={staticFile(`frame.${id}.png`)}
           style={{
-            fontSize: 220,
-            fontWeight: 800,
-            letterSpacing: -4,
-            lineHeight: 1,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "top",
           }}
-        >
-          {lang === "ar" ? "مرسى" : "Marsa"}
-        </div>
-        <div
-          style={{
-            marginTop: 28,
-            fontSize: 36,
-            fontWeight: 500,
-            color: BRAND.gold,
-            maxWidth: 1200,
-          }}
-        >
-          {subtitle}
-        </div>
-      </div>
+        />
+      </AbsoluteFill>
+      {caption && <LowerThird title={caption.title} caption={caption.caption} />}
     </AbsoluteFill>
   );
 };
 
-// ---------------------------------------------------------------------------
-// Scene 2 — App capture. Single OffthreadVideo covering the middle of the
-// timeline. The capture script produces ~60-75s of usable footage; we play
-// it at normal speed and trust the scenes to fill ~65s.
-//
-// Lower-third callouts are layered as <Sequence> wrappers so they only
-// render during a specific window.
-// ---------------------------------------------------------------------------
-const LowerThird: React.FC<{ lang: "en" | "ar"; title: string; caption?: string }> = ({
-  lang,
+// ---------------------------------------------------------------------
+// LowerThird — black bar with a gold 6 px inline-start accent, settled
+// 80 px above the bottom of the frame. Fades in at 10 f, holds for the
+// full section (caller controls the Sequence window), fades out at the
+// last 14 f.
+// ---------------------------------------------------------------------
+const LowerThird: React.FC<{ title: string; caption?: string }> = ({
   title,
   caption,
 }) => {
   const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 12, 120, 135], [0, 1, 1, 0], {
+  // Entrance: slide up 28 px + fade in over 14 f.
+  const intro = interpolate(frame, [0, 14], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const translate = interpolate(frame, [0, 14], [40, 0], { extrapolateRight: "clamp" });
-
+  const translate = interpolate(frame, [0, 14], [28, 0], {
+    extrapolateRight: "clamp",
+  });
   return (
     <AbsoluteFill
       style={{
         justifyContent: "flex-end",
-        alignItems: lang === "ar" ? "flex-end" : "flex-start",
-        padding: 80,
-        direction: lang === "ar" ? "rtl" : "ltr",
-        fontFamily,
+        alignItems: "flex-start",
+        padding: 72,
       }}
     >
       <div
         style={{
-          opacity,
+          opacity: intro,
           transform: `translateY(${translate}px)`,
           background: BRAND.black,
           color: BRAND.white,
-          padding: "20px 32px",
+          padding: "22px 36px",
           borderRadius: 14,
-          borderInlineStart: `6px solid ${BRAND.gold}`,
-          boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
-          maxWidth: 900,
+          borderLeft: `6px solid ${BRAND.gold}`,
+          boxShadow: "0 22px 52px rgba(0,0,0,0.45)",
+          maxWidth: 960,
         }}
       >
-        <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.2 }}>{title}</div>
+        <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.15 }}>
+          {title}
+        </div>
         {caption && (
           <div
             style={{
-              marginTop: 8,
-              fontSize: 22,
+              marginTop: 10,
+              fontSize: 26,
               fontWeight: 500,
               color: BRAND.goldSoft,
               lineHeight: 1.3,
@@ -167,101 +209,17 @@ const LowerThird: React.FC<{ lang: "en" | "ar"; title: string; caption?: string 
   );
 };
 
-// ---------------------------------------------------------------------------
-// Scene 3 — Recap card. Animated bullet list against black.
-// ---------------------------------------------------------------------------
-const RecapCard: React.FC<{ lang: "en" | "ar" }> = ({ lang }) => {
+// ---------------------------------------------------------------------
+// TitleCard — 1.2s brand opener. Fades in over 12 f, holds, fades out.
+// ---------------------------------------------------------------------
+const TitleCard: React.FC = () => {
   const frame = useCurrentFrame();
-
-  const bullets =
-    lang === "ar"
-      ? [
-          "عشرة آلاف مسار مونت كارلو",
-          "بيانات السوق المصري الحقيقية (EGX30، CBE، CAPMAS)",
-          "معدّل التضخم، مع تصنيف إمكانية التحقيق",
-          "عربية أصيلة، جاهزة من اليوم الأول",
-        ]
-      : [
-          "10,000-path Monte Carlo",
-          "Real Egyptian market data (EGX30, CBE, CAPMAS)",
-          "Inflation-adjusted, attainability-classified",
-          "Arabic-native",
-        ];
-
-  const title = lang === "ar" ? "لماذا مرسى" : "Why Marsa";
-
-  return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: BRAND.black,
-        color: BRAND.white,
-        padding: "120px 180px",
-        fontFamily,
-        direction: lang === "ar" ? "rtl" : "ltr",
-        justifyContent: "center",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 68,
-          fontWeight: 800,
-          letterSpacing: -2,
-          marginBottom: 48,
-          color: BRAND.gold,
-        }}
-      >
-        {title}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        {bullets.map((b, i) => {
-          const start = i * 15;
-          const o = interpolate(frame, [start, start + 12], [0, 1], {
-            extrapolateRight: "clamp",
-          });
-          const x = interpolate(frame, [start, start + 15], [30, 0], {
-            extrapolateRight: "clamp",
-          });
-          return (
-            <div
-              key={i}
-              style={{
-                opacity: o,
-                transform: `translateX(${lang === "ar" ? -x : x}px)`,
-                fontSize: 42,
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: 24,
-              }}
-            >
-              <span
-                style={{
-                  width: 16,
-                  height: 16,
-                  background: BRAND.gold,
-                  borderRadius: 4,
-                  flexShrink: 0,
-                }}
-              />
-              {b}
-            </div>
-          );
-        })}
-      </div>
-    </AbsoluteFill>
+  const opacity = interpolate(
+    frame,
+    [0, 10, TITLE_FRAMES - 8, TITLE_FRAMES],
+    [0, 1, 1, 0],
+    { extrapolateRight: "clamp" }
   );
-};
-
-// ---------------------------------------------------------------------------
-// Scene 4 — URL end card. Monospace repo URL fades in, then out.
-// ---------------------------------------------------------------------------
-const UrlCard: React.FC<{ lang: "en" | "ar" }> = ({ lang }) => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(frame, [0, 20, 120, 150], [0, 1, 1, 0], {
-    extrapolateRight: "clamp",
-  });
-  const tagline =
-    lang === "ar" ? "مرسى — تخطيط مصري، بُني بأمانة." : "Marsa. Egyptian planning, built honestly.";
   return (
     <AbsoluteFill
       style={{
@@ -270,16 +228,57 @@ const UrlCard: React.FC<{ lang: "en" | "ar" }> = ({ lang }) => {
         justifyContent: "center",
         alignItems: "center",
         fontFamily,
-        direction: lang === "ar" ? "rtl" : "ltr",
+        textAlign: "center",
       }}
     >
-      <div style={{ opacity, textAlign: "center" }}>
-        <div style={{ fontSize: 48, fontWeight: 500, color: BRAND.goldSoft, marginBottom: 36 }}>
-          {tagline}
+      <div style={{ opacity }}>
+        <div style={{ fontSize: 200, fontWeight: 800, letterSpacing: -4, lineHeight: 1 }}>
+          Marsa
         </div>
         <div
           style={{
-            fontSize: 42,
+            marginTop: 24,
+            fontSize: 30,
+            fontWeight: 500,
+            color: BRAND.gold,
+            maxWidth: 1100,
+          }}
+        >
+          Goal-based financial planning for Egyptian wealth advisors.
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------
+// EndCard — 1.6s brand outro with the repo URL.
+// ---------------------------------------------------------------------
+const EndCard: React.FC = () => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(
+    frame,
+    [0, 14, END_FRAMES - 10, END_FRAMES],
+    [0, 1, 1, 0],
+    { extrapolateRight: "clamp" }
+  );
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: BRAND.black,
+        color: BRAND.white,
+        justifyContent: "center",
+        alignItems: "center",
+        fontFamily,
+      }}
+    >
+      <div style={{ opacity, textAlign: "center" }}>
+        <div style={{ fontSize: 44, fontWeight: 500, color: BRAND.goldSoft, marginBottom: 30 }}>
+          Marsa. Egyptian planning, built honestly.
+        </div>
+        <div
+          style={{
+            fontSize: 36,
             fontWeight: 600,
             color: BRAND.white,
             fontFamily:
@@ -293,106 +292,44 @@ const UrlCard: React.FC<{ lang: "en" | "ar" }> = ({ lang }) => {
   );
 };
 
-// ---------------------------------------------------------------------------
-// Root composition
-// ---------------------------------------------------------------------------
-export const Marsa: React.FC<Props> = ({
-  lang,
-  hasVideo = true,
-  hasVoice = true,
-  hasMusic = false,
-}) => {
-  const videoSrc = hasVideo ? staticFile("app-capture.webm") : null;
-  const voiceSrc = hasVoice ? staticFile(`voiceover.${lang}.mp3`) : null;
-  const musicSrc = hasMusic ? staticFile("music.mp3") : null;
+// ---------------------------------------------------------------------
+// Root composition — title buffer → N section scenes locked to voice
+// durations → end buffer. The concatenated voiceover plays at frame
+// TITLE_FRAMES so its start aligns with section 01's visual start.
+// ---------------------------------------------------------------------
+export const Marsa: React.FC<Props> = ({ hasVoice = true }) => {
+  const voiceSrc = hasVoice ? staticFile("voiceover.en.mp3") : null;
 
   return (
     <AbsoluteFill style={{ backgroundColor: BRAND.canvas }}>
-      {/* 0–3s: title card */}
-      <Sequence from={0} durationInFrames={90}>
-        <TitleCard lang={lang} />
+      {/* 1.2s title card */}
+      <Sequence from={0} durationInFrames={TITLE_FRAMES}>
+        <TitleCard />
       </Sequence>
 
-      {/* 3–47s: app capture (1320 frames = 44s). Starts from frame 15 of
-          the source so the first register-page paint isn't pre-stabilized. */}
-      <Sequence from={90} durationInFrames={1320}>
-        <AbsoluteFill style={{ backgroundColor: BRAND.canvas }}>
-          {videoSrc ? (
-            <OffthreadVideo
-              src={videoSrc}
-              style={{
-                width: "92%",
-                height: "92%",
-                margin: "4% auto",
-                borderRadius: 18,
-                boxShadow: "0 30px 60px rgba(0,0,0,0.25)",
-                objectFit: "cover",
-              }}
-              startFrom={15}
-            />
-          ) : (
-            <AbsoluteFill
-              style={{
-                justifyContent: "center",
-                alignItems: "center",
-                color: BRAND.inkMuted,
-                fontFamily,
-                fontSize: 28,
-              }}
-            >
-              (app-capture.webm missing — re-run `npm run capture`)
-            </AbsoluteFill>
-          )}
-        </AbsoluteFill>
+      {/* Each section locked to its voiceover duration. */}
+      {en.sections.map((s, i) => {
+        const from = TITLE_FRAMES + cumulativeStart[i];
+        const duration = sectionFrames[i];
+        return (
+          <Sequence key={s.id} from={from} durationInFrames={duration}>
+            <SectionScene id={s.id} index={i} duration={duration} />
+          </Sequence>
+        );
+      })}
+
+      {/* End card */}
+      <Sequence from={TITLE_FRAMES + NARRATION_FRAMES} durationInFrames={END_FRAMES}>
+        <EndCard />
       </Sequence>
 
-      {/* ~18s mark — lower-third: honesty about out-of-reach */}
-      <Sequence from={540} durationInFrames={180}>
-        <LowerThird
-          lang={lang}
-          title={
-            lang === "ar"
-              ? "خارج النطاق — احتمال 0٪ بالقيمة الحقيقية"
-              : "Out of Reach — 0% probability in real terms"
-          }
-          caption={
-            lang === "ar"
-              ? "مرسى يقول الحقيقة، ثم يقترح المساهمة الشهرية التي تغلق الفجوة."
-              : "Marsa tells the truth, then suggests the monthly contribution that closes the gap."
-          }
-        />
-      </Sequence>
-
-      {/* ~40s mark — lower-third: Arabic/RTL readiness */}
-      <Sequence from={1200} durationInFrames={180}>
-        <LowerThird
-          lang={lang}
-          title={
-            lang === "ar"
-              ? "العربية — من اليمين لليسار، بخط القاهرة، بأرقام محلية"
-              : "Arabic — RTL, Cairo, every number localized"
-          }
-          caption={
-            lang === "ar"
-              ? "كل شاشة، كل تاريخ، كل عملة — جاهزة لاجتماع العميل."
-              : "Every screen, every date, every currency — ready for the client meeting."
-          }
-        />
-      </Sequence>
-
-      {/* 47–80s: recap bullets — expanded to fill the remaining voiceover */}
-      <Sequence from={1410} durationInFrames={990}>
-        <RecapCard lang={lang} />
-      </Sequence>
-
-      {/* 80–90s: URL end card */}
-      <Sequence from={2400} durationInFrames={300}>
-        <UrlCard lang={lang} />
-      </Sequence>
-
-      {/* Audio layers — voice over full length, music ducked underneath */}
-      {voiceSrc && <Audio src={voiceSrc} />}
-      {musicSrc && <Audio src={musicSrc} volume={0.12} />}
+      {/* Single audio track — the concatenated voiceover. Starts at
+          TITLE_FRAMES so its t=0 aligns with section 01's t=0. */}
+      {voiceSrc && (
+        <Sequence from={TITLE_FRAMES}>
+          <Audio src={voiceSrc} />
+        </Sequence>
+      )}
     </AbsoluteFill>
   );
 };
