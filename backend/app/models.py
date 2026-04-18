@@ -67,6 +67,30 @@ class Client(Base):
     owner: Mapped[User] = relationship(back_populates="clients")
 
 
+class RevokedToken(Base):
+    """Server-side JWT revocation list, keyed by the token's ``jti`` claim.
+
+    A row exists for every access token the user (or the backend, on forced
+    sign-out) has deliberately invalidated before its ``exp``. ``get_current_user``
+    consults this table on every authenticated request — if the presented
+    token's ``jti`` is in here, we 401 regardless of the token being
+    cryptographically valid.
+
+    ``expires_at`` mirrors the JWT's ``exp``; a cron-friendly sweep can prune
+    rows past that timestamp (see ``_revoked_tokens_cleanup`` in
+    ``routers/auth.py``) since the JWT itself is already useless by then.
+    """
+
+    __tablename__ = "revoked_tokens"
+
+    jti: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+
 class Simulation(Base):
     __tablename__ = "simulations"
 

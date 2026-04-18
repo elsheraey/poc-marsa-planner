@@ -5,6 +5,7 @@ from __future__ import annotations
 # bcrypt refuses inputs > 72 bytes. We hash a SHA-256 digest hex (64 chars) instead of the
 # raw password so arbitrarily long passwords are supported without truncation.
 import hashlib
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -29,15 +30,25 @@ def verify_password(plain: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> tuple[str, datetime]:
+def create_access_token(
+    subject: str, extra: dict[str, Any] | None = None
+) -> tuple[str, datetime, str]:
+    """Issue a signed JWT with a random ``jti`` claim.
+
+    Returns ``(token, expires_at, jti)``. The ``jti`` is a fresh UUID4 for each
+    call so we can revoke a single token without touching anything else the
+    user holds — see ``app.models.RevokedToken`` and
+    ``app.deps.get_current_user`` for the check path.
+    """
     settings = get_settings()
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=settings.access_token_expire_minutes)
-    payload: dict[str, Any] = {"sub": subject, "iat": now, "exp": expires}
+    jti = str(uuid.uuid4())
+    payload: dict[str, Any] = {"sub": subject, "iat": now, "exp": expires, "jti": jti}
     if extra:
         payload.update(extra)
     token = jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
-    return token, expires
+    return token, expires, jti
 
 
 def decode_access_token(token: str) -> dict[str, Any]:

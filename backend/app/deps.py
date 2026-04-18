@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .database import get_db
-from .models import User
+from .models import RevokedToken, User
 from .security import decode_access_token
 
 # Cookie name derives from APP_NAME so a brand swap (via the APP_NAME env
@@ -45,6 +45,13 @@ def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token")
+
+    # Revocation check. Tokens issued before 0003_revoked_tokens migration (or
+    # from other code paths) may lack a ``jti``; those remain valid until
+    # ``exp``. New tokens all carry one (see ``security.create_access_token``).
+    jti = payload.get("jti")
+    if jti and db.get(RevokedToken, jti) is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token revoked")
 
     user = db.get(User, user_id)
     if not user or not user.is_active:
