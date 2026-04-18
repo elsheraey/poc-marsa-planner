@@ -84,11 +84,11 @@ Deflation **must** be per-scenario, never deterministic.
 
 A deterministic three-class badge drives the UX (per `ux-audit.md` §3). It is a hard function of the projection at the user's horizon T and the real goal — not a second probability calculation. Compare **real** terminal values to `goal_real`:
 
-- `Attainable`: `P15_real(T) ≥ goal_real`.
-- `Aspirational`: `median_real(T) ≥ goal_real` AND `P15_real(T) < goal_real`.
-- `Out of reach`: `median_real(T) < goal_real`.
+- `attainable`: `P15_real(T) ≥ goal_real`.
+- `aspirational`: `median_real(T) ≥ goal_real` AND `P15_real(T) < goal_real`.
+- `out_of_reach`: `median_real(T) < goal_real`.
 
-API field `attainability: "Attainable" | "Aspirational" | "Out of reach"`. Classes are disjoint and exhaustive given P15 ≤ median. QA: badge matches §8 expected column in every case.
+API field `attainability: "attainable" | "aspirational" | "out_of_reach"` (snake_case enum — frontend renders as display text). Classes are disjoint and exhaustive given P15 ≤ median. QA: badge matches §8 expected column in every case.
 
 ---
 
