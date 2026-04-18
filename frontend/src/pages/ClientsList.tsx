@@ -4,15 +4,6 @@ import AppShell from "../components/AppShell";
 import { fetchClients } from "../store/slices/clientsSlice";
 import { useAppDispatch, useAppSelector } from "../store";
 
-function SortArrow() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 12 12" className="inline ml-1 text-muted">
-      <path d="M3 5 l3 -3 l3 3" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <path d="M3 7 l3 3 l3 -3" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    </svg>
-  );
-}
-
 function formatDate(iso: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -97,17 +88,10 @@ export default function ClientsList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-muted text-xs">
-                <th className="text-left font-medium pb-4">
-                  Client details <SortArrow />
-                </th>
-                <th className="text-left font-medium pb-4">
-                  Client ID <SortArrow />
-                </th>
+                <th className="text-left font-medium pb-4">Client details</th>
+                <th className="text-left font-medium pb-4">Client ID</th>
                 <th className="text-left font-medium pb-4">Phone</th>
-                <th className="text-left font-medium pb-4">
-                  Last Modified <SortArrow />
-                </th>
-                <th className="text-right font-medium pb-4">Actions</th>
+                <th className="text-left font-medium pb-4">Last modified</th>
               </tr>
             </thead>
             <tbody>
@@ -124,15 +108,6 @@ export default function ClientsList() {
                   <td className="py-4">{c.clientId}</td>
                   <td className="py-4">{c.phone ?? "—"}</td>
                   <td className="py-4">{formatDate(c.lastModified)}</td>
-                  <td className="py-4 text-right">
-                    <button
-                      className="w-8 h-8 rounded-full bg-border/60 text-muted"
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label="Client actions"
-                    >
-                      …
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>

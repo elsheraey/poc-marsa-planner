@@ -544,17 +544,14 @@ export default function SimulationReport() {
 
       <DisclosureBanner calibrationAsOf={activeResult.calibration_as_of} />
 
-      <div className="flex items-center justify-between mt-6">
+      <div className="flex items-center justify-between mt-6 print:hidden">
         <button
+          type="button"
           className="text-primary-500 text-sm font-semibold"
           onClick={() => nav("/clients/new/scenario")}
         >
-          Back to Scenarios
+          {t("report.action.back")}
         </button>
-        <div className="flex items-center gap-3">
-          <button className="btn-outline">Save this simulation</button>
-          <button className="btn-primary">Generate Report</button>
-        </div>
       </div>
     </AppShell>
   );

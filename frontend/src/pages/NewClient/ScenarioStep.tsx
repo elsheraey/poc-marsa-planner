@@ -58,35 +58,6 @@ function buildScenarioRequest(
   return { name: s.name, request: null };
 }
 
-function BaseReportPromoCard() {
-  return (
-    <div className="card flex items-stretch gap-6 p-4">
-      <div className="flex-1 p-4">
-        <div className="text-xs text-accent-cyan font-semibold mb-1">AI Powered Solution</div>
-        <div className="font-bold mb-1">Marsa Portfolio Simulation Tool</div>
-        <p className="text-xs text-muted leading-relaxed">
-          With Marsa Scenario Simulation Tool you can simulate as many scenarios as you want
-          with focus on different goals and investment values. Easily create scenarios and run
-          simulation.
-        </p>
-        <p className="text-xs text-primary-500 mt-1">
-          You can compare results through a comprehensive report and print results.
-        </p>
-      </div>
-      <div className="w-72 rounded-xl bg-report-gradient text-white flex flex-col justify-between p-4">
-        <div className="font-semibold text-sm leading-snug">
-          Base Scenario
-          <br />
-          Simulation
-        </div>
-        <button className="bg-white/95 text-primary-600 text-xs font-semibold rounded-lg h-8">
-          Run Simulation
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function GoalPicker({
   open,
   onClose,
@@ -176,18 +147,14 @@ function ScenarioCard({ index }: { index: number }) {
         <div className="text-primary-500 font-bold">{scenario.name}</div>
         <div className="flex items-center gap-2 text-xs">
           <button
+            type="button"
             className="text-muted font-semibold"
             onClick={() => setCollapsed((c) => !c)}
           >
             {collapsed ? "Expand" : "Collapse"}
           </button>
           <button
-            className="px-3 h-7 rounded-md bg-accent-cyan/15 text-accent-cyan font-semibold"
-            onClick={() => dispatch(actions.addScenario())}
-          >
-            Duplicate Scenario
-          </button>
-          <button
+            type="button"
             className="px-3 h-7 rounded-md border border-red-300 text-red-500 font-semibold"
             onClick={() => dispatch(actions.removeScenario(index))}
           >
@@ -227,14 +194,11 @@ function ScenarioCard({ index }: { index: number }) {
             <div className="flex items-center gap-3 mb-3">
               <span className="label">Select Goals</span>
               <button
+                type="button"
                 className="px-3 h-7 rounded-md bg-primary-500 text-white text-xs font-semibold"
                 onClick={() => setPickerOpen((o) => !o)}
               >
                 Select
-              </button>
-              <span className="text-muted text-xs">OR</span>
-              <button className="px-3 h-7 rounded-md bg-accent-pink/15 text-accent-pink text-xs font-semibold">
-                Add new
               </button>
             </div>
             {scenario.goalNames.length > 0 && (
@@ -442,9 +406,12 @@ export default function ScenarioStep() {
 
   return (
     <>
-      <BaseReportPromoCard />
       <div className="flex justify-end mt-4 mb-4">
-        <button className="btn-primary" onClick={() => dispatch(actions.addScenario())}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => dispatch(actions.addScenario())}
+        >
           Add New Scenario
         </button>
       </div>
