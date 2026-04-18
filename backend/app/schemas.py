@@ -167,6 +167,37 @@ class SimulateResponse(BaseModel):
     calibration_as_of: str | None = None
 
 
+# ---------- Inversion (solve for monthly / horizon) ----------
+class SimulateInvertRequest(BaseModel):
+    """Same shape as `SimulateRequest` minus `monthly_investment` (we solve
+    for it), plus a `target_probability` the advisor wants to hit and a
+    mandatory `goal_target_amount` (inversion is undefined without a goal).
+
+    `current_monthly_investment` is optional and anchors the second-pass
+    horizon solve: given the client's *current* monthly plan, what horizon
+    would clear the target? If omitted we fall back to the required monthly
+    we just solved for (i.e. the two answers coincide at the `input_duration`
+    floor).
+    """
+
+    duration_years: Annotated[int, Field(ge=1, le=40)]
+    initial_investment: Annotated[float, Field(ge=0, le=1e12)]
+    current_monthly_investment: Annotated[float | None, Field(ge=0, le=1e9)] = None
+    annual_increase_pct: Annotated[float, Field(ge=-1.0, le=1.0)] = 0.0
+    importance: Literal["worst", "essential", "medium", "best"] = "essential"
+    risk_tolerance: Literal["very_low", "low", "moderate", "high", "very_high"] = "high"
+    goal_target_amount: Annotated[float, Field(gt=0, le=1e12)]
+    return_in_real_terms: bool = True
+    target_probability: Annotated[float, Field(ge=0.5, le=0.99)]
+
+
+class SimulateInvertResponse(BaseModel):
+    required_monthly_investment: float | None
+    required_horizon_years: int | None
+    achieved_probability_at_required: float
+    achieved_probability_at_double: float | None
+
+
 # ---------- Saved simulations (persistence) ----------
 class SimulationIn(BaseModel):
     name: Annotated[str, Field(min_length=1, max_length=255)]
