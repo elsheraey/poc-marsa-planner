@@ -9,21 +9,20 @@ import { t } from "../i18n";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Editorial Login page.
+ * Login page — Apple card-on-grouped-canvas pattern.
  *
- * Single cream column, `max-w-md` wide, centred. No split-panel hero, no
- * gradient, no decorative SVG. Bottom-rule inputs with plain <label>
- * elements above, an editorial outline button at the bottom, and a
- * small "create an account" link underneath.
+ * Full-height bg-grouped canvas, centred `max-w-sm` rounded card with a
+ * 1px separator ring and a soft shadow. Inside the card: centred Marsa
+ * wordmark, Large-Title-ish heading, muted subtitle, grouped-inset
+ * inputs, full-width system-blue primary button, blue text link to the
+ * sign-up counterpart.
  *
- * ACCESSIBILITY:
- *   - Each <input> is wired to its <label> via htmlFor/id.
- *   - Inline field errors get `text-accent text-xs` and sit in the flow
- *     so AT users hear them right after the field.
- *   - The server error surfaces via `role="alert"` so it's announced.
- *   - The ink outline button has a visible `:focus-visible` ring from the
- *     browser default plus `focus:outline-accent` to keep keyboard nav
- *     unambiguous against the cream.
+ * Accessibility:
+ *   - Each input is wired to its label via htmlFor/id.
+ *   - Field errors get `text-system-red text-xs` and render in-flow so
+ *     AT announces them right after the field.
+ *   - Server errors surface via `role="alert"`.
+ *   - Focus rings are the system-blue 2px ring on every interactive el.
  */
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -53,95 +52,99 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <div className="max-w-md mx-auto px-8 py-24">
-        <div className="mb-16">
-          <Link to="/" aria-label="Home">
-            <Logo />
-          </Link>
+    <div className="min-h-screen bg-bg-grouped text-label flex flex-col">
+      <main className="flex-1 flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-sm">
+          <div className="flex justify-center mb-6">
+            <Link to="/" aria-label="Home">
+              <Logo />
+            </Link>
+          </div>
+
+          <div className="bg-bg-primary rounded-2xl ring-1 ring-separator shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-8">
+            <h1 className="text-2xl font-bold tracking-tight text-center">
+              {t("auth.login.heading")}
+            </h1>
+            <p className="mt-2 text-[15px] text-label-secondary text-center leading-relaxed">
+              {t("auth.login.subheading")}
+            </p>
+
+            <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
+              <div>
+                <label
+                  className="block text-xs font-semibold text-label-secondary mb-1.5"
+                  htmlFor="login-email"
+                >
+                  {t("auth.login.email")}
+                </label>
+                <input
+                  id="login-email"
+                  className="input"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  autoComplete="email"
+                  aria-invalid={!!fieldErrors.email}
+                  required
+                />
+                {fieldErrors.email && (
+                  <div className="text-xs text-system-red mt-1.5">{fieldErrors.email}</div>
+                )}
+              </div>
+
+              <div>
+                <label
+                  className="block text-xs font-semibold text-label-secondary mb-1.5"
+                  htmlFor="login-password"
+                >
+                  {t("auth.login.password")}
+                </label>
+                <input
+                  id="login-password"
+                  className="input"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type="password"
+                  autoComplete="current-password"
+                  aria-invalid={!!fieldErrors.password}
+                  required
+                />
+                {fieldErrors.password && (
+                  <div className="text-xs text-system-red mt-1.5">{fieldErrors.password}</div>
+                )}
+              </div>
+
+              {error && (
+                <div
+                  className="text-sm text-system-red bg-system-red-tint rounded-lg px-3 py-2"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn-primary w-full"
+                disabled={status === "loading"}
+              >
+                {status === "loading" ? t("auth.login.submitting") : t("auth.login.submit")}
+              </button>
+            </form>
+          </div>
+
+          <p className="mt-6 text-center text-[15px] text-label-secondary">
+            {t("auth.login.need_account")}{" "}
+            <Link
+              className="text-system-blue hover:text-system-blue-hover font-semibold"
+              to="/register"
+              data-testid="registerLink"
+            >
+              {t("auth.login.sign_up")}
+            </Link>
+          </p>
         </div>
-
-        <h1 className="font-serif text-4xl tracking-tight mb-2">
-          {t("auth.login.heading")}
-        </h1>
-        <p className="font-serif italic text-ink-muted mb-10 leading-relaxed">
-          {t("auth.login.subheading")}
-        </p>
-
-        <form onSubmit={onSubmit} noValidate className="space-y-8">
-          <div>
-            <label
-              className="label block mb-2"
-              htmlFor="login-email"
-            >
-              {t("auth.login.email")}
-            </label>
-            <input
-              id="login-email"
-              className="input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              autoComplete="email"
-              aria-invalid={!!fieldErrors.email}
-              required
-            />
-            {fieldErrors.email && (
-              <div className="text-xs text-accent mt-2">{fieldErrors.email}</div>
-            )}
-          </div>
-
-          <div>
-            <label
-              className="label block mb-2"
-              htmlFor="login-password"
-            >
-              {t("auth.login.password")}
-            </label>
-            <input
-              id="login-password"
-              className="input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              autoComplete="current-password"
-              aria-invalid={!!fieldErrors.password}
-              required
-            />
-            {fieldErrors.password && (
-              <div className="text-xs text-accent mt-2">{fieldErrors.password}</div>
-            )}
-          </div>
-
-          {error && (
-            <div
-              className="text-sm text-accent border-t border-accent pt-3"
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="btn w-full"
-            disabled={status === "loading"}
-          >
-            {status === "loading" ? t("auth.login.submitting") : t("auth.login.submit")}
-          </button>
-        </form>
-
-        <p className="mt-8 text-sm text-ink-muted">
-          {t("auth.login.need_account")}{" "}
-          <Link
-            className="text-ink underline decoration-accent underline-offset-4"
-            to="/register"
-            data-testid="registerLink"
-          >
-            {t("auth.login.sign_up")}
-          </Link>
-        </p>
-      </div>
+      </main>
     </div>
   );
 }

@@ -10,14 +10,24 @@ function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toISOString().slice(0, 10);
 }
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "–";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 /**
- * Editorial clients list.
+ * Clients list — Apple grouped-inset pattern.
  *
- * No card wrapper, no drop-shadow. A serif "All Clients" heading with a
- * small-caps "Add new" action on the right; below, a plain table bounded
- * by top/bottom rules, with one hairline between rows. Empty / error /
- * loading branches render centred serif italic paragraphs rather than
- * coloured blocks — same ethos as the rest of the document.
+ *   - Large Title "All Clients" + subtitle with live count
+ *   - iOS search input with a leading magnifier inside the fill
+ *   - `.btn-primary` "Add New" button on the inline-end of the header
+ *   - Grouped-inset white list rounded on a bg-grouped canvas, one row
+ *     per client. Each row is an avatar circle with initials in
+ *     system-blue tint, name + email stacked, last-modified date in
+ *     label-secondary, trailing chevron.
+ *   - Pagination as plain "Showing X–Y of N" + two blue chevron buttons.
  */
 export default function ClientsList() {
   const dispatch = useAppDispatch();
@@ -41,116 +51,142 @@ export default function ClientsList() {
   }, [clients, q]);
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const slice = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const rangeStart = filtered.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(filtered.length, page * pageSize);
 
   return (
     <AppShell>
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-        <h1 className="font-serif text-4xl tracking-tight">All Clients</h1>
+      <header className="px-6 pt-10 pb-6 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight">All Clients</h1>
+          <p className="mt-1 text-base text-label-secondary">
+            {clients.length === 0
+              ? "No clients yet."
+              : `Manage your ${clients.length} client${clients.length === 1 ? "" : "s"}.`}
+          </p>
+        </div>
         <button
-          className="btn"
+          type="button"
+          className="btn-primary"
           onClick={() => nav("/clients/new/profile")}
         >
           Add New
         </button>
-      </div>
+      </header>
 
-      <div className="mb-8">
-        <label className="label block mb-2" htmlFor="clients-search">
-          Search
-        </label>
-        <input
-          id="clients-search"
-          className="input max-w-md"
-          placeholder="Name or email"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
-          aria-label="Search clients"
-        />
-      </div>
-
-      {status === "loading" && clients.length === 0 && (
-        <p className="py-16 text-center font-serif italic text-ink-muted">
-          Loading clients…
-        </p>
-      )}
-
-      {status === "error" && (
-        <div
-          className="border-t border-b border-accent py-3 my-4 text-sm text-accent"
-          role="alert"
-        >
-          {error ?? "Failed to load clients"}
+      <div className="px-6 mb-4">
+        <div className="relative max-w-md">
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 start-0 ps-3 flex items-center text-label-tertiary"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </span>
+          <input
+            id="clients-search"
+            className="input ps-9"
+            placeholder="Search name or email"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Search clients"
+          />
         </div>
-      )}
+      </div>
 
-      {status !== "loading" && filtered.length === 0 && (
-        <p className="py-16 text-center font-serif italic text-ink-muted">
-          {q ? "No clients match your search." : "No clients yet. Add your first one."}
-        </p>
-      )}
+      <div className="px-6 pb-4">
+        {status === "loading" && clients.length === 0 && (
+          <p className="py-16 text-center text-label-secondary">Loading clients…</p>
+        )}
 
-      {filtered.length > 0 && (
-        <table className="w-full text-sm border-t border-b border-rule">
-          <thead>
-            <tr className="text-xs uppercase tracking-widest text-ink-muted">
-              <th className="text-start font-normal py-4">Client details</th>
-              <th className="text-start font-normal py-4">Client ID</th>
-              <th className="text-start font-normal py-4">Phone</th>
-              <th className="text-start font-normal py-4">Last modified</th>
-            </tr>
-          </thead>
-          <tbody>
+        {status === "error" && (
+          <div
+            className="rounded-xl bg-system-red-tint text-system-red px-4 py-3 text-sm"
+            role="alert"
+          >
+            {error ?? "Failed to load clients"}
+          </div>
+        )}
+
+        {status !== "loading" && filtered.length === 0 && (
+          <div className="rounded-xl bg-bg-primary ring-1 ring-separator p-10 text-center text-label-secondary">
+            {q ? "No clients match your search." : "No clients yet. Add your first one."}
+          </div>
+        )}
+
+        {filtered.length > 0 && (
+          <div className="grouped-list">
             {slice.map((c) => (
-              <tr
+              <button
+                type="button"
                 key={c.id}
-                className="border-t border-rule hover:bg-paper-deep cursor-pointer"
+                className="grouped-row-hover w-full text-start"
                 onClick={() => nav(`/clients/${c.id}`)}
               >
-                <td className="py-4">
-                  <div className="font-serif text-base">{c.name}</div>
-                  <div className="text-xs text-ink-muted">{c.email}</div>
-                </td>
-                <td className="py-4 tabular">{c.clientId}</td>
-                <td className="py-4 tabular">{c.phone ?? "—"}</td>
-                <td className="py-4 tabular">{formatDate(c.lastModified)}</td>
-              </tr>
+                <span
+                  aria-hidden="true"
+                  className="w-9 h-9 rounded-full bg-system-blue-tint text-system-blue font-semibold flex items-center justify-center shrink-0 text-sm"
+                >
+                  {initials(c.name)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold text-label truncate">
+                    {c.name}
+                  </span>
+                  <span className="block text-sm text-label-secondary truncate">
+                    {c.email}
+                  </span>
+                </span>
+                <span className="hidden md:block text-sm text-label-secondary tabular shrink-0">
+                  {formatDate(c.lastModified)}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="text-label-tertiary text-lg shrink-0"
+                >
+                  ›
+                </span>
+              </button>
             ))}
-          </tbody>
-        </table>
-      )}
+          </div>
+        )}
 
-      {filtered.length > 0 && (
-        <div className="flex items-center justify-end gap-4 mt-8 text-sm text-ink-muted tabular">
-          <span className="uppercase tracking-widest text-xs">Page</span>
-          <input
-            className="input h-9 w-12 text-center"
-            value={page}
-            onChange={(e) => setPage(Math.max(1, Math.min(pages, Number(e.target.value) || 1)))}
-            aria-label="Page number"
-          />
-          <span className="uppercase tracking-widest text-xs">of</span>
-          <span>{pages}</span>
-          <button
-            className="px-3 h-9 border border-rule text-ink hover:border-ink disabled:opacity-40"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            aria-label="Previous page"
-          >
-            ‹
-          </button>
-          <button
-            className="px-3 h-9 border border-rule text-ink hover:border-ink disabled:opacity-40"
-            disabled={page >= pages}
-            onClick={() => setPage((p) => p + 1)}
-            aria-label="Next page"
-          >
-            ›
-          </button>
-        </div>
-      )}
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between mt-4 text-sm text-label-secondary tabular">
+            <span>
+              Showing {rangeStart}–{rangeEnd} of {filtered.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg bg-bg-primary ring-1 ring-separator text-system-blue disabled:text-label-quaternary disabled:ring-separator/60 hover:bg-bg-secondary transition"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+                aria-label="Previous page"
+              >
+                ‹
+              </button>
+              <span className="px-2">
+                {page} / {pages}
+              </span>
+              <button
+                type="button"
+                className="w-8 h-8 rounded-lg bg-bg-primary ring-1 ring-separator text-system-blue disabled:text-label-quaternary disabled:ring-separator/60 hover:bg-bg-secondary transition"
+                disabled={page >= pages}
+                onClick={() => setPage((p) => p + 1)}
+                aria-label="Next page"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </AppShell>
   );
 }
