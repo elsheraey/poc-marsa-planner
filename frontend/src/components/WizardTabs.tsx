@@ -1,8 +1,9 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { t } from "../i18n";
 
 type Step = {
   to: string;
-  label: string;
+  labelKey: string;
   tone: "primary" | "pink" | "cyan";
   icon: JSX.Element;
 };
@@ -10,7 +11,7 @@ type Step = {
 const steps: Step[] = [
   {
     to: "profile",
-    label: "Profile",
+    labelKey: "wizard.profile",
     tone: "primary",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -21,7 +22,7 @@ const steps: Step[] = [
   },
   {
     to: "goals",
-    label: "Goals",
+    labelKey: "wizard.goals",
     tone: "pink",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -36,7 +37,7 @@ const steps: Step[] = [
   },
   {
     to: "scenario",
-    label: "Scenario Builder",
+    labelKey: "wizard.scenario",
     tone: "cyan",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -86,7 +87,7 @@ export default function WizardTabs({ basePath }: { basePath: string }) {
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-current/10">
               {step.icon}
             </span>
-            {step.label}
+            {t(step.labelKey)}
           </NavLink>
         );
       })}

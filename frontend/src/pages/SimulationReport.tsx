@@ -15,6 +15,7 @@ import WizardTabs from "../components/WizardTabs";
 import DonutChart from "../components/DonutChart";
 import { useAppSelector } from "../store";
 import { fmtEGP } from "../utils/format";
+import { t } from "../i18n";
 
 type Tab = "chart" | "table";
 
@@ -148,7 +149,15 @@ export default function SimulationReport() {
                 className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[result.attainability]}`}
                 title="Attainability band based on P15 / median real-terms projection"
               >
-                {result.attainability.replace(/_/g, " ")}
+                {/* Prefer the localised string; fall back to the backend
+                    label with underscores normalised if the key is missing. */}
+                {(() => {
+                  const key = `report.${result.attainability}`;
+                  const localised = t(key);
+                  return localised === key
+                    ? result.attainability.replace(/_/g, " ")
+                    : localised;
+                })()}
               </span>
             )}
           </div>
