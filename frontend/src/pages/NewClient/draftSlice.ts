@@ -21,6 +21,10 @@ export type Scenario = {
 };
 
 type State = {
+  // Server-assigned id of the persisted Client row. Null until the advisor
+  // first triggers persistence (wizard run-simulation step), then reused so
+  // subsequent edits PATCH the same row instead of creating duplicates.
+  clientId: string | null;
   profile: {
     fullName: string;
     email: string;
@@ -47,6 +51,7 @@ type State = {
 };
 
 const initialState: State = {
+  clientId: null,
   profile: {
     fullName: "",
     email: "",
@@ -82,6 +87,9 @@ const slice = createSlice({
   name: "draft",
   initialState,
   reducers: {
+    setClientId(state, action: PayloadAction<string | null>) {
+      state.clientId = action.payload;
+    },
     updateProfile(state, action: PayloadAction<Partial<State["profile"]>>) {
       state.profile = { ...state.profile, ...action.payload };
     },

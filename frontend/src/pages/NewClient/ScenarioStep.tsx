@@ -3,9 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { actions, Scenario } from "./draftSlice";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { runScenarioBatch } from "../../store/slices/simulationSlice";
+import { createClient, updateClient } from "../../store/slices/clientsSlice";
 import { toast } from "../../components/Toaster";
 import { fmtEGP } from "../../utils/format";
-import type { SimulateRequest } from "../../api/client";
+import type { ClientRecord, SimulateRequest } from "../../api/client";
+
+// Backend validators (`schemas.py`) bound inflation_rate, annual_increase and
+// interest_rate to the decimal range [-1, 1]. The wizard lets advisors type
+// either decimals ("0.05") or percents ("5"); normalise to decimal so we never
+// round-trip to a 422.
+function toDecimalRate(v: number | null | undefined): number | undefined {
+  if (v == null || !Number.isFinite(v)) return undefined;
+  return Math.abs(v) > 1 ? v / 100 : v;
+}
 
 // Product constraint: the simulation report renders at most 4 scenario cards.
 // Keep in sync with MAX_SCENARIOS_RENDERED in SimulationReport.tsx.
@@ -369,6 +379,7 @@ export default function ScenarioStep() {
   const scenarios = useAppSelector((s) => s.draft.scenarios);
   const profile = useAppSelector((s) => s.draft.profile);
   const goals = useAppSelector((s) => s.draft.goals);
+  const draftClientId = useAppSelector((s) => s.draft.clientId);
 
   const totalYears = useMemo(() => {
     const now = new Date().getFullYear();
@@ -384,6 +395,60 @@ export default function ScenarioStep() {
     if (goals.length === 0 || goals.every((g) => !g.name || !g.amount)) {
       toast("Add at least one goal with a name and target amount", "error");
       return;
+    }
+    const trimmedName = profile.fullName.trim();
+    if (!trimmedName || !profile.email) {
+      toast("Add the client's name and email in the Profile step first", "error");
+      nav("/clients/new/profile");
+      return;
+    }
+
+    // Persist the client BEFORE running the batch — saved simulations
+    // reference client_id, and the clients list is the primary advisor view.
+    const persistedGoals = goals
+      .filter((g) => g.name && g.amount > 0)
+      .map((g) => ({
+        name: g.name,
+        amount: g.amount,
+        year: g.year,
+        payments: g.payments || undefined,
+        inflationRate: toDecimalRate(g.inflationRate),
+      }));
+    const persistedScenarios = scenarios.slice(0, MAX_SCENARIOS_PER_RUN).map((s) => ({
+      name: s.name,
+      model: s.model || undefined,
+      goalNames: s.goalNames,
+      investments: s.investments,
+      monthlyInvestments: s.monthlyInvestments.map((m) => ({
+        amount: m.amount,
+        annualIncrease: toDecimalRate(m.annualIncrease) ?? 0,
+      })),
+      loans: s.loans.map((l) => ({
+        amount: l.amount,
+        year: l.year,
+        duration: l.duration,
+        interestRate: toDecimalRate(l.interestRate) ?? 0,
+      })),
+    }));
+    const clientPayload: Partial<ClientRecord> = {
+      name: trimmedName,
+      email: profile.email,
+      phone: profile.phone || undefined,
+      profile: { ...profile, fullName: trimmedName },
+      goals: persistedGoals as ClientRecord["goals"],
+      scenarios: persistedScenarios as ClientRecord["scenarios"],
+    };
+    if (draftClientId) {
+      // Best-effort update; don't block the simulation if the PATCH fails —
+      // the client row already exists, worst case it's slightly stale.
+      dispatch(updateClient({ id: draftClientId, data: clientPayload }));
+    } else {
+      const createRes = await dispatch(createClient(clientPayload));
+      if (createClient.rejected.match(createRes)) {
+        // createClient thunk already fired the error toast.
+        return;
+      }
+      dispatch(actions.setClientId(createRes.payload.id));
     }
 
     const duration = Math.min(60, Math.max(1, totalYears));
