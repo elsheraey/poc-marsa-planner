@@ -1,7 +1,10 @@
 {
   "calibration_id": "calibration_2026-04",
+  "schema_version": 2,
+  "spec_version": "market-spec.md §1 iteration-2 (2026-04-18)",
   "as_of": "2026-04-18",
   "git_commit": "5affc4f7e4f68a89ecc878d8d94a00bc2b1ab329",
+  "source": "azimut",
   "fit_window": {
     "equity": {
       "start": "2015-02",
@@ -30,10 +33,13 @@
         0.06121499957583243
       ],
       "mu_monthly": 0.024347468763041932,
+      "mu_monthly_nominal": 0.024347468763041932,
+      "mu_monthly_real": 0.011285,
       "sigma_monthly": 0.07690652861395825,
+      "sigma_monthly_nominal": 0.07690652861395825,
       "sample_size": 136,
       "source_url": "https://finance.yahoo.com/quote/COMI.CA/history/",
-      "notes": "Equal-weight basket of 6 EGX30 heavyweights (COMI.CA, ABUK.CA, CIEB.CA, ETEL.CA, HRHO.CA, TMGH.CA), rebalanced monthly. Azimut ABC NAV history is not publicly retrievable; EGX30 basket used as documented substitution per market-spec \u00a71."
+      "notes": "Equal-weight basket of 6 EGX30 heavyweights (COMI.CA, ABUK.CA, CIEB.CA, ETEL.CA, HRHO.CA, TMGH.CA), rebalanced monthly. Azimut ABC NAV history is not publicly retrievable; EGX30 basket used as documented substitution per market-spec §1."
     },
     "mmf": {
       "name": "EBE (EGP Money Market) proxy",
@@ -44,7 +50,10 @@
         0.0038943203237714204
       ],
       "mu_monthly": 0.013789086161903682,
+      "mu_monthly_nominal": 0.013789086161903682,
+      "mu_monthly_real": 0.001334,
       "sigma_monthly": 0.003908824360283174,
+      "sigma_monthly_nominal": 0.003908824360283174,
       "sample_size": 135,
       "source_url": "https://www.imf.org/en/Data (IFS series M.EG.FITB_PA via DBnomics)",
       "notes": "Synthetic NAV from monthly-compounded Egypt 91d T-bill yield (IMF IFS M.EG.FITB_PA 2015-01 to 2025-05). Extended 2025-06..2026-03 with piecewise-constant rate steps reflecting the 2025 CBE cut cycle."
@@ -59,10 +68,37 @@
         0.009092605722083383
       ],
       "mu_monthly": 0.012648111111111113,
+      "mu_monthly_nominal": 0.012648111111111113,
       "sigma_monthly": 0.015193023428714663,
+      "sigma_monthly_nominal": 0.015193023428714663,
       "sample_size": 135,
       "source_url": "https://api.db.nomics.world/v22/series/IMF/IFS/M.EG.PCPI_IX",
       "notes": "MoM first-difference of IMF IFS urban CPI index (M.EG.PCPI_IX) 2015-01 to 2025-06. Extended 2025-07..2026-03 with published CAPMAS/CBE monthly MoM figures (see docs/data-sources.md)."
+    }
+  },
+  "fit_range_check": {
+    "spec_section": "market-spec.md §1 (iteration 2)",
+    "checked_by": "backend/ingest.py FIT_RANGES",
+    "equity": {
+      "mu_real": 0.011285,
+      "mu_range": [0.001, 0.015],
+      "sigma": 0.07690652861395825,
+      "sigma_range": [0.055, 0.100],
+      "pass": true
+    },
+    "mmf": {
+      "mu_real": 0.001334,
+      "mu_range": [-0.003, 0.010],
+      "sigma": 0.003908824360283174,
+      "sigma_range": [0.0010, 0.0050],
+      "pass": true
+    },
+    "inflation": {
+      "mu_nominal": 0.012648111111111113,
+      "mu_range": [0.008, 0.018],
+      "sigma": 0.015193023428714663,
+      "sigma_range": [0.006, 0.018],
+      "pass": true
     }
   },
   "empirical_correlation": {
@@ -88,5 +124,11 @@
         1.0
       ]
     ]
+  },
+  "correlation_range_check": {
+    "spec_section": "market-spec.md §2 (iteration 2)",
+    "equity_inflation": {"rho": -0.0483649682614677, "range": [-0.15, 0.35], "pass": true},
+    "mmf_inflation": {"rho": 0.16265586047802066, "range": [0.05, 0.60], "pass": true},
+    "equity_mmf": {"rho": 0.11607571888756289, "range": [-0.10, 0.30], "pass": true}
   }
 }
