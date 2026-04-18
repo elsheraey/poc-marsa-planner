@@ -1,0 +1,91 @@
+{
+  "lang": "en",
+  "total_ms": 63000,
+  "sections": [
+    {
+      "id": "01_login",
+      "caption": "Omar's advisor opens Marsa.",
+      "duration_ms": 3000
+    },
+    {
+      "id": "02_signin",
+      "caption": "Signs in.",
+      "duration_ms": 2500
+    },
+    {
+      "id": "03_clients_empty",
+      "caption": "No clients yet.",
+      "duration_ms": 2500
+    },
+    {
+      "id": "04_new_client",
+      "caption": "Adds Omar as a new client.",
+      "duration_ms": 2500
+    },
+    {
+      "id": "05_profile",
+      "caption": "Profile: 42, senior manager at a multinational, wife and two kids.",
+      "duration_ms": 5000
+    },
+    {
+      "id": "06_proceed_goals",
+      "caption": "Proceeds to goals.",
+      "duration_ms": 2000
+    },
+    {
+      "id": "07_goals",
+      "caption": "Five goals. Apartment. Three university options. Retirement.",
+      "duration_ms": 5500
+    },
+    {
+      "id": "08_scenarios_setup",
+      "caption": "Three scenarios — one per university choice.",
+      "duration_ms": 5000
+    },
+    {
+      "id": "09_scenario_picker",
+      "caption": "Each scenario picks a different university path.",
+      "duration_ms": 4000
+    },
+    {
+      "id": "10_run_sim",
+      "caption": "Runs the simulation.",
+      "duration_ms": 2000
+    },
+    {
+      "id": "11_report",
+      "caption": "The report.",
+      "duration_ms": 5000
+    },
+    {
+      "id": "12_auc",
+      "caption": "Scenario 1 — AUC. Out of reach.",
+      "duration_ms": 4000
+    },
+    {
+      "id": "13_guc",
+      "caption": "Scenario 2 — GUC. Still out of reach.",
+      "duration_ms": 4000
+    },
+    {
+      "id": "14_cairo",
+      "caption": "Scenario 3 — Cairo University. Aspirational.",
+      "duration_ms": 4000
+    },
+    {
+      "id": "15_inversion",
+      "caption": "Marsa's inversion suggests the advisor's next move.",
+      "duration_ms": 5000
+    },
+    {
+      "id": "16_closing",
+      "caption": "Three choices. One honest conversation.",
+      "duration_ms": 4000
+    },
+    {
+      "id": "17_tag",
+      "caption": "Marsa. Egyptian planning.",
+      "duration_ms": 3000
+    }
+  ]
+}
