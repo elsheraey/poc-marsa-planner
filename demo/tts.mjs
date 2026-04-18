@@ -28,32 +28,44 @@ const ENV_PATH = resolve(__dirname, ".env");
 const EN_VOICE = "pNInz6obpgDQGcFmaJgB"; // Adam
 const AR_VOICE_DEFAULT = "pNInz6obpgDQGcFmaJgB"; // Adam (fallback)
 
-const EN_SCRIPT = `Every Egyptian advisor answers the same question from every client: "Can I afford this?" Marsa makes the answer honest.
+const EN_SCRIPT = `Ahmed is 42. Senior manager at a multinational. Wife, two kids — seven and ten. Around 155,000 pounds come in each month. 3 million already invested; 40,000 saved on top.
 
-You enter the client's profile, goals, and scenarios once. Marsa runs ten thousand Monte Carlo paths on real Egyptian market data, inflation-adjusted, and tells the advisor — not just the probability of hitting the goal, but whether the goal is attainable, aspirational, or out of reach.
+Three goals. An apartment in Madinaty by 2028. University for the kids, 2033. Retirement at 60.
 
-A six-million-pound house in twenty-thirty, funded by twenty thousand pounds a month, reads "out of reach" — because it is. Marsa tells the advisor what monthly contribution would close the gap, to the thousand pound, in real purchasing power.
+But "university" means different things. AUC. Mid-tier private like GUC or BUE. Or Cairo University, government-supported. The numbers aren't the same. So the advisor runs three scenarios, side by side.
 
-Every screen works in Arabic. Every number, every date, every currency — localized, right-to-left, ready for the client meeting.
+Scenario one — AUC. Four million pounds for both kids. Marsa: out of reach. Retirement falls nine million short of what Ahmed needs.
 
-Marsa is a planning tool, not a robo-advisor. The human advisor owns the recommendation. We give them a better answer, faster.
+Scenario two — GUC or BUE. Three million. Still out of reach. Seven million short.
 
-Marsa. Egyptian planning, built honestly.`;
+Scenario three — Cairo University. Five hundred thousand. Marsa: aspirational. The median just clears; the pessimistic path misses by two.
+
+Marsa's inversion: if Ahmed saves 60,000 a month instead of 40,000, all three scenarios become attainable. Or he pushes retirement to 63.
+
+Three choices. One honest conversation about what his plan needs to be.
+
+Marsa. Egyptian planning, built for the real conversation.`;
 
 // Arabic translation by the build script. TRANSLATION-FLAG: reviewed for
 // meaning but not native-checked — flagged in the commit message for a
 // future native pass before this ships to a real client meeting.
-const AR_SCRIPT = `كل مستشار مالي في مصر يجيب على نفس السؤال من كل عميل: "هل أستطيع تحمل هذا؟" مرسى يجعل الإجابة صادقة.
+const AR_SCRIPT = `أحمد عمره 42 عامًا. مدير أول في شركة متعددة الجنسيات. متزوج ولديه طفلان في السابعة والعاشرة. دخل الأسرة حوالي 155 ألف جنيه شهريًا. لديه 3 ملايين جنيه مستثمرة، ويدّخر 40 ألف جنيه شهريًا.
 
-تُدخِل ملف العميل، أهدافه، وسيناريوهاته مرة واحدة. مرسى يُشغِّل عشرة آلاف مسار من محاكاة مونت كارلو على بيانات السوق المصري الحقيقية، مُعدَّلة للتضخم، ويُخبر المستشار ليس فقط احتمال تحقيق الهدف، بل أيضًا إن كان الهدف قابلًا للتحقيق، طموحًا، أم خارج النطاق.
+ثلاثة أهداف. شقة في مدينتي بحلول 2028. تعليم جامعي للطفلين في 2033. التقاعد في سن الستين.
 
-منزل بستة ملايين جنيه في عام ألفين وثلاثين، يُموَّل بعشرين ألف جنيه شهريًا، يُصنَّف "خارج النطاق" — لأنه فعلًا كذلك. مرسى يُخبر المستشار ما المساهمة الشهرية التي تُغلق الفجوة، بدقة آلاف الجنيهات، بالقوة الشرائية الحقيقية.
+لكن "الجامعة" تعني أشياءً مختلفة. الجامعة الأمريكية. أو جامعات خاصة من الدرجة المتوسطة مثل الألمانية والبريطانية. أو جامعة القاهرة الحكومية. الأرقام ليست متساوية. لذا يُشغِّل المستشار ثلاثة سيناريوهات جنبًا إلى جنب.
 
-كل شاشة تعمل بالعربية. كل رقم، كل تاريخ، كل عملة — محلية، من اليمين لليسار، جاهزة لاجتماع العميل.
+السيناريو الأول — الجامعة الأمريكية. أربعة ملايين جنيه للطفلين. مرسى: خارج النطاق. التقاعد يبعد تسعة ملايين عما يحتاجه أحمد.
 
-مرسى هو أداة تخطيط، وليس مستشارًا آليًا. المستشار البشري يملك التوصية. نحن نمنحه إجابة أفضل، وأسرع.
+السيناريو الثاني — الألمانية أو البريطانية. ثلاثة ملايين. ما زال خارج النطاق. يبعد سبعة ملايين.
 
-مرسى. تخطيط مصري، بُني بأمانة.`;
+السيناريو الثالث — جامعة القاهرة. خمسمائة ألف جنيه. مرسى: طموح. الوسيط يتخطى الهدف بالكاد؛ السيناريو المتشائم يقصر بمليونين.
+
+اقتراح مرسى: لو ادّخر أحمد 60 ألف جنيه شهريًا بدلًا من 40 ألفًا، السيناريوهات الثلاثة تصبح قابلة للتحقيق. أو يُؤجِّل التقاعد إلى 63.
+
+ثلاثة خيارات. محادثة صادقة واحدة حول ما تحتاجه خطته فعلًا.
+
+مرسى. تخطيط مصري، مبني للمحادثة الحقيقية.`;
 
 function readApiKey() {
   if (!existsSync(ENV_PATH)) {
