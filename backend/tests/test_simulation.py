@@ -102,9 +102,15 @@ def test_simulate_validates_importance(authed_client):
 
 
 def test_monotonic_duration_increases_value(authed_client):
-    """Longer horizon with identical contributions should grow the median final value."""
-    short = authed_client.post("/api/simulate", json={**VALID_SIM, "duration_years": 3}).json()
-    long = authed_client.post("/api/simulate", json={**VALID_SIM, "duration_years": 10}).json()
+    """Longer horizon with identical contributions should grow the median final value.
+
+    Compared in nominal terms — in real terms with synthetic 1%/mo CPI the final
+    median can flatten as the horizon grows, which is physically correct but
+    obscures the monotonicity this test is about.
+    """
+    nominal = {**VALID_SIM, "return_in_real_terms": False}
+    short = authed_client.post("/api/simulate", json={**nominal, "duration_years": 3}).json()
+    long = authed_client.post("/api/simulate", json={**nominal, "duration_years": 10}).json()
     assert long["projection"]["median"][-1] > short["projection"]["median"][-1]
 
 

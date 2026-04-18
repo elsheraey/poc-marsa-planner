@@ -50,7 +50,24 @@ def reset_cache() -> None:
         _cache.clear()
 
 
-def run_advisor(goal: UserGoal, goal_target_amount: float | None = None) -> dict[str, Any]:
+def _classify_attainability(
+    pessimistic_final: float,
+    median_final: float,
+    goal_real_final: float,
+) -> str:
+    """Map final-year projection bands to an attainability bucket."""
+    if pessimistic_final >= goal_real_final:
+        return "attainable"
+    if median_final >= goal_real_final:
+        return "aspirational"
+    return "out_of_reach"
+
+
+def run_advisor(
+    goal: UserGoal,
+    goal_target_amount: float | None = None,
+    return_in_real_terms: bool = True,
+) -> dict[str, Any]:
     sim = load_simulation()
     best, all_results = advise(sim["variable_monthly"], sim["fixed_monthly"], goal)
 
@@ -66,18 +83,30 @@ def run_advisor(goal: UserGoal, goal_target_amount: float | None = None) -> dict
     months = goal.duration_years * 12
     var_m = sim["variable_monthly"][:, :months]
     fix_m = sim["fixed_monthly"][:, :months]
+    infl_m = sim["inflation_monthly"][:, :months]
     blended = best.variable_pct * var_m + (1 - best.variable_pct) * fix_m
 
     n = blended.shape[0]
     value = np.full(n, float(goal.initial_investment))
     monthly_contrib = float(goal.monthly_investment)
-    yearly_paths: list[np.ndarray] = []
+    # Per-scenario cumulative inflation factor at month m: prod_{i<=m} (1+infl_i).
+    cum_infl = np.ones(n)
+    yearly_nominal: list[np.ndarray] = []
+    yearly_cum_infl: list[np.ndarray] = []
     for m in range(months):
         value = value * (1.0 + blended[:, m]) + monthly_contrib
+        cum_infl = cum_infl * (1.0 + infl_m[:, m])
         if (m + 1) % 12 == 0:
-            yearly_paths.append(value.copy())
+            yearly_nominal.append(value.copy())
+            yearly_cum_infl.append(cum_infl.copy())
             monthly_contrib *= 1.0 + goal.annual_increase_pct
-    paths = np.stack(yearly_paths, axis=1)
+    nominal_paths = np.stack(yearly_nominal, axis=1)           # (n, years)
+    cum_infl_paths = np.stack(yearly_cum_infl, axis=1)          # (n, years)
+
+    if return_in_real_terms:
+        paths = nominal_paths / cum_infl_paths
+    else:
+        paths = nominal_paths
 
     projection = {
         "years": list(range(1, goal.duration_years + 1)),
@@ -86,18 +115,40 @@ def run_advisor(goal: UserGoal, goal_target_amount: float | None = None) -> dict
         "optimistic": np.percentile(paths, 85, axis=0).tolist(),
     }
 
-    # Probability of goal: P(final_portfolio_value >= goal_target_amount).
-    # `importance` still steers the advisor's allocation pick (which percentile
-    # to optimize for), but is decoupled from this probability metric.
+    # Probability-of-goal and attainability are evaluated on the same
+    # basis (real or nominal) as the projection. In real terms the goal
+    # target is CPI-deflated per scenario at the target (final) year.
     prob: float | None
+    attainability: str | None
     if goal_target_amount is not None:
-        prob = round(float((best.final_values >= float(goal_target_amount)).mean()), 4)
+        target = float(goal_target_amount)
+        nominal_final = nominal_paths[:, -1]
+        cum_infl_final = cum_infl_paths[:, -1]
+        if return_in_real_terms:
+            # Equivalent: real_final >= target / cum_infl_final
+            real_final = nominal_final / cum_infl_final
+            prob = round(float((real_final >= target / cum_infl_final).mean()), 4)
+            # For the attainability bucket we compare the (deterministic)
+            # percentile bands of the real projection against the
+            # median-inflation-deflated goal at the target year.
+            goal_real_at_target = target / float(np.median(cum_infl_final))
+        else:
+            prob = round(float((nominal_final >= target).mean()), 4)
+            goal_real_at_target = target
+
+        attainability = _classify_attainability(
+            pessimistic_final=float(projection["pessimistic"][-1]),
+            median_final=float(projection["median"][-1]),
+            goal_real_final=goal_real_at_target,
+        )
     else:
         prob = None
+        attainability = None
 
     return {
         "recommended": recommended,
         "candidates": candidates,
         "projection": projection,
         "probability_of_goal": prob,
+        "attainability": attainability,
     }

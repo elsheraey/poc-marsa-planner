@@ -136,6 +136,7 @@ class SimulateRequest(BaseModel):
     importance: Literal["worst", "essential", "medium", "best"] = "essential"
     risk_tolerance: Literal["very_low", "low", "moderate", "high", "very_high"] = "high"
     goal_target_amount: Annotated[float | None, Field(ge=0, le=1e12)] = None
+    return_in_real_terms: bool = True
 
 
 class PortfolioOut(BaseModel):
@@ -150,8 +151,12 @@ class ProjectionOut(BaseModel):
     optimistic: list[float]
 
 
+Attainability = Literal["attainable", "aspirational", "out_of_reach"]
+
+
 class SimulateResponse(BaseModel):
     recommended: PortfolioOut
     candidates: list[PortfolioOut]
     projection: ProjectionOut
     probability_of_goal: float | None
+    attainability: Attainability | None = None

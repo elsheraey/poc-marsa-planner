@@ -23,5 +23,9 @@ def simulate(body: SimulateRequest, _user: CurrentUser) -> SimulateResponse:
         risk_tolerance=body.risk_tolerance,
     )
     return SimulateResponse.model_validate(
-        run_advisor(goal, goal_target_amount=body.goal_target_amount)
+        run_advisor(
+            goal,
+            goal_target_amount=body.goal_target_amount,
+            return_in_real_terms=body.return_in_real_terms,
+        )
     )
