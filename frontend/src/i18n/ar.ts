@@ -17,7 +17,7 @@ const ar: Record<string, string> = {
   "report.disclosure.data":
     "مصدر البيانات: {calibration}. وقت تشغيل المحاكاة: {now}.",
   "report.disclosure.regulator":
-    "الجهة الرقابية: الهيئة العامة للرقابة المالية (FRA) — أوبتوفوليو أداة مساعدة وليست مستشارًا استثماريًا مرخَّصًا.",
+    "الجهة الرقابية: الهيئة العامة للرقابة المالية (FRA) — {appName} أداة مساعدة وليست مستشارًا استثماريًا مرخَّصًا.",
 
   "nav.overview": "نظرة عامة",
   "nav.clients": "العملاء",
@@ -33,7 +33,7 @@ const ar: Record<string, string> = {
   "auth.login.subheading":
     "سجّل الدخول لتشغيل خطط مالية موثوقة تراعي التضخم لعملائك المصريين.",
   // TODO: native-speaker review
-  "auth.login.welcome": "مرحبًا بك في بوابة أوبتوفوليو",
+  "auth.login.welcome": "مرحبًا بك في {appName}",
   // TODO: native-speaker review
   "auth.login.email": "البريد الإلكتروني",
   // TODO: native-speaker review
@@ -58,7 +58,7 @@ const ar: Record<string, string> = {
   // TODO: native-speaker review
   "auth.register.subheading": "ابدأ بإدارة محافظ العملاء في دقائق.",
   // TODO: native-speaker review
-  "auth.register.welcome": "أنشئ حساب أوبتوفوليو الخاص بك",
+  "auth.register.welcome": "أنشئ حسابك في {appName}",
   // TODO: native-speaker review
   "auth.register.name": "الاسم الكامل",
   // TODO: native-speaker review
@@ -135,10 +135,15 @@ const ar: Record<string, string> = {
 
   "landing.title": "أجب عن سؤال عميلك التالي في ثلاثين ثانية.",
   "landing.subtitle":
-    "أوبتوفوليو يحوِّل محاكاتك إلى حوار — بالعربية أو الإنجليزية.",
+    "{appName} يحوِّل محاكاتك إلى حوار — بالعربية أو الإنجليزية.",
   "landing.body":
     "مصمَّم للمستشارين الماليين في مصر لتشغيل خطط موثوقة تراعي التضخم أمام العميل. جنيه مصري حقيقي، أنظمة اقتصادية حقيقية، قرارات حقيقية.",
   "landing.cta": "دخول المستشار",
+  // TODO: native-speaker review
+  "landing.footer": "© {year} {appName}",
+
+  // TODO: native-speaker review
+  "shell.footer": "© {year}، من تطوير {appName}",
 
   "locale.toggle": "English",
 

@@ -6,6 +6,7 @@
 
 import en from "./en";
 import ar from "./ar";
+import { APP_NAME, APP_NAME_AR } from "../config";
 
 export type Locale = "en" | "ar";
 
@@ -47,14 +48,19 @@ export function applyHtmlDir() {
  * we fall back to English, then to the key itself — this way callers can
  * safely render `t("missing.key")` and a human-readable string always comes
  * out. Optional `vars` do simple `{name}` interpolation.
+ *
+ * The product name is auto-injected under `{appName}` from the central
+ * APP_NAME config so dictionary strings can reference the brand without
+ * every call site remembering to pass it. Caller-supplied `appName` still
+ * wins (escape hatch for tests).
  */
 export function t(key: string, vars?: Record<string, string | number>): string {
   const dict = DICTIONARIES[currentLocale] ?? en;
   let out = dict[key] ?? en[key] ?? key;
-  if (vars) {
-    for (const [name, value] of Object.entries(vars)) {
-      out = out.replace(new RegExp(`\\{${name}\\}`, "g"), String(value));
-    }
+  const appName = currentLocale === "ar" ? APP_NAME_AR : APP_NAME;
+  const merged: Record<string, string | number> = { appName, ...(vars ?? {}) };
+  for (const [name, value] of Object.entries(merged)) {
+    out = out.replace(new RegExp(`\\{${name}\\}`, "g"), String(value));
   }
   return out;
 }

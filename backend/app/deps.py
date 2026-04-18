@@ -8,11 +8,16 @@ import jwt
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from .config import get_settings
 from .database import get_db
 from .models import User
 from .security import decode_access_token
 
-ACCESS_COOKIE_NAME = "marsa_access"
+# Cookie name derives from APP_NAME so a brand swap (via the APP_NAME env
+# var) renames the cookie in lockstep — no second-source-of-truth drift
+# between the backend label and the URL. Lowercased + suffixed for
+# readability; stay ASCII since cookie names must be a token per RFC 6265.
+ACCESS_COOKIE_NAME = f"{get_settings().app_name.lower()}_access"
 
 
 def _extract_token(request: Request, cookie_token: str | None) -> str:

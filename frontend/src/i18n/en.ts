@@ -15,7 +15,7 @@ const en: Record<string, string> = {
   "report.disclosure.data":
     "Data source: {calibration}. Simulation run at: {now}.",
   "report.disclosure.regulator":
-    "Regulator: Financial Regulatory Authority (FRA) — Marsa is a tool, not a licensed investment advisor.",
+    "Regulator: Financial Regulatory Authority (FRA) — {appName} is a tool, not a licensed investment advisor.",
 
   "nav.overview": "Overview",
   "nav.clients": "Clients",
@@ -28,7 +28,7 @@ const en: Record<string, string> = {
   "auth.login.heading": "Financial Advisor Login",
   "auth.login.subheading":
     "Log in to run credible, inflation-aware financial plans for your Egyptian clients.",
-  "auth.login.welcome": "Welcome to Marsa Portal",
+  "auth.login.welcome": "Welcome to {appName}",
   "auth.login.email": "Email",
   "auth.login.email_placeholder": "Email address",
   "auth.login.password": "Password",
@@ -41,7 +41,7 @@ const en: Record<string, string> = {
 
   "auth.register.heading": "Create account",
   "auth.register.subheading": "Start managing client portfolios in minutes.",
-  "auth.register.welcome": "Create your Marsa account",
+  "auth.register.welcome": "Create your {appName} account",
   "auth.register.name": "Full name",
   "auth.register.email": "Email",
   "auth.register.password": "Password",
@@ -96,10 +96,13 @@ const en: Record<string, string> = {
 
   "landing.title": "Answer your client's next question in thirty seconds.",
   "landing.subtitle":
-    "Marsa turns your Monte Carlo into a conversation — in Arabic or English.",
+    "{appName} turns your Monte Carlo into a conversation — in Arabic or English.",
   "landing.body":
     "Built for Egyptian financial advisors to run credible, inflation-aware plans in front of the client. Real EGP, real regimes, real decisions.",
   "landing.cta": "Advisor sign-in",
+  "landing.footer": "© {year} {appName}",
+
+  "shell.footer": "© {year}, Developed by {appName}",
 
   "locale.toggle": "العربية",
 

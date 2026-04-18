@@ -25,7 +25,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(settings)
     log = structlog.get_logger("startup")
 
-    app = FastAPI(title="Marsa RFA API", version="1.0.0")
+    app = FastAPI(title=f"{settings.app_name} RFA API", version="1.0.0")
 
     limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit_default])
     app.state.limiter = limiter
@@ -55,7 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/", tags=["meta"])
     def root() -> dict[str, str]:
-        return {"service": "marsa-rfa", "version": app.version}
+        return {"service": f"{settings.app_name.lower()}-rfa", "version": app.version}
 
     log.info("app.startup", env=settings.app_env, cors=settings.cors_origins)
     return app

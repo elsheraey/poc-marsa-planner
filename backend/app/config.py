@@ -17,6 +17,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Product name. Single source of truth for every user-visible brand
+    # reference on the backend: OpenAPI title, root metadata, and the auth
+    # cookie prefix (see ACCESS_COOKIE_NAME in deps.py which derives from
+    # this). Override via the APP_NAME env var to rebrand without code
+    # changes.
+    app_name: str = Field(default="Marsa", alias="APP_NAME")
+
     app_env: str = "development"
     log_level: str = "INFO"
 
