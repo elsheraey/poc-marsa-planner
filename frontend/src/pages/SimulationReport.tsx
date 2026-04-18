@@ -16,6 +16,12 @@ import { useAppSelector } from "../store";
 
 type Tab = "chart" | "table";
 
+const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach", string> = {
+  attainable: "bg-emerald-100 text-emerald-700",
+  aspirational: "bg-amber-100 text-amber-700",
+  out_of_reach: "bg-rose-100 text-rose-700",
+};
+
 export default function SimulationReport() {
   const nav = useNavigate();
   const result = useAppSelector((s) => s.simulation.result);
@@ -120,7 +126,17 @@ export default function SimulationReport() {
 
       <section className="card mt-6">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold">Goals Achievement Probability</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold">Goals Achievement Probability</h3>
+            {result.attainability && (
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[result.attainability]}`}
+                title="Attainability band based on P15 / median real-terms projection"
+              >
+                {result.attainability.replace("_", " ")}
+              </span>
+            )}
+          </div>
           <button className="text-muted">⋮</button>
         </div>
         <div className="flex items-center gap-2 text-xs text-green-500 mb-5">

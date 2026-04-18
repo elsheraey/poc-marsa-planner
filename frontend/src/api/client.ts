@@ -134,4 +134,5 @@ export type SimulateResult = {
     optimistic: number[];
   };
   probability_of_goal: number | null;
+  attainability: "attainable" | "aspirational" | "out_of_reach" | null;
 };
