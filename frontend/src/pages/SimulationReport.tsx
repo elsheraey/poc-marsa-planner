@@ -87,7 +87,10 @@ function attainabilityLabel(
 ): string {
   const key = `report.${attainability}`;
   const localised = t(key);
-  return localised === key ? attainability.replace(/_/g, " ") : localised;
+  // Use `replaceAll` (via the /_/g regex) so both underscores in
+  // "out_of_reach" are replaced; an earlier `replace("_", " ")` only hit
+  // the first and rendered "out of_reach".
+  return localised === key ? attainability.replaceAll(/_/g, " ") : localised;
 }
 
 export default function SimulationReport() {

@@ -34,16 +34,19 @@ export async function registerNewUser(
 }
 
 /**
- * Extract the first probability percent (e.g. "48.12%" -> 48.12) rendered in
+ * Extract the first probability percent (e.g. "~42%" -> 42) rendered in
  * any DonutChart on the simulation report page. Waits for at least one to be
  * visible before reading.
+ *
+ * The donut now renders `~${Math.round(p)}%` (honest to the Monte Carlo
+ * standard error per market-spec §4c); the leading "~" is optional so
+ * earlier artefacts still parse.
  */
 export async function readFirstProbabilityPercent(page: Page): Promise<number> {
-  // DonutChart renders `${p.toFixed(2)}%` inside an <svg><text>.
   const donutText = page.locator("svg text", { hasText: /%$/ }).first();
   await expect(donutText).toBeVisible({ timeout: 15_000 });
   const raw = (await donutText.textContent()) ?? "";
-  const m = /([\d.]+)\s*%/.exec(raw);
+  const m = /~?([\d.]+)\s*%/.exec(raw);
   if (!m) throw new Error(`Could not parse percent from donut text: ${raw}`);
   return Number(m[1]);
 }
