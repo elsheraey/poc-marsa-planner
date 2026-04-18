@@ -52,5 +52,9 @@ demo/out/
 demo/assets/*.mp3
 demo/assets/*.webm
 demo/assets/*.mp4
+demo/assets/*.png
+demo/assets/voiceover.manifest.json
+demo/assets/_concat.list
+demo/src/voiceover.manifest.json
 demo/node_modules/
 demo/.env

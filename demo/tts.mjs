@@ -3,20 +3,33 @@
  * ElevenLabs text-to-speech generator for the Marsa demo video.
  *
  * Reads ELEVENLABS_API_KEY from demo/.env (simple line-split — no dotenv
- * dep), then POSTs the English and Arabic narration scripts to the
- * multilingual-v2 model. Saves voiceover.en.mp3 and voiceover.ar.mp3
- * into demo/assets/.
+ * dep), then POSTs the English narration script to the ElevenLabs v3
+ * model. Saves:
+ *   - demo/assets/voiceover.en.<section_id>.mp3  (one per section)
+ *   - demo/assets/voiceover.en.mp3               (concatenated whole,
+ *                                                 legacy consumer)
+ *   - demo/assets/voiceover.manifest.json        (per-section ms + total)
  *
- * Character budget: ~900 chars per language — comfortably within the
- * 10,000 character/month free tier.
+ * The section split is what lets the Remotion composition lock
+ * screenshot visuals to each spoken beat (see demo/src/Marsa.tsx).
+ * `EN_SCRIPT` is kept as the concatenated whole for backward compat; it
+ * is derived from `SECTIONS` so the two can never drift.
+ *
+ * Arabic is deferred this pass (render:ar is not invoked); AR_SCRIPT is
+ * retained as a comment-locked reference for the next Arabic-enabled
+ * cut.
+ *
+ * Character budget: ~1100 chars for EN. Splitting into 9 sections does
+ * not increase billable chars — total remains ~1100 / 10,000 free tier.
  *
  * SAFETY: the API key is never echoed to stdout, never written to any
  * file outside demo/.env, never logged as part of an error. If a request
  * fails the error body is surfaced, but the Authorization header is not.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ASSETS = resolve(__dirname, "assets");
@@ -26,39 +39,75 @@ const ENV_PATH = resolve(__dirname, ".env");
 //   EN — Brian ("Deep, Resonant and Comforting"). Chose this over Sarah /
 //        Eric after A/B — Brian's register lands the gravitas the
 //        financial-planning narration wants. Free-tier-accessible.
-//   AR — tries to discover an Arabic-labelled voice via /v1/voices; falls
-//        back to Adam on Multilingual v2 (proven Arabic phoneme coverage).
 const EN_VOICE = "nPczCjzI2devNBz1zQrb"; // Brian
-const AR_VOICE_DEFAULT = "pNInz6obpgDQGcFmaJgB"; // Adam (fallback)
 
-// Model selection per language. v3 gives Rachel more natural pacing on
-// the English narration; Arabic stays on multilingual_v2 where native
-// coverage is proven.
+// Model selection. v3 gives Brian more natural pacing on the English
+// narration; on free-tier 402s we fall back to multilingual_v2 so the
+// pipeline still lands usable MP3s.
 const EN_MODEL = "eleven_v3";
-const AR_MODEL = "eleven_multilingual_v2";
 
-const EN_SCRIPT = `Omar is 42. Senior manager at a multinational. Wife, two kids — seven and ten. Around 155,000 pounds come in each month. 3 million already invested; 40,000 saved on top.
+// ---------------------------------------------------------------------
+// Section-keyed English script.
+//
+// Each entry ends on a natural breath point so the screenshot cut
+// between sections is also an audible silence (≈60–120 ms). The
+// Remotion composition measures each MP3's duration via ffprobe and
+// uses the cumulative start frames as <Sequence from=...> offsets, so
+// each section's visual swaps exactly when its sentence ends.
+// ---------------------------------------------------------------------
+export const SECTIONS = [
+  {
+    id: "01_intro",
+    text: "Omar is 42. Senior manager at a multinational. Wife, two kids — seven and ten. Around 155,000 pounds come in each month. 3 million already invested; 40,000 saved on top.",
+  },
+  {
+    id: "02_goals",
+    text: "Three goals. An apartment in New Cairo by 2028. University for the kids, 2033. Retirement at 60.",
+  },
+  {
+    id: "03_setup",
+    text: `But "university" means different things. AUC. Mid-tier private like GUC or BUE. Or Cairo University, government-supported. The numbers aren't the same. So the advisor runs three scenarios, side by side.`,
+  },
+  {
+    id: "04_auc",
+    text: "Scenario one — AUC. Four million pounds for both kids. Marsa: out of reach. Retirement falls nine million short of what Omar needs.",
+  },
+  {
+    id: "05_guc",
+    text: "Scenario two — GUC or BUE. Three million. Still out of reach. Seven million short.",
+  },
+  {
+    id: "06_cairo",
+    text: "Scenario three — Cairo University. Five hundred thousand. Marsa: aspirational. The median just clears; the pessimistic path misses by two.",
+  },
+  {
+    id: "07_inversion",
+    text: "Marsa's inversion: if Omar saves 60,000 a month instead of 40,000, all three scenarios become attainable. Or he pushes retirement to 63.",
+  },
+  {
+    id: "08_closing",
+    text: "Three choices. One honest conversation about what his plan needs to be.",
+  },
+  {
+    id: "09_tag",
+    text: "Marsa. Egyptian planning, built for the real conversation.",
+  },
+];
 
-Three goals. An apartment in New Cairo by 2028. University for the kids, 2033. Retirement at 60.
+// Derived — concatenated whole, preserved for any legacy consumer that
+// still expects a single block of narration. Blank line between sections
+// gives the TTS engine a small pause when the whole-script variant is
+// synthesised (not used by the current pipeline, but kept so a future
+// fallback render can drop back to a single MP3).
+export const EN_SCRIPT = SECTIONS.map((s) => s.text).join("\n\n");
 
-But "university" means different things. AUC. Mid-tier private like GUC or BUE. Or Cairo University, government-supported. The numbers aren't the same. So the advisor runs three scenarios, side by side.
-
-Scenario one — AUC. Four million pounds for both kids. Marsa: out of reach. Retirement falls nine million short of what Omar needs.
-
-Scenario two — GUC or BUE. Three million. Still out of reach. Seven million short.
-
-Scenario three — Cairo University. Five hundred thousand. Marsa: aspirational. The median just clears; the pessimistic path misses by two.
-
-Marsa's inversion: if Omar saves 60,000 a month instead of 40,000, all three scenarios become attainable. Or he pushes retirement to 63.
-
-Three choices. One honest conversation about what his plan needs to be.
-
-Marsa. Egyptian planning, built for the real conversation.`;
-
-// Arabic translation by the build script. TRANSLATION-FLAG: reviewed for
-// meaning but not native-checked — flagged in the commit message for a
-// future native pass before this ships to a real client meeting.
-const AR_SCRIPT = `عمر عمره 42 عامًا. مدير أول في شركة متعددة الجنسيات. متزوج ولديه طفلان في السابعة والعاشرة. دخل الأسرة حوالي 155 ألف جنيه شهريًا. لديه 3 ملايين جنيه مستثمرة، ويدّخر 40 ألف جنيه شهريًا.
+// Arabic — deferred this pass. Left here (commented) so the next
+// Arabic-enabled cut can be slotted in without re-translating. The
+// translation below has been reviewed for meaning but not native-
+// checked; flagged TRANSLATION-FLAG in the previous commit history for
+// a future native pass before this ships to a real client meeting.
+// eslint-disable-next-line no-unused-vars
+const AR_SCRIPT_DEFERRED = `عمر عمره 42 عامًا. مدير أول في شركة متعددة الجنسيات. متزوج ولديه طفلان في السابعة والعاشرة. دخل الأسرة حوالي 155 ألف جنيه شهريًا. لديه 3 ملايين جنيه مستثمرة، ويدّخر 40 ألف جنيه شهريًا.
 
 ثلاثة أهداف. شقة في القاهرة الجديدة بحلول 2028. تعليم جامعي للطفلين في 2033. التقاعد في سن الستين.
 
@@ -76,6 +125,16 @@ const AR_SCRIPT = `عمر عمره 42 عامًا. مدير أول في شركة 
 
 مرسى. تخطيط مصري، مبني للمحادثة الحقيقية.`;
 
+// ffprobe ships inside Remotion's compositor binary — no extra dep.
+const FFPROBE = resolve(
+  __dirname,
+  "node_modules/@remotion/compositor-linux-x64-gnu/ffprobe"
+);
+const FFMPEG = resolve(
+  __dirname,
+  "node_modules/@remotion/compositor-linux-x64-gnu/ffmpeg"
+);
+
 function readApiKey() {
   if (!existsSync(ENV_PATH)) {
     throw new Error(`demo/.env missing at ${ENV_PATH}`);
@@ -83,41 +142,15 @@ function readApiKey() {
   const raw = readFileSync(ENV_PATH, "utf8");
   for (const line of raw.split(/\r?\n/)) {
     const m = /^\s*ELEVENLABS_API_KEY\s*=\s*(.+?)\s*$/.exec(line);
-    if (m) return m[1].replace(/^['"]|['"]$/g, "");
+    if (m) {
+      // Strip a matched pair of leading+trailing quotes (' or ") from the
+      // value. Uses a single regex capture so escaping rules stay trivial
+      // and replaceAll isn't applicable (anchors ^/$ only match once).
+      const stripped = /^(['"])(.*)\1$/.exec(m[1]);
+      return stripped ? stripped[2] : m[1];
+    }
   }
   throw new Error("ELEVENLABS_API_KEY not found in demo/.env");
-}
-
-async function findArabicVoice(apiKey) {
-  try {
-    const res = await fetch("https://api.elevenlabs.io/v1/voices", {
-      headers: { "xi-api-key": apiKey },
-    });
-    if (!res.ok) return null;
-    const body = await res.json();
-    const voices = body.voices || [];
-    // First preference: a voice whose labels.language/accent contains "ar"
-    // or whose name contains an obvious Arabic-speaker handle.
-    for (const v of voices) {
-      const label = JSON.stringify(v.labels || {}).toLowerCase();
-      const name = String(v.name || "").toLowerCase();
-      if (
-        label.includes("arabic") ||
-        label.includes('"ar"') ||
-        label.includes("ar-") ||
-        name.includes("arabic") ||
-        name.includes("mohammed") ||
-        name.includes("fahad") ||
-        name.includes("haytham")
-      ) {
-        return { id: v.voice_id, name: v.name, reason: "matched arabic label/name" };
-      }
-    }
-    return null;
-  } catch (err) {
-    console.warn("tts: voice lookup failed —", err.message);
-    return null;
-  }
 }
 
 async function tts({ apiKey, voiceId, modelId, text, outfile }) {
@@ -138,18 +171,136 @@ async function tts({ apiKey, voiceId, modelId, text, outfile }) {
   if (!res.ok) {
     // NEVER leak the Authorization header; the error body is enough.
     const errBody = await res.text().catch(() => "");
-    throw new Error(`tts ${voiceId} [${modelId}]: ${res.status} ${res.statusText} ${errBody.slice(0, 200)}`);
+    throw new Error(
+      `tts ${voiceId} [${modelId}]: ${res.status} ${res.statusText} ${errBody.slice(0, 200)}`
+    );
   }
   const buf = Buffer.from(await res.arrayBuffer());
   writeFileSync(outfile, buf);
-  const charsUsed = res.headers.get("character-cost") || res.headers.get("x-character-cost");
   const charsRemaining = res.headers.get("character-count-remaining");
   return {
     bytes: buf.length,
     chars: text.length,
-    billed: charsUsed,
     remaining: charsRemaining,
   };
+}
+
+// Query ffprobe for the duration in milliseconds. Rounding to the
+// nearest ms is enough for frame alignment at 30fps (33 ms/frame).
+function probeDurationMs(path) {
+  if (!existsSync(FFPROBE)) {
+    throw new Error(`ffprobe not found at ${FFPROBE}`);
+  }
+  const res = spawnSync(
+    FFPROBE,
+    [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      path,
+    ],
+    { encoding: "utf8" }
+  );
+  if (res.status !== 0) {
+    throw new Error(`ffprobe failed on ${path}: ${res.stderr}`);
+  }
+  const secs = Number.parseFloat(res.stdout.trim());
+  if (!Number.isFinite(secs)) {
+    throw new TypeError(`ffprobe returned non-numeric duration for ${path}: ${res.stdout}`);
+  }
+  return Math.round(secs * 1000);
+}
+
+// Concatenate the per-section MP3s into a single whole-narration track
+// via ffmpeg's `concat` demuxer. This is what the Remotion composition
+// wires as a single <Audio>; section visuals use the manifest's
+// cumulative offsets so sync is exact.
+function concatMp3s(sectionPaths, outPath) {
+  const listPath = resolve(ASSETS, "_concat.list");
+  // Escape single quotes for ffmpeg's concat list format: `'` → `'\''`.
+  const escape = (p) => p.replaceAll("'", String.raw`'\''`);
+  const body = sectionPaths.map((p) => `file '${escape(p)}'`).join("\n");
+  writeFileSync(listPath, body + "\n");
+  const res = spawnSync(
+    FFMPEG,
+    [
+      "-y",
+      "-f",
+      "concat",
+      "-safe",
+      "0",
+      "-i",
+      listPath,
+      "-c",
+      "copy",
+      outPath,
+    ],
+    { encoding: "utf8" }
+  );
+  if (res.status !== 0) {
+    throw new Error(`ffmpeg concat failed: ${res.stderr}`);
+  }
+}
+
+// Tiered model fallback. `eleven_v3` is the best-sounding model but is
+// rate- and quota-bounded on the free tier; `eleven_turbo_v2_5` uses
+// ~0.5x credits and is the cheapest usable option; `eleven_multilingual_v2`
+// is the pre-v3 default. The fallback hops forward on any of:
+//   - 402 paid_plan_required (v3 not in tier)
+//   - 401 quota_exceeded (monthly budget blown; only cheaper models help)
+//   - 429 rate limited on the specific model
+// so a partial-quota month still lands all 9 sections.
+const MODEL_CHAIN = [EN_MODEL, "eleven_turbo_v2_5", "eleven_multilingual_v2"];
+const FALLBACK_RE =
+  /402|paid_plan_required|payment_required|quota_exceeded|429|rate_limit/i;
+
+// Reuse path — returns a section output when the MP3 is already on disk
+// (idempotent across partial-quota re-runs), else null so the caller
+// synthesises it.
+function reuseSection(s, outfile) {
+  if (!existsSync(outfile)) return null;
+  const ms = probeDurationMs(outfile);
+  const bytes = statSync(outfile).size;
+  console.log(
+    `tts: ${s.id} reused — ${(bytes / 1024).toFixed(1)} KB · ${ms} ms (on-disk, no API call)`
+  );
+  return {
+    id: s.id,
+    file: `voiceover.en.${s.id}.mp3`,
+    duration_ms: ms,
+    bytes,
+    chars: s.text.length,
+    reused: true,
+  };
+}
+
+// Try each model in MODEL_CHAIN; return { res, modelUsed } on success
+// or throw after exhausting the chain.
+async function synthesiseSection({ apiKey, s, outfile }) {
+  for (const modelId of MODEL_CHAIN) {
+    try {
+      const res = await tts({
+        apiKey,
+        voiceId: EN_VOICE,
+        modelId,
+        text: s.text,
+        outfile,
+      });
+      return { res, modelUsed: modelId };
+    } catch (err) {
+      if (FALLBACK_RE.test(err.message)) {
+        console.warn(
+          `tts: ${s.id} ${modelId} refused (${err.message.slice(0, 80)}…) — trying next model`
+        );
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(`tts: ${s.id} all models exhausted`);
 }
 
 async function main() {
@@ -157,76 +308,99 @@ async function main() {
   const apiKey = readApiKey();
   const totalStart = Date.now();
 
-  // English first — primary deliverable. Try v3 for better prosody;
-  // free tier may 402 on v3, in which case fall back to multilingual_v2
-  // automatically so the pipeline still lands a usable MP3.
-  console.log(`tts: EN → Brian (${EN_VOICE.slice(0, 6)}…) · model ${EN_MODEL}`);
-  const enStart = Date.now();
-  let enRes;
-  try {
-    enRes = await tts({
-      apiKey,
-      voiceId: EN_VOICE,
-      modelId: EN_MODEL,
-      text: EN_SCRIPT,
-      outfile: resolve(ASSETS, "voiceover.en.mp3"),
-    });
-  } catch (err) {
-    if (/402|paid_plan_required|payment_required/i.test(err.message)) {
-      console.warn(`tts: EN ${EN_MODEL} refused by tier — retrying on multilingual_v2`);
-      enRes = await tts({
-        apiKey,
-        voiceId: EN_VOICE,
-        modelId: "eleven_multilingual_v2",
-        text: EN_SCRIPT,
-        outfile: resolve(ASSETS, "voiceover.en.mp3"),
-      });
-    } else {
-      throw err;
-    }
-  }
   console.log(
-    `tts: EN ok — ${(enRes.bytes / 1024).toFixed(1)} KB, ${enRes.chars} chars in ${((Date.now() - enStart) / 1000).toFixed(1)}s`
+    `tts: EN → Brian (${EN_VOICE.slice(0, 6)}…) · model ${EN_MODEL} · ${SECTIONS.length} sections`
   );
 
-  // Arabic — try a matched voice, fall back to Adam.
-  const arVoiceHit = await findArabicVoice(apiKey);
-  const arVoice = arVoiceHit?.id || AR_VOICE_DEFAULT;
-  console.log(
-    `tts: AR → ${arVoiceHit?.name || "Adam (fallback)"} (${arVoice.slice(0, 6)}…) · model ${AR_MODEL} — ${arVoiceHit?.reason || "no arabic-labelled voice found"}`
+  const sectionOutputs = [];
+  let totalChars = 0;
+  let lastRemaining = null;
+  for (const s of SECTIONS) {
+    const outfile = resolve(ASSETS, `voiceover.en.${s.id}.mp3`);
+    const reused = reuseSection(s, outfile);
+    if (reused) {
+      sectionOutputs.push(reused);
+      continue;
+    }
+    const sStart = Date.now();
+    const { res, modelUsed } = await synthesiseSection({ apiKey, s, outfile });
+    const ms = probeDurationMs(outfile);
+    sectionOutputs.push({
+      id: s.id,
+      file: `voiceover.en.${s.id}.mp3`,
+      duration_ms: ms,
+      bytes: res.bytes,
+      chars: res.chars,
+    });
+    totalChars += res.chars;
+    if (res.remaining) lastRemaining = res.remaining;
+    console.log(
+      `tts: ${s.id} ok — ${(res.bytes / 1024).toFixed(1)} KB · ${ms} ms · ${res.chars} chars · model ${modelUsed} · ${((Date.now() - sStart) / 1000).toFixed(1)}s`
+    );
+  }
+
+  // Concatenated whole — both for the Remotion composition's <Audio>
+  // (one track that plays continuously) and as the legacy
+  // voiceover.en.mp3 filename.
+  const concatPath = resolve(ASSETS, "voiceover.en.mp3");
+  concatMp3s(
+    sectionOutputs.map((s) => resolve(ASSETS, s.file)),
+    concatPath
   );
-  const arStart = Date.now();
-  const arRes = await tts({
-    apiKey,
-    voiceId: arVoice,
-    modelId: AR_MODEL,
-    text: AR_SCRIPT,
-    outfile: resolve(ASSETS, "voiceover.ar.mp3"),
-  });
-  console.log(
-    `tts: AR ok — ${(arRes.bytes / 1024).toFixed(1)} KB, ${arRes.chars} chars in ${((Date.now() - arStart) / 1000).toFixed(1)}s`
-  );
+  const totalMs = probeDurationMs(concatPath);
+  console.log(`tts: concat ok — voiceover.en.mp3 · ${totalMs} ms`);
+
+  // Manifest — what Remotion reads to derive frame offsets. `total_ms`
+  // is the ffprobe-measured duration of the concatenated track, not the
+  // sum of section durations (those differ by the concat demuxer's
+  // frame-boundary rounding by a few ms — the concat measurement is the
+  // one the <Audio> plays against, so it's the one we trust).
+  const manifest = {
+    en: {
+      voice: EN_VOICE,
+      model: EN_MODEL,
+      total_ms: totalMs,
+      sum_of_sections_ms: sectionOutputs.reduce((s, x) => s + x.duration_ms, 0),
+      sections: sectionOutputs.map(({ id, file, duration_ms }) => ({
+        id,
+        file,
+        duration_ms,
+      })),
+    },
+  };
+  const manifestPath = resolve(ASSETS, "voiceover.manifest.json");
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  // Also drop a copy inside src/ so the Remotion composition can `import`
+  // it statically (ESM JSON imports). Both are gitignored — the src/ one
+  // is listed under `demo/src/voiceover.manifest.json` in .gitignore.
+  const manifestSrcPath = resolve(__dirname, "src", "voiceover.manifest.json");
+  writeFileSync(manifestSrcPath, JSON.stringify(manifest, null, 2));
 
   const total = ((Date.now() - totalStart) / 1000).toFixed(1);
   console.log(
-    `tts: done in ${total}s — EN voice ${EN_VOICE}, AR voice ${arVoice}, total chars ${
-      enRes.chars + arRes.chars
-    }`
+    `tts: done in ${total}s — voice ${EN_VOICE}, total ${totalChars} chars, ${totalMs} ms`
   );
-  // Emit a machine-readable line the caller can grep for runtime reporting.
+  // Machine-readable final line (grep-target for the caller).
   console.log(
     JSON.stringify({
       en_voice: EN_VOICE,
-      ar_voice: arVoice,
-      en_chars: enRes.chars,
-      ar_chars: arRes.chars,
-      remaining: enRes.remaining || arRes.remaining || null,
+      en_chars: totalChars,
+      total_ms: totalMs,
+      remaining: lastRemaining,
     })
   );
 }
 
-main().catch((err) => {
-  // err.message is safe — we never include the API key in error bodies.
-  console.error("tts: fatal —", err.message);
-  process.exit(1);
-});
+// Only auto-run when invoked directly (`node tts.mjs`); skip when
+// imported so callers (e.g. capture.ts reading SECTIONS) don't trigger
+// a synthesis pass. Uses top-level await so a thrown error surfaces via
+// the process exit code without a promise-chain .catch.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (err) {
+    // err.message is safe — we never include the API key in error bodies.
+    console.error("tts: fatal —", err.message);
+    process.exit(1);
+  }
+}
