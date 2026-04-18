@@ -18,21 +18,14 @@ type Props = Readonly<{
 }>;
 
 /**
- * Editorial probability bar. A static document-style element, not an
- * animated dashboard widget:
+ * Apple-style probability bar. Plain horizontal track (h-2, gray-5,
+ * rounded-full) with a system-blue fill; two small vertical ticks
+ * bracket the CI bounds when an SE tail is provided. Numeric label sits
+ * below the bar in semibold label type with a muted "± x pp" tail.
  *
- *   ────────────────────────────────── rule (bg-rule), 2px tall
- *   ██████████                         fill (bg-accent), same 2px
- *
- *   42%   ± 0.5 pp                     numeric label below, tabular-nums
- *
- * When an SE tail is supplied, short vertical ticks bracket the filled
- * edge to show the CI width. No hover, no transition — the bar renders
- * once and sits still.
- *
- * The numeric label is marked `data-testid="probability-bar-label"` so
- * e2e tests can read the rendered percent without relying on SVG text.
- * That testid is the stable contract; the DOM shape above it is not.
+ * No animation, no hover state. Percent is computed once and rendered
+ * once. The label element carries `data-testid="probability-bar-label"`;
+ * that testid is the e2e contract.
  */
 export default function ProbabilityBar({
   percent,
@@ -43,9 +36,9 @@ export default function ProbabilityBar({
   const p = Math.max(0, Math.min(100, percent));
   const rounded = Math.round(p);
   const text = label ?? `${rounded}%`;
-  // Width of the CI bracket, in percent of the bar width. The SE is
-  // already in percentage-points — e.g. "0.5" means ±0.5 pp around `p`.
-  // Parsing guards against "0.5" coming in as a string (which it is).
+  // CI bracket width in percent. The SE is already in percentage
+  // points ("0.5" means ±0.5 pp around `p`). Parsing guards against
+  // the string form coming through from the formatter.
   const seNumPp = seTail != null ? Number(seTail) : 0;
   const hasTicks = seTail != null && Number.isFinite(seNumPp) && seNumPp > 0;
   const leftEdge = Math.max(0, p - seNumPp);
@@ -56,38 +49,39 @@ export default function ProbabilityBar({
       aria-label={`${ariaPrefix} ${rounded} percent`}
       className="w-full"
     >
-      <div className="relative h-0.5 w-full bg-rule" aria-hidden="true">
+      <div
+        className="relative h-2 w-full rounded-full bg-gray-5"
+        aria-hidden="true"
+      >
         <div
-          className="absolute inset-y-0 start-0 bg-accent"
+          className="absolute inset-y-0 start-0 rounded-full bg-system-blue"
           style={{ width: `${p}%` }}
         />
         {hasTicks && (
           <>
             {/*
-              Two 6px ticks — one at the lower CI bound, one at the
-              upper. Positioned with `calc(... - 0.5px)` so the tick
-              centres on the percentage exactly (the tick is 1px wide).
-              Opacity 0.6 so they read as a secondary annotation, not a
-              second data layer.
+              CI ticks. 1px wide, bracket the filled edge. Colour is
+              label-secondary so the ticks read as a secondary
+              annotation rather than a second data layer.
             */}
             <div
-              className="absolute w-px h-2 bg-ink/60"
-              style={{ left: `calc(${leftEdge}% - 0.5px)`, top: "-3px" }}
+              className="absolute w-px h-3 bg-label-secondary"
+              style={{ left: `calc(${leftEdge}% - 0.5px)`, top: "-2px" }}
             />
             <div
-              className="absolute w-px h-2 bg-ink/60"
-              style={{ left: `calc(${rightEdge}% - 0.5px)`, top: "-3px" }}
+              className="absolute w-px h-3 bg-label-secondary"
+              style={{ left: `calc(${rightEdge}% - 0.5px)`, top: "-2px" }}
             />
           </>
         )}
       </div>
       <div
-        className="mt-2 text-sm text-ink tabular flex items-baseline gap-2"
+        className="mt-1.5 text-sm tabular flex items-baseline gap-2"
         data-testid="probability-bar-label"
       >
-        <span className="font-medium">{text}</span>
+        <span className="font-semibold text-label">{text}</span>
         {seTail && (
-          <span className="text-ink-muted text-xs">± {seTail} pp</span>
+          <span className="text-label-secondary text-xs">± {seTail} pp</span>
         )}
       </div>
     </div>

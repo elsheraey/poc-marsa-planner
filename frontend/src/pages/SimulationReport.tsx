@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  CartesianGrid,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -42,9 +43,9 @@ function fmtCalibration(raw: string | null | undefined): string {
 }
 
 /**
- * Disclosure banner. Editorial, not a card: a 1px top rule, a small-caps
- * summary toggle, a bullet list inside when open. No rounded corners, no
- * background fill.
+ * Disclosure — Apple disclosure-row pattern. A rounded card with a
+ * clickable header: icon chevron rotates 90° on open; the bullet list
+ * slides into view below.
  */
 function DisclosureBanner({
   calibrationAsOf,
@@ -55,19 +56,24 @@ function DisclosureBanner({
   return (
     <section
       data-testid="simulation-disclosure"
-      className="border-t border-rule py-6 mt-16 text-xs text-ink-muted"
+      className="mt-10 rounded-xl bg-bg-primary ring-1 ring-separator overflow-hidden"
     >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between uppercase tracking-widest text-ink-muted hover:text-ink"
+        className="w-full flex items-center justify-between px-5 py-4 text-[15px] font-semibold text-label hover:bg-bg-secondary transition"
         aria-expanded={open}
       >
         <span>{t("report.disclosure")}</span>
-        <span aria-hidden="true">{open ? "–" : "+"}</span>
+        <span
+          aria-hidden="true"
+          className={`text-label-tertiary transition-transform ${open ? "rotate-90" : ""}`}
+        >
+          ›
+        </span>
       </button>
       {open && (
-        <ul className="mt-4 space-y-2 leading-relaxed list-disc list-inside">
+        <ul className="px-5 pb-5 space-y-2 text-sm text-label-secondary leading-relaxed list-disc list-inside border-t border-separator pt-4">
           <li>{t("report.disclosure.mc")}</li>
           <li>{t("report.disclosure.real")}</li>
           <li>{t("report.disclosure.past")}</li>
@@ -87,15 +93,15 @@ function DisclosureBanner({
 type Tab = "chart" | "table";
 
 /*
-  Muted attainability palette. The saturated 700/600 fills from the old
-  pill badges would stab through the cream — we drop to 900 ink on 100
-  tints, which read as a quiet editorial annotation. Contrast against
-  bg-{color}-100 clears 4.5:1 at 900.
+  Attainability pill colours — iOS tinted-pill pattern. Each state uses a
+  system-* foreground on a system-*-tint background, reading as a soft
+  status chip rather than a saturated badge. See tailwind.config.js for
+  the exact hex triples.
 */
 const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach", string> = {
-  attainable: "bg-emerald-100 text-emerald-900",
-  aspirational: "bg-amber-100 text-amber-900",
-  out_of_reach: "bg-rose-100 text-rose-900",
+  attainable: "bg-system-green-tint text-system-green",
+  aspirational: "bg-system-orange-tint text-system-orange",
+  out_of_reach: "bg-system-red-tint text-system-red",
 };
 
 // Prefer the localised string; fall back to the backend label with
@@ -209,10 +215,17 @@ export default function SimulationReport() {
   if (status === "loading") {
     return (
       <AppShell>
-        <WizardTabs basePath="/clients/new" />
-        <p className="text-center text-ink-muted font-serif italic py-16">
-          Running simulation…
-        </p>
+        <header className="px-6 pt-10 pb-6">
+          <h1 className="text-4xl font-bold tracking-tight">
+            {t("report.title")}
+          </h1>
+        </header>
+        <div className="px-6">
+          <WizardTabs basePath="/clients/new" />
+          <p className="text-center text-label-secondary py-16">
+            Running simulation…
+          </p>
+        </div>
       </AppShell>
     );
   }
@@ -220,14 +233,25 @@ export default function SimulationReport() {
   if (!activeResult || scenarioCards.length === 0) {
     return (
       <AppShell>
-        <WizardTabs basePath="/clients/new" />
-        <div className="py-16 text-center">
-          <p className="font-serif italic text-ink-muted mb-6">
-            No simulation has been run yet. Go back and run a scenario to see the report.
-          </p>
-          <button className="btn" onClick={() => nav("/clients/new/scenario")}>
-            Back to Scenarios
-          </button>
+        <header className="px-6 pt-10 pb-6">
+          <h1 className="text-4xl font-bold tracking-tight">
+            {t("report.title")}
+          </h1>
+        </header>
+        <div className="px-6">
+          <WizardTabs basePath="/clients/new" />
+          <div className="rounded-xl bg-bg-primary ring-1 ring-separator p-10 text-center">
+            <p className="text-label-secondary mb-4">
+              No simulation has been run yet. Go back and run a scenario to see the report.
+            </p>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => nav("/clients/new/scenario")}
+            >
+              Back to Scenarios
+            </button>
+          </div>
         </div>
       </AppShell>
     );
@@ -311,328 +335,354 @@ export default function SimulationReport() {
   const clientName = draftProfile.fullName || "New client";
   const clientEmail = draftProfile.email || "";
 
+  const activeAttainability = activeResult.attainability;
+
   return (
     <AppShell focus={presenting}>
-      {!presenting && <WizardTabs basePath="/clients/new" />}
-
-      {/*
-        Moment-of-truth headline — at the TOP of the page, above every
-        other element. No hero panel, no gradient, no decorative chrome.
-        The page opens with the sentence that answers "can my client
-        afford this?", set in a large serif, and nothing more.
-      */}
-      <section data-testid="moment-of-truth" className="mb-12">
-        <p
-          className="font-serif text-3xl md:text-4xl tracking-tight leading-tight text-ink"
-          data-testid="moment-of-truth-headline"
-        >
-          {headline}
-          {seTail && (
-            <>
-              {" "}
-              <em
-                className="text-xl md:text-2xl text-ink-muted not-italic tabular"
-                data-testid="moment-of-truth-se"
-              >
-                {seTail}
-              </em>
-            </>
-          )}
-        </p>
-
-        {suggestions.length > 0 && (
-          <ul
-            className="mt-6 space-y-2 text-base text-ink-muted"
-            data-testid="moment-of-truth-suggestions"
-          >
-            {suggestions.map((s) => (
-              <li key={s} className="leading-relaxed">
-                — {s}
-              </li>
-            ))}
-          </ul>
+      <header className="px-6 pt-10 pb-6">
+        <h1 className="text-4xl font-bold tracking-tight truncate">
+          {clientName}
+        </h1>
+        {clientEmail && (
+          <p className="mt-1 text-base text-label-secondary">{clientEmail}</p>
         )}
-      </section>
-
-      {/*
-        Client masthead. A thin rule underneath, name in serif, email in
-        small-caps ink-muted below. Replaces the gradient "Report" panel.
-      */}
-      <header className="border-b border-rule pb-6 mb-10 flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <div className="label mb-1">{t("report.title")}</div>
-          <h2 className="font-serif text-2xl tracking-tight truncate">
-            {clientName}
-          </h2>
-          {clientEmail && (
-            <div className="label mt-1">{clientEmail}</div>
-          )}
-        </div>
-        <div className="flex items-center gap-6 print:hidden">
-          <button
-            type="button"
-            onClick={() => setPresenting((p) => !p)}
-            aria-pressed={presenting}
-            className="text-sm text-ink hover:underline underline-offset-4"
-          >
-            {presenting ? t("report.action.exit_present") : t("report.action.present")}
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="text-sm text-ink hover:underline underline-offset-4"
-          >
-            {t("report.action.print")}
-          </button>
-          <button
-            type="button"
-            data-testid="save-simulation-button"
-            onClick={handleSave}
-            disabled={saveState !== "idle"}
-            className="text-sm text-ink hover:underline underline-offset-4 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saveState === "saving" && t("report.action.saving")}
-            {saveState === "saved" && t("report.action.saved")}
-            {saveState === "idle" && t("report.action.save")}
-          </button>
-        </div>
       </header>
 
-      {/*
-        Editable report title. A plain unstyled input with a bottom rule
-        on focus — writes to local state only; `handleSave` uses it as
-        the default when the user hits "Save simulation".
-      */}
-      <input
-        aria-label="Report title"
-        value={reportTitle}
-        onChange={(e) => setReportTitle(e.target.value)}
-        className="font-serif text-2xl tracking-tight bg-transparent border-0 border-b border-transparent focus:border-rule outline-none w-full mb-10 py-2 px-0"
-      />
+      <div className="px-6 space-y-6">
+        {!presenting && <WizardTabs basePath="/clients/new" />}
 
-      {/*
-        Scenario list. Vertical stack of sections, each separated by a
-        top rule. Click a row to promote it to "active"; the selected
-        row gets the accent underline.
-      */}
-      <section
-        aria-live="polite"
-        data-testid="scenario-cards"
-        className="mb-12"
-      >
-        <h3 className="font-serif text-2xl tracking-tight mb-6">
-          {t("report.section.probability")}
-        </h3>
-        {scenarioCards.map((sc, i) => (
-          <button
-            type="button"
-            key={sc.name + i}
-            data-testid={`scenario-card-${i}`}
-            data-scenario-name={sc.name}
-            data-probability={sc.probability}
-            aria-pressed={i === activeScenario}
-            onClick={() => setActiveScenario(i)}
-            className={`w-full text-start border-t border-rule py-6 grid grid-cols-1 md:grid-cols-[2fr_3fr_1fr] gap-6 items-center hover:bg-paper-deep transition ${
-              i === activeScenario ? "border-t-2 border-t-accent" : ""
-            }`}
-          >
-            <div className="font-serif text-xl tracking-tight">{sc.name}</div>
-            <ProbabilityBar
-              percent={sc.probability}
-              seTail={
-                i === activeScenario
-                  ? fmtProbabilitySeTail(sc.result.probability_of_goal_se)
-                  : null
-              }
-            />
-            {sc.result.attainability && (
+        {/*
+          Moment-of-truth card. System-blue accent via the attainability
+          pill when present. The sentence itself is a Title 2 on a white
+          card — iOS-y without being shouty.
+        */}
+        <section
+          data-testid="moment-of-truth"
+          className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6"
+        >
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <p
+              className="text-2xl font-semibold tracking-tight leading-snug text-label flex-1"
+              data-testid="moment-of-truth-headline"
+            >
+              {headline}
+              {seTail && (
+                <>
+                  {" "}
+                  <em
+                    className="text-lg text-label-secondary not-italic tabular font-normal"
+                    data-testid="moment-of-truth-se"
+                  >
+                    {seTail}
+                  </em>
+                </>
+              )}
+            </p>
+            {activeAttainability && (
               <span
-                className={`text-xs uppercase tracking-widest px-2 py-0.5 justify-self-start md:justify-self-end ${ATTAINABILITY_CLASS[sc.result.attainability]}`}
-                title="Attainability band based on P15 / median real-terms projection"
+                className={`pill ${ATTAINABILITY_CLASS[activeAttainability]}`}
               >
-                {attainabilityLabel(sc.result.attainability)}
+                {attainabilityLabel(activeAttainability)}
               </span>
             )}
-          </button>
-        ))}
-      </section>
+          </div>
 
-      {/*
-        Projection. Section rule, small-caps header, a toggle sitting to
-        the right as plain text (no pill tab). The chart is all ink lines
-        — no gradient fills, no cartesian grid.
-      */}
-      <section className="border-t border-rule pt-6 mb-12">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-serif text-2xl tracking-tight">
-            {t("report.section.projection")}
-          </h3>
-          <div className="flex items-center gap-4 text-xs uppercase tracking-widest">
+          {suggestions.length > 0 && (
+            <ul
+              className="mt-4 space-y-1.5 text-[15px] text-label-secondary"
+              data-testid="moment-of-truth-suggestions"
+            >
+              {suggestions.map((s) => (
+                <li key={s} className="leading-relaxed">
+                  — {s}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/*
+          Action row. Blue text buttons (`btn-plain`) for present / print /
+          save. Editable report title sits to the left.
+        */}
+        <div className="flex items-center justify-between gap-4 flex-wrap print:hidden">
+          <input
+            aria-label="Report title"
+            value={reportTitle}
+            onChange={(e) => setReportTitle(e.target.value)}
+            className="text-[17px] font-semibold tracking-tight bg-transparent border-0 outline-none flex-1 min-w-0 focus:ring-0 focus:outline-none text-label"
+          />
+          <div className="flex items-center gap-5">
             <button
               type="button"
-              onClick={() => setTab("chart")}
-              title="Chart"
-              className={tab === "chart" ? "text-ink underline decoration-accent underline-offset-4" : "text-ink-muted hover:text-ink"}
+              onClick={() => setPresenting((p) => !p)}
+              aria-pressed={presenting}
+              className="btn-plain"
             >
-              Chart
+              {presenting ? t("report.action.exit_present") : t("report.action.present")}
             </button>
             <button
               type="button"
-              onClick={() => setTab("table")}
-              title="Table"
-              className={tab === "table" ? "text-ink underline decoration-accent underline-offset-4" : "text-ink-muted hover:text-ink"}
+              onClick={handlePrint}
+              className="btn-plain"
             >
-              Table
+              {t("report.action.print")}
+            </button>
+            <button
+              type="button"
+              data-testid="save-simulation-button"
+              onClick={handleSave}
+              disabled={saveState !== "idle"}
+              className="btn-plain"
+            >
+              {saveState === "saving" && t("report.action.saving")}
+              {saveState === "saved" && t("report.action.saved")}
+              {saveState === "idle" && t("report.action.save")}
             </button>
           </div>
         </div>
-        <div className="text-xs text-ink-muted mb-4">
-          {scenarioCards[activeScenario]?.name} · {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"} · N=10k
-        </div>
 
-        {tab === "chart" ? (
-          <div style={{ width: "100%", height: 320 }}>
-            <ResponsiveContainer>
-              <LineChart
-                data={chartData}
-                margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
-              >
-                <XAxis
-                  dataKey="year"
-                  tick={{ fontSize: 11, fill: "#6B655C" }}
-                  stroke="#1A1816"
-                  axisLine={{ stroke: "#1A1816", strokeWidth: 1 }}
-                  tickLine={{ stroke: "#1A1816" }}
-                />
-                <YAxis
-                  tickFormatter={(v) => fmtEGP(v, { compact: true })}
-                  tick={{ fontSize: 11, fill: "#6B655C" }}
-                  stroke="#1A1816"
-                  axisLine={{ stroke: "#1A1816", strokeWidth: 1 }}
-                  tickLine={{ stroke: "#1A1816" }}
-                  width={72}
-                />
-                <Tooltip
-                  cursor={{ stroke: "#6B655C", strokeWidth: 1, strokeDasharray: "2 4" }}
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload || payload.length === 0) return null;
-                    const row = payload[0].payload as {
-                      optimistic: number;
-                      median: number;
-                      pessimistic: number;
-                    };
-                    return (
-                      <div
-                        style={{
-                          background: "#FBF8F1",
-                          border: "1px solid #E8E2D4",
-                          padding: "8px 12px",
-                          fontSize: 12,
-                          color: "#1A1816",
-                          fontVariantNumeric: "tabular-nums",
-                        }}
-                      >
-                        <div style={{ marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.1em", fontSize: 10, color: "#6B655C" }}>
-                          {label}
-                        </div>
-                        <div>Optimistic: {fmtEGP(row.optimistic)}</div>
-                        <div>Median: {fmtEGP(row.median)}</div>
-                        <div>Pessimistic: {fmtEGP(row.pessimistic)}</div>
-                      </div>
-                    );
-                  }}
-                />
-                {/* P15 — dashed muted */}
-                <Line
-                  type="monotone"
-                  dataKey="pessimistic"
-                  stroke="#6B655C"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  isAnimationActive={false}
-                  name="Pessimistic"
-                />
-                {/* Median — solid ink */}
-                <Line
-                  type="monotone"
-                  dataKey="median"
-                  stroke="#1A1816"
-                  strokeWidth={1.5}
-                  dot={false}
-                  isAnimationActive={false}
-                  name="Median"
-                />
-                {/* P85 — dashed muted */}
-                <Line
-                  type="monotone"
-                  dataKey="optimistic"
-                  stroke="#6B655C"
-                  strokeWidth={1}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  isAnimationActive={false}
-                  name="Optimistic"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            {(() => {
-              const birthYear = draftProfile.birthdate
-                ? new Date(draftProfile.birthdate).getFullYear()
-                : null;
-              const showAge = birthYear != null && !Number.isNaN(birthYear);
-              return (
-                <table className="w-full text-sm tabular">
-                  <thead>
-                    <tr className="text-xs uppercase tracking-widest text-ink-muted">
-                      {showAge && (
-                        <th className="text-start font-normal pb-3">Client age</th>
-                      )}
-                      <th className="text-start font-normal pb-3">Year</th>
-                      <th className="text-start font-normal pb-3">Optimistic</th>
-                      <th className="text-start font-normal pb-3">Median</th>
-                      <th className="text-start font-normal pb-3">Pessimistic</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chartData.map((row) => (
-                      <tr key={row.year} className="border-t border-rule">
-                        {showAge && (
-                          <td className="py-2">{row.year - (birthYear as number)} years</td>
-                        )}
-                        <td className="py-2">{row.year}</td>
-                        <td className="py-2" data-testid={`row-${row.year}-optimistic`}>
-                          {fmtEGP(row.optimistic)}
-                        </td>
-                        <td className="py-2" data-testid={`row-${row.year}-median`}>
-                          {fmtEGP(row.median)}
-                        </td>
-                        <td className="py-2" data-testid={`row-${row.year}-pessimistic`}>
-                          {fmtEGP(row.pessimistic)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              );
-            })()}
-          </div>
-        )}
-      </section>
-
-      <DisclosureBanner calibrationAsOf={activeResult.calibration_as_of} />
-
-      <div className="flex items-center justify-between mt-10 print:hidden">
-        <button
-          type="button"
-          className="text-sm text-ink hover:underline underline-offset-4"
-          onClick={() => nav("/clients/new/scenario")}
+        {/*
+          Scenario cards. Vertical stack of rounded cards; click to
+          promote the row to "active". The active card gets a 2px
+          system-blue ring so the selection is unambiguous on the page.
+        */}
+        <section
+          aria-live="polite"
+          data-testid="scenario-cards"
+          className="space-y-3"
         >
-          ← {t("report.action.back")}
-        </button>
+          <h2 className="text-2xl font-semibold tracking-tight mb-2">
+            {t("report.section.probability")}
+          </h2>
+          {scenarioCards.map((sc, i) => {
+            const isActive = i === activeScenario;
+            return (
+              <button
+                type="button"
+                key={sc.name + i}
+                data-testid={`scenario-card-${i}`}
+                data-scenario-name={sc.name}
+                data-probability={sc.probability}
+                aria-pressed={isActive}
+                onClick={() => setActiveScenario(i)}
+                className={`w-full text-start rounded-2xl bg-bg-primary p-5 ring-1 transition grid grid-cols-1 md:grid-cols-[2fr_3fr_auto] gap-5 items-center ${
+                  isActive
+                    ? "ring-2 ring-system-blue"
+                    : "ring-separator hover:bg-bg-secondary"
+                }`}
+              >
+                <div className="text-xl font-semibold tracking-tight text-label">
+                  {sc.name}
+                </div>
+                <ProbabilityBar
+                  percent={sc.probability}
+                  seTail={
+                    isActive
+                      ? fmtProbabilitySeTail(sc.result.probability_of_goal_se)
+                      : null
+                  }
+                />
+                {sc.result.attainability && (
+                  <span
+                    className={`pill justify-self-start md:justify-self-end ${ATTAINABILITY_CLASS[sc.result.attainability]}`}
+                    title="Attainability band based on P15 / median real-terms projection"
+                  >
+                    {attainabilityLabel(sc.result.attainability)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </section>
+
+        {/*
+          Projection card. Header row: Title 2 + iOS segmented control for
+          chart / table. Inside: Recharts chart restyled Apple (system-
+          blue median, gray-1 bounds, gray-5 horizontal grid, white
+          tooltip card).
+        */}
+        <section className="rounded-2xl bg-bg-primary p-6 ring-1 ring-separator">
+          <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {t("report.section.projection")}
+            </h2>
+            <div className="segmented">
+              <button
+                type="button"
+                onClick={() => setTab("chart")}
+                title="Chart"
+                className={`segmented-item ${tab === "chart" ? "segmented-item-active" : ""}`}
+              >
+                Chart
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("table")}
+                title="Table"
+                className={`segmented-item ${tab === "table" ? "segmented-item-active" : ""}`}
+              >
+                Table
+              </button>
+            </div>
+          </div>
+          <div className="text-sm text-label-secondary mb-4">
+            {scenarioCards[activeScenario]?.name} · {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"} · N=10k
+          </div>
+
+          {tab === "chart" ? (
+            <div style={{ width: "100%", height: 320 }}>
+              <ResponsiveContainer>
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+                >
+                  <CartesianGrid
+                    stroke="#E5E5EA"
+                    strokeDasharray="3 3"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="year"
+                    tick={{ fontSize: 11, fill: "#8E8E93" }}
+                    stroke="#D1D1D6"
+                    axisLine={{ stroke: "#D1D1D6", strokeWidth: 1 }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={(v) => fmtEGP(v, { compact: true })}
+                    tick={{ fontSize: 11, fill: "#8E8E93" }}
+                    stroke="#D1D1D6"
+                    axisLine={false}
+                    tickLine={false}
+                    width={72}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: "#8E8E93", strokeWidth: 1, strokeDasharray: "2 4" }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      const row = payload[0].payload as {
+                        optimistic: number;
+                        median: number;
+                        pessimistic: number;
+                      };
+                      return (
+                        <div
+                          style={{
+                            background: "#FFFFFF",
+                            border: "1px solid #D1D1D6",
+                            borderRadius: 8,
+                            padding: "10px 14px",
+                            fontSize: 12,
+                            color: "#000000",
+                            fontVariantNumeric: "tabular-nums",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                          }}
+                        >
+                          <div style={{ marginBottom: 4, fontSize: 11, color: "#8E8E93", fontWeight: 600 }}>
+                            {label}
+                          </div>
+                          <div>Optimistic: {fmtEGP(row.optimistic)}</div>
+                          <div style={{ color: "#007AFF", fontWeight: 600 }}>Median: {fmtEGP(row.median)}</div>
+                          <div>Pessimistic: {fmtEGP(row.pessimistic)}</div>
+                        </div>
+                      );
+                    }}
+                  />
+                  {/* P15 — dashed gray-1 */}
+                  <Line
+                    type="monotone"
+                    dataKey="pessimistic"
+                    stroke="#8E8E93"
+                    strokeWidth={1}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    isAnimationActive={false}
+                    name="Pessimistic"
+                  />
+                  {/* Median — solid system-blue */}
+                  <Line
+                    type="monotone"
+                    dataKey="median"
+                    stroke="#007AFF"
+                    strokeWidth={2}
+                    dot={false}
+                    isAnimationActive={false}
+                    name="Median"
+                  />
+                  {/* P85 — dashed gray-1 */}
+                  <Line
+                    type="monotone"
+                    dataKey="optimistic"
+                    stroke="#8E8E93"
+                    strokeWidth={1}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    isAnimationActive={false}
+                    name="Optimistic"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              {(() => {
+                const birthYear = draftProfile.birthdate
+                  ? new Date(draftProfile.birthdate).getFullYear()
+                  : null;
+                const showAge = birthYear != null && !Number.isNaN(birthYear);
+                return (
+                  <table className="w-full text-sm tabular">
+                    <thead>
+                      <tr className="text-xs font-semibold uppercase tracking-wider text-label-secondary">
+                        {showAge && (
+                          <th className="text-start font-semibold pb-3">Age</th>
+                        )}
+                        <th className="text-start font-semibold pb-3">Year</th>
+                        <th className="text-start font-semibold pb-3">Optimistic</th>
+                        <th className="text-start font-semibold pb-3">Median</th>
+                        <th className="text-start font-semibold pb-3">Pessimistic</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chartData.map((row) => (
+                        <tr key={row.year} className="border-t border-separator">
+                          {showAge && (
+                            <td className="py-2 text-label-secondary">
+                              {row.year - (birthYear as number)}
+                            </td>
+                          )}
+                          <td className="py-2 text-label-secondary">{row.year}</td>
+                          <td className="py-2" data-testid={`row-${row.year}-optimistic`}>
+                            {fmtEGP(row.optimistic)}
+                          </td>
+                          <td className="py-2 font-semibold text-system-blue" data-testid={`row-${row.year}-median`}>
+                            {fmtEGP(row.median)}
+                          </td>
+                          <td className="py-2" data-testid={`row-${row.year}-pessimistic`}>
+                            {fmtEGP(row.pessimistic)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+          )}
+        </section>
+
+        <DisclosureBanner calibrationAsOf={activeResult.calibration_as_of} />
+
+        <div className="flex items-center justify-between mt-6 print:hidden">
+          <button
+            type="button"
+            className="btn-plain"
+            onClick={() => nav("/clients/new/scenario")}
+          >
+            ← {t("report.action.back")}
+          </button>
+        </div>
       </div>
     </AppShell>
   );
