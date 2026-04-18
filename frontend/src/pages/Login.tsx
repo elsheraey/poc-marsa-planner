@@ -9,20 +9,20 @@ import { t } from "../i18n";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Login page — Apple card-on-grouped-canvas pattern.
+ * Login page — Azimut card-on-canvas pattern.
  *
- * Full-height bg-grouped canvas, centred `max-w-sm` rounded card with a
- * 1px separator ring and a soft shadow. Inside the card: centred Marsa
- * wordmark, Large-Title-ish heading, muted subtitle, grouped-inset
- * inputs, full-width system-blue primary button, blue text link to the
+ * Full-height `bg-az-canvas` canvas, centred `max-w-sm` rounded white
+ * card with a 1px az-separator ring and a soft shadow. Inside the card:
+ * centred Marsa wordmark, heading, muted subtitle, grouped-inset inputs,
+ * full-width black primary button, black-text / gold-hover link to the
  * sign-up counterpart.
  *
  * Accessibility:
  *   - Each input is wired to its label via htmlFor/id.
- *   - Field errors get `text-system-red text-xs` and render in-flow so
+ *   - Field errors get `text-rose-600 text-xs` and render in-flow so
  *     AT announces them right after the field.
  *   - Server errors surface via `role="alert"`.
- *   - Focus rings are the system-blue 2px ring on every interactive el.
+ *   - Focus rings are the az-gold 2px ring on every interactive el.
  */
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -52,7 +52,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-grouped text-label flex flex-col">
+    <div className="min-h-screen bg-az-canvas text-az-ink flex flex-col">
       <main className="flex-1 flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-sm">
           <div className="flex justify-center mb-6">
@@ -61,18 +61,18 @@ export default function Login() {
             </Link>
           </div>
 
-          <div className="bg-bg-primary rounded-2xl ring-1 ring-separator shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-8">
+          <div className="bg-az-white rounded-2xl ring-1 ring-az-separator shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-8">
             <h1 className="text-2xl font-bold tracking-tight text-center">
               {t("auth.login.heading")}
             </h1>
-            <p className="mt-2 text-[15px] text-label-secondary text-center leading-relaxed">
+            <p className="mt-2 text-[15px] text-az-ink-muted text-center leading-relaxed">
               {t("auth.login.subheading")}
             </p>
 
             <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4">
               <div>
                 <label
-                  className="block text-xs font-semibold text-label-secondary mb-1.5"
+                  className="block text-xs font-semibold text-az-ink-muted mb-1.5"
                   htmlFor="login-email"
                 >
                   {t("auth.login.email")}
@@ -88,13 +88,13 @@ export default function Login() {
                   required
                 />
                 {fieldErrors.email && (
-                  <div className="text-xs text-system-red mt-1.5">{fieldErrors.email}</div>
+                  <div className="text-xs text-rose-600 mt-1.5">{fieldErrors.email}</div>
                 )}
               </div>
 
               <div>
                 <label
-                  className="block text-xs font-semibold text-label-secondary mb-1.5"
+                  className="block text-xs font-semibold text-az-ink-muted mb-1.5"
                   htmlFor="login-password"
                 >
                   {t("auth.login.password")}
@@ -110,13 +110,13 @@ export default function Login() {
                   required
                 />
                 {fieldErrors.password && (
-                  <div className="text-xs text-system-red mt-1.5">{fieldErrors.password}</div>
+                  <div className="text-xs text-rose-600 mt-1.5">{fieldErrors.password}</div>
                 )}
               </div>
 
               {error && (
                 <div
-                  className="text-sm text-system-red bg-system-red-tint rounded-lg px-3 py-2"
+                  className="text-sm text-rose-800 bg-rose-100 rounded-lg px-3 py-2"
                   role="alert"
                 >
                   {error}
@@ -133,10 +133,10 @@ export default function Login() {
             </form>
           </div>
 
-          <p className="mt-6 text-center text-[15px] text-label-secondary">
+          <p className="mt-6 text-center text-[15px] text-az-ink-muted">
             {t("auth.login.need_account")}{" "}
             <Link
-              className="text-system-blue hover:text-system-blue-hover font-semibold"
+              className="text-az-black hover:text-az-gold-hover font-semibold underline underline-offset-4 decoration-az-separator hover:decoration-az-gold"
               to="/register"
               data-testid="registerLink"
             >
