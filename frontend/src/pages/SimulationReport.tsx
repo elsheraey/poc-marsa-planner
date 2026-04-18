@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Area,
-  AreaChart,
+  ComposedChart,
   CartesianGrid,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,6 +23,15 @@ const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach"
   out_of_reach: "bg-rose-100 text-rose-700",
 };
 
+// Inline currency formatter used until the shared EGP util lands.
+const fmtEGP = (v: number, opts: { compact?: boolean } = {}) => {
+  if (!Number.isFinite(v)) return "—";
+  return new Intl.NumberFormat("en-US", {
+    notation: opts.compact ? "compact" : "standard",
+    maximumFractionDigits: 0,
+  }).format(v);
+};
+
 export default function SimulationReport() {
   const nav = useNavigate();
   const result = useAppSelector((s) => s.simulation.result);
@@ -33,12 +43,25 @@ export default function SimulationReport() {
 
   const chartData = useMemo(() => {
     if (!result) return [];
-    return result.projection.years.map((y, i) => ({
-      year: new Date().getFullYear() + y - 1,
-      optimistic: Math.round(result.projection.optimistic[i]),
-      median: Math.round(result.projection.median[i]),
-      pessimistic: Math.round(result.projection.pessimistic[i]),
-    }));
+    return result.projection.years.map((y, i) => {
+      const optimistic = Math.round(result.projection.optimistic[i]);
+      const median = Math.round(result.projection.median[i]);
+      const pessimistic = Math.round(result.projection.pessimistic[i]);
+      return {
+        year: new Date().getFullYear() + y - 1,
+        optimistic,
+        median,
+        pessimistic,
+        // Derived bands for the ribbon visualisation. Recharts renders an
+        // <Area> from y=0 by default; to draw a band between pessimistic and
+        // optimistic we stack a transparent base at `pessimistic` and a delta
+        // on top. The displayed values (tooltip/table) use the unstacked
+        // `optimistic` / `median` / `pessimistic` fields above, so the QA
+        // stacking assertion (optimistic >= median >= pessimistic) holds.
+        bandBase: pessimistic,
+        bandDelta: Math.max(0, optimistic - pessimistic),
+      };
+    });
   }, [result]);
 
   const scenarioCards = useMemo(() => {
@@ -198,62 +221,89 @@ export default function SimulationReport() {
         {tab === "chart" ? (
           <div style={{ width: "100%", height: 360 }}>
             <ResponsiveContainer>
-              <AreaChart data={chartData}>
+              <ComposedChart data={chartData}>
                 <defs>
-                  <linearGradient id="g-opt" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#86E3A9" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#86E3A9" stopOpacity={0.5} />
-                  </linearGradient>
-                  <linearGradient id="g-med" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#F7D768" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#F7D768" stopOpacity={0.6} />
-                  </linearGradient>
-                  <linearGradient id="g-pes" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#F7A678" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#F7A678" stopOpacity={0.6} />
+                  <linearGradient id="g-band" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#86E3A9" stopOpacity={0.55} />
+                    <stop offset="100%" stopColor="#F7A678" stopOpacity={0.35} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis dataKey="year" tick={{ fontSize: 12 }} />
                 <YAxis
-                  tickFormatter={(v) => `${Math.round(v / 1000)}`}
+                  tickFormatter={(v) => fmtEGP(v, { compact: true })}
                   tick={{ fontSize: 12 }}
                   label={{
-                    value: "Portfolio Value (thousands)",
+                    value: "Portfolio value (EGP)",
                     angle: -90,
                     position: "insideLeft",
                     style: { fill: "#6B7280", fontSize: 11 },
                   }}
                 />
                 <Tooltip
-                  formatter={(v: number) => `${v.toLocaleString()}`}
-                  contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB" }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const row = payload[0].payload as {
+                      optimistic: number;
+                      median: number;
+                      pessimistic: number;
+                    };
+                    return (
+                      <div
+                        style={{
+                          background: "#fff",
+                          border: "1px solid #E5E7EB",
+                          borderRadius: 12,
+                          padding: "8px 12px",
+                          fontSize: 12,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                        <div style={{ color: "#4FAE6E" }}>
+                          Optimistic: {fmtEGP(row.optimistic)}
+                        </div>
+                        <div style={{ color: "#D4AC33" }}>
+                          Median: {fmtEGP(row.median)}
+                        </div>
+                        <div style={{ color: "#D47C33" }}>
+                          Pessimistic: {fmtEGP(row.pessimistic)}
+                        </div>
+                      </div>
+                    );
+                  }}
                 />
+                {/* Transparent base stacks the band up to the pessimistic curve */}
                 <Area
                   type="monotone"
-                  dataKey="optimistic"
-                  stackId="1"
-                  stroke="#4FAE6E"
-                  fill="url(#g-opt)"
-                  name="Optimistic"
+                  dataKey="bandBase"
+                  stackId="band"
+                  stroke="none"
+                  fill="transparent"
+                  activeDot={false}
+                  legendType="none"
+                  isAnimationActive={false}
                 />
+                {/* Delta stacks on top to fill up to the optimistic curve */}
                 <Area
+                  type="monotone"
+                  dataKey="bandDelta"
+                  stackId="band"
+                  stroke="none"
+                  fill="url(#g-band)"
+                  activeDot={false}
+                  legendType="none"
+                  isAnimationActive={false}
+                  name="Optimistic–Pessimistic band"
+                />
+                <Line
                   type="monotone"
                   dataKey="median"
-                  stackId="1"
                   stroke="#D4AC33"
-                  fill="url(#g-med)"
+                  strokeWidth={2.5}
+                  dot={false}
                   name="Median"
                 />
-                <Area
-                  type="monotone"
-                  dataKey="pessimistic"
-                  stackId="1"
-                  stroke="#D47C33"
-                  fill="url(#g-pes)"
-                  name="Pessimistic"
-                />
-              </AreaChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         ) : (
@@ -286,9 +336,15 @@ export default function SimulationReport() {
                           <td className="py-2">{row.year - (birthYear as number)} years</td>
                         )}
                         <td className="py-2">{row.year}</td>
-                        <td className="py-2">{row.optimistic.toLocaleString()}</td>
-                        <td className="py-2">{row.median.toLocaleString()}</td>
-                        <td className="py-2">{row.pessimistic.toLocaleString()}</td>
+                        <td className="py-2" data-testid={`row-${row.year}-optimistic`}>
+                          {fmtEGP(row.optimistic)}
+                        </td>
+                        <td className="py-2" data-testid={`row-${row.year}-median`}>
+                          {fmtEGP(row.median)}
+                        </td>
+                        <td className="py-2" data-testid={`row-${row.year}-pessimistic`}>
+                          {fmtEGP(row.pessimistic)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
