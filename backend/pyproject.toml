@@ -1,7 +1,7 @@
 [project]
-name = "marsa-rfa-backend"
+name = "marsa-planner-backend"
 version = "1.0.0"
-description = "Marsa Robotic Financial Advisor — FastAPI backend"
+description = "Marsa — goal-based financial planning engine (FastAPI)"
 requires-python = ">=3.10"
 
 [tool.ruff]

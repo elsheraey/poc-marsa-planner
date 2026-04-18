@@ -2,7 +2,7 @@
   "name": "tests-e2e",
   "private": true,
   "version": "1.0.0",
-  "description": "End-to-end tests for Marsa RFA (Playwright). Kept out of the frontend bundle.",
+  "description": "End-to-end tests for Marsa (Playwright). Kept out of the frontend bundle.",
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
