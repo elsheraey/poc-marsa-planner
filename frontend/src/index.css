@@ -3,13 +3,9 @@
 @tailwind utilities;
 
 /*
-  Apple HIG (iOS / macOS light mode) baseline.
-
-  The previous editorial layer (cream paper, serif h1–h3, bottom-rule
-  inputs, ink-outline .btn, small-caps .label) is gone. In its place:
-  SF Pro type, system-blue tint buttons, grouped-inset inputs, iOS card
-  surfaces. Every base/component rule below is tied to the Apple token
-  set in tailwind.config.js.
+  Azimut Egypt visual system. Black-dominant chrome with a single gold
+  accent, Cairo typeface throughout. Every rule below is tied to the
+  az-* token set in tailwind.config.js.
 */
 
 @layer base {
@@ -19,15 +15,10 @@
     text-rendering: optimizeLegibility;
   }
   body {
-    background-color: #FFFFFF; /* bg-primary */
-    color: #000000; /* label */
-    font-feature-settings: "cv11", "ss01";
+    background-color: #FFFFFF; /* az-white */
+    color: #212529; /* az-ink */
+    font-feature-settings: "ss01";
   }
-  /*
-    Sans-only. No serif layer any more — Apple headings are semibold SF
-    Display. We let each page use `font-display` / `font-bold` locally,
-    so this base rule only resets the intrinsic margins/weight.
-  */
   h1, h2, h3, h4, h5, h6 {
     font-family: inherit;
     letter-spacing: -0.01em;
@@ -42,75 +33,80 @@
 
 @layer components {
   /*
-    Translucent top navigation — sticky, blurred, hairline bottom rule.
-    Sits on top of whatever the page canvas is (usually bg-grouped).
+    Top navigation — opaque black bar. White wordmark, white links with
+    a gold hover + gold underline. Sits flush above the page canvas.
   */
   .app-nav {
-    @apply sticky top-0 z-40 backdrop-blur-xl bg-bg-primary/80 border-b border-separator;
+    @apply sticky top-0 z-40 bg-az-black text-az-white border-b border-az-black;
   }
 
   /*
-    Grouped-inset input (iOS form field). Rounded-lg fill, no visible
-    border at rest; focus brings in a 2px system-blue ring and lifts the
-    fill to white for a "pressed" feel.
+    Grouped-inset input. Canvas-grey fill at rest, gold focus ring,
+    surface lifts to white when focussed.
   */
   .input {
-    @apply w-full rounded-lg bg-fill px-3 py-2.5 text-[15px] text-label
-           placeholder:text-label-tertiary
+    @apply w-full rounded-lg bg-az-canvas px-3 py-2.5 text-[15px] text-az-ink
+           placeholder:text-az-ink-subtle
            border border-transparent
            outline-none transition
-           focus:ring-2 focus:ring-system-blue focus:border-transparent
-           focus:bg-bg-primary;
+           focus:ring-2 focus:ring-az-gold focus:border-transparent
+           focus:bg-az-white;
   }
-  /*
-    Select inherits the input treatment. Native caret kept — Apple's own
-    pickers are native on mobile, and a custom chevron would double up.
-  */
   .select {
     @apply input pe-8 appearance-none;
   }
 
   /*
-    Primary action. System-blue fill, white text, semibold. Active scale
-    0.98 is the iOS tap-down cue.
+    Primary action — filled black. The default CTA on every page.
   */
   .btn-primary {
     @apply inline-flex items-center justify-center
-           bg-system-blue text-white rounded-lg px-4 py-2.5
+           bg-az-black text-az-white rounded-lg px-4 py-2.5
            text-[15px] font-semibold
-           hover:bg-system-blue-hover active:scale-[0.98]
+           hover:bg-az-black-soft active:scale-[0.98]
            disabled:opacity-50 disabled:cursor-not-allowed
-           focus:outline-none focus:ring-2 focus:ring-system-blue focus:ring-offset-2
+           focus:outline-none focus:ring-2 focus:ring-az-gold focus:ring-offset-2
            transition;
   }
   /*
-    Tinted secondary. Soft blue fill, system-blue text. Used when a page
-    has two actions and only one is the "go" verb.
+    Accent action — filled gold. Reserved for the ONE emphasised action
+    on a page (e.g. "Run Simulation"). Black text on gold stays at 8:1.
+  */
+  .btn-accent {
+    @apply inline-flex items-center justify-center
+           bg-az-gold text-az-black rounded-lg px-4 py-2.5
+           text-[15px] font-semibold
+           hover:bg-az-gold-hover active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-az-gold focus:ring-offset-2
+           transition;
+  }
+  /*
+    Secondary action — canvas fill, hairline border.
   */
   .btn-secondary {
     @apply inline-flex items-center justify-center
-           bg-system-blue-tint text-system-blue rounded-lg px-4 py-2.5
+           bg-az-canvas text-az-black rounded-lg px-4 py-2.5
            text-[15px] font-semibold
-           hover:bg-system-blue/20 active:scale-[0.98]
+           border border-az-separator
+           hover:bg-az-separator active:scale-[0.98]
            disabled:opacity-50 disabled:cursor-not-allowed
-           focus:outline-none focus:ring-2 focus:ring-system-blue focus:ring-offset-2
+           focus:outline-none focus:ring-2 focus:ring-az-gold focus:ring-offset-2
            transition;
   }
   /*
-    Plain text button — the "link-coloured word" form. Used for
-    destructive / tertiary actions, cancel links, inline CTAs.
+    Plain text button — black label with gold hover.
   */
   .btn-plain {
     @apply inline-flex items-center
-           text-system-blue text-[15px] font-semibold
-           hover:text-system-blue-hover
+           text-az-black text-[15px] font-semibold
+           hover:text-az-gold-hover
            disabled:opacity-50 disabled:cursor-not-allowed
-           focus:outline-none focus:ring-2 focus:ring-system-blue focus:ring-offset-2 rounded
+           focus:outline-none focus:ring-2 focus:ring-az-gold focus:ring-offset-2 rounded
            transition;
   }
   /*
-    `.btn` aliased to `.btn-primary` for any lingering caller — the
-    editorial ink-outline button is deleted.
+    Legacy .btn / .btn-outline aliases kept for any lingering callers.
   */
   .btn {
     @apply btn-primary;
@@ -120,96 +116,87 @@
   }
 
   /*
-    Small +/- icon button (used inside the wizard for add-row / remove-row).
-    Uses the system-blue tint treatment so it reads as an add/remove verb
-    while staying out of the way.
+    Small +/- icon buttons used inside the wizard for add-row / remove-row.
   */
   .icon-btn-add {
     @apply inline-flex items-center justify-center w-7 h-7 rounded-full
-           bg-system-blue-tint text-system-blue text-base leading-none font-semibold
-           hover:bg-system-blue hover:text-white active:scale-[0.96] transition
-           focus:outline-none focus:ring-2 focus:ring-system-blue focus:ring-offset-2;
+           bg-az-gold-soft text-az-black text-base leading-none font-semibold
+           hover:bg-az-gold hover:text-az-black active:scale-[0.96] transition
+           focus:outline-none focus:ring-2 focus:ring-az-gold focus:ring-offset-2;
   }
   .icon-btn-remove {
     @apply inline-flex items-center justify-center w-7 h-7 rounded-full
-           bg-fill text-label-secondary text-sm leading-none
-           hover:bg-system-red-tint hover:text-system-red active:scale-[0.96] transition
-           focus:outline-none focus:ring-2 focus:ring-system-red focus:ring-offset-2;
+           bg-az-canvas text-az-ink-muted text-sm leading-none
+           hover:bg-rose-100 hover:text-rose-800 active:scale-[0.96] transition
+           focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2;
   }
 
   /*
-    iOS card. Rounded-xl, white fill, 1px separator ring. Optional soft
-    shadow for elevated / interactive cards — static cards stay flat.
+    Card surfaces. White fill, 1px az-separator ring. Elevated variant
+    carries a soft shadow for interactive cards.
   */
   .card {
-    @apply bg-bg-primary rounded-xl ring-1 ring-separator p-6;
+    @apply bg-az-white rounded-xl ring-1 ring-az-separator p-6;
   }
   .card-elevated {
     @apply card shadow-[0_1px_2px_rgba(0,0,0,0.04)];
   }
 
   /*
-    iOS grouped-inset list container. The canvas sits on bg-grouped; the
-    list itself is a rounded-xl white rectangle with a 1px separator ring.
-    Rows inside use `border-t border-separator first:border-t-0` for the
-    hairline.
+    Grouped-inset list — canvas sits on bg-az-canvas, the list itself is
+    a rounded white rectangle with a hairline ring. Rows use top borders
+    for row separators.
   */
   .grouped-list {
-    @apply bg-bg-primary rounded-xl overflow-hidden ring-1 ring-separator;
+    @apply bg-az-white rounded-xl overflow-hidden ring-1 ring-az-separator;
   }
   .grouped-row {
-    @apply border-t border-separator first:border-t-0 px-4 py-3
+    @apply border-t border-az-separator first:border-t-0 px-4 py-3
            flex items-center gap-4;
   }
   .grouped-row-hover {
-    @apply grouped-row hover:bg-bg-secondary cursor-pointer transition;
+    @apply grouped-row hover:bg-az-canvas cursor-pointer transition;
   }
 
   /*
-    Section / form-group label: small uppercase caption above a grouped
-    list. Apple uses it on iOS settings headers.
+    Small uppercase section caption above a grouped list.
   */
   .section-label {
-    @apply text-xs font-semibold uppercase tracking-wider text-label-secondary;
+    @apply text-xs font-semibold uppercase tracking-wider text-az-ink-muted;
   }
 
   /*
-    Legacy `.label` class: older callers still use it for "form-field
-    label". Kept as a sans-only 13px semibold so nothing breaks while
-    pages migrate — the editorial small-caps version is gone.
+    Legacy `.label` form-field label — 13px semibold.
   */
   .label {
-    @apply text-[13px] font-medium text-label-secondary;
+    @apply text-[13px] font-medium text-az-ink-muted;
   }
 
   /*
-    `.tabular` — for lining up numeric columns. Same semantic as before.
+    `.tabular` — for lining up numeric columns.
   */
   .tabular {
     font-variant-numeric: tabular-nums;
   }
 
   /*
-    iOS segmented control. Pill-inside-pill: the outer track is a fill
-    rectangle, the active segment is a white rectangle with a tiny
-    shadow. Inactive segments are muted.
+    Segmented control. Canvas track, active pill lifts to white with a
+    soft shadow. Used by WizardTabs and the chart / table toggle.
   */
   .segmented {
-    @apply inline-flex bg-bg-secondary rounded-lg p-0.5;
+    @apply inline-flex bg-az-canvas rounded-lg p-0.5;
   }
   .segmented-item {
-    @apply px-3 py-1 rounded-md text-sm font-medium text-label-secondary
+    @apply px-3 py-1 rounded-md text-sm font-medium text-az-ink-muted
            transition cursor-pointer;
   }
   .segmented-item-active {
-    @apply bg-bg-primary text-label shadow-[0_1px_2px_rgba(0,0,0,0.08)];
+    @apply bg-az-white text-az-black shadow-[0_1px_2px_rgba(0,0,0,0.08)];
   }
 
   /*
-    Attainability pill. Same size/shape across all three states; colour
-    comes from the consumer via an inline className. Kept as a utility so
-    e2e tests that match `bg-.*-tint` / `text-system-.*` have a stable
-    anchor.
+    Attainability pill. Same shape across all three states; colour class
+    is supplied by the consumer.
   */
   .pill {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;

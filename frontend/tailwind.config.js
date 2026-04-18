@@ -3,87 +3,67 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
-      // Apple HIG (iOS / macOS light mode) palette, flattened for web.
-      // No alpha-on-label — every token is a solid hex. The previous
-      // editorial palette (paper / ink / terracotta) has been deleted.
+      // Azimut Egypt visual system. Black-dominant chrome, single gold
+      // accent, Cairo typeface. Palette lifted from azimut.eg's live CSS.
       //
       // Semantic use:
-      //   bg-primary           surfaces cards / nav / modals sit on
-      //   bg-secondary         slightly recessed — hover, pressed rows
-      //   bg-grouped           grouped canvas (iOS settings-style lists)
-      //   fill                 input / pill / chip background
-      //   label                primary text (title / body)
-      //   label-secondary      secondary — subtitles, captions
-      //   label-tertiary       tertiary — placeholders, meta
-      //   label-quaternary     disabled / decorative
-      //   separator            hairline between rows / sections
-      //   system-blue          primary action / link
-      //   system-blue-hover    darker blue on hover
-      //   system-blue-tint     tinted-background blue secondary button
-      //   system-green/orange/red   attainability + status pills
-      //   gray-1..6            neutral ramp for non-semantic slots
+      //   az-black            nav / footer / dark chrome
+      //   az-black-soft       hover on dark surfaces
+      //   az-ink              body text (near-black, not pure)
+      //   az-ink-muted        secondary text / captions
+      //   az-ink-subtle       tertiary placeholders / chevrons
+      //   az-gold             the ONE accent — CTAs, active tabs,
+      //                       underlines, pill backgrounds
+      //   az-gold-hover       darker gold for hover states
+      //   az-gold-soft        tint for chip / avatar backgrounds
+      //   az-white            content canvas
+      //   az-canvas           grouped background
+      //   az-card             elevated surfaces (alias of az-white)
+      //   az-separator        1px hairline
+      //   az-separator-strong stronger hairline on light panels
       //
       // Contrast audit (WCAG 2.1 AA, normal text ≥ 4.5:1):
-      //   label #000000 on bg-primary #FFFFFF → 21:1 ✓
-      //   label-secondary #3C3C43 on #FFFFFF → 10.6:1 ✓
-      //   label-tertiary #8E8E93 on #FFFFFF → 3.3:1 — only used for
-      //       placeholder / chevron, not body copy.
-      //   system-blue #007AFF on #FFFFFF → 4.6:1 ✓ (semibold raises
-      //       perceived contrast).
+      //   az-ink   #212529 on az-white #FFFFFF → 15.8:1 ✓
+      //   az-ink-muted #6B6B6B on #FFFFFF → 5.3:1 ✓
+      //   az-gold  #F9AB00 on #FFFFFF → 2.6:1 ✗ — reserved for filled
+      //       backgrounds, pills and dark-surface accents only.
+      //   az-gold  #F9AB00 on az-black #000000 → 8.1:1 ✓
+      //   az-black #000000 on az-gold #F9AB00 → 8.1:1 ✓ (CTA filled)
+      //
+      // Semantic state colours use Tailwind's emerald / amber / rose 100+800
+      // ramp so the calmer pill treatment matches Azimut's restrained tone.
       colors: {
-        "bg-primary": "#FFFFFF",
-        "bg-secondary": "#F2F2F7",
-        "bg-tertiary": "#FFFFFF",
-        "bg-grouped": "#F2F2F7",
-        fill: "#EBEBF0",
+        "az-black": "#000000",
+        "az-black-soft": "#1A1A1A",
+        "az-ink": "#212529",
+        "az-ink-muted": "#6B6B6B",
+        "az-ink-subtle": "#9CA3AF",
 
-        label: "#000000",
-        "label-secondary": "#3C3C43",
-        "label-tertiary": "#8E8E93",
-        "label-quaternary": "#C7C7CC",
+        "az-gold": "#F9AB00",
+        "az-gold-hover": "#D89200",
+        "az-gold-soft": "#FFE9B8",
 
-        separator: "#D1D1D6",
-
-        "system-blue": "#007AFF",
-        "system-blue-hover": "#0A6FE0",
-        "system-blue-tint": "#E5F1FF",
-
-        "system-green": "#30D158",
-        "system-green-tint": "#E4F8EA",
-        "system-orange": "#FF9500",
-        "system-orange-tint": "#FFF3E0",
-        "system-red": "#FF3B30",
-        "system-red-tint": "#FFE8E6",
-
-        "gray-1": "#8E8E93",
-        "gray-2": "#AEAEB2",
-        "gray-3": "#C7C7CC",
-        "gray-4": "#D1D1D6",
-        "gray-5": "#E5E5EA",
-        "gray-6": "#F2F2F7",
+        "az-white": "#FFFFFF",
+        "az-canvas": "#F5F5F5",
+        "az-card": "#FFFFFF",
+        "az-separator": "#E5E5E5",
+        "az-separator-strong": "#D4D4D4",
       },
       fontFamily: {
-        // SF Pro via the system font stack — no Google Fonts, no bundled
-        // webfonts. `-apple-system` / `BlinkMacSystemFont` hit SF on macOS
-        // and iOS; `"SF Pro Text"` / `"SF Pro Display"` catch users who
-        // have the fonts installed manually; Inter is the Linux/Windows
-        // fallback with the closest metrics; then Helvetica/Arial.
+        // Cairo via Google Fonts (loaded in index.html). Supports Latin +
+        // Arabic glyph coverage — the same face used by azimut.eg. System
+        // fallbacks kick in while the font is still streaming.
         sans: [
+          '"Cairo"',
           "-apple-system",
           "BlinkMacSystemFont",
-          '"SF Pro Text"',
-          '"SF Pro Display"',
-          "Inter",
-          '"Helvetica Neue"',
-          "Arial",
+          "Segoe UI",
           "sans-serif",
         ],
         display: [
+          '"Cairo"',
           "-apple-system",
           "BlinkMacSystemFont",
-          '"SF Pro Display"',
-          "Inter",
-          '"Helvetica Neue"',
           "sans-serif",
         ],
         mono: ['"SF Mono"', "ui-monospace", "Menlo", "monospace"],
