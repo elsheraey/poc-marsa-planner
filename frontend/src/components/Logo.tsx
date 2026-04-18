@@ -5,13 +5,13 @@ type Props = Readonly<{ variant?: "light" | "dark"; className?: string }>;
 /**
  * Marsa wordmark.
  *
- * Apple-style wordmark: SF-semibold, tight tracking, inherits text colour
- * from context so it can sit on a light or dark surface. No glyph, no
- * serif. `variant="light"` flips to white for rare dark-surface placement
- * (not used in the current app, but the prop is retained for callers).
+ * Azimut-style wordmark: Cairo 600 weight, tight tracking, inherits text
+ * colour from context so it can sit on a light or dark surface. No glyph,
+ * no serif. `variant="light"` renders white for placement on the black
+ * top nav; default is `az-ink` for light surfaces like the auth cards.
  */
 export default function Logo({ variant = "dark", className = "" }: Props) {
-  const colour = variant === "light" ? "text-white" : "text-label";
+  const colour = variant === "light" ? "text-az-white" : "text-az-ink";
   return (
     <span
       className={`font-display text-[17px] font-semibold tracking-tight ${colour} ${className}`}

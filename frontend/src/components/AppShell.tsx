@@ -28,12 +28,12 @@ type Props = Readonly<{
 }>;
 
 /**
- * Apple-style AppShell.
+ * Azimut-style AppShell.
  *
- * Translucent sticky nav at the top (Marsa wordmark on the inline-start,
- * blue text links, locale toggle + Sign out on the inline-end). Content
- * canvas is bg-grouped — the iOS default for list-style pages. No
- * sidebar. The shell does not wrap children in a card; pages compose
+ * Black sticky top bar with the Marsa wordmark in white on the inline-
+ * start and white text links on the inline-end; every link hovers to
+ * `az-gold` with a gold underline. Content canvas is `az-canvas`.
+ * No sidebar. The shell does not wrap children in a card; pages compose
  * their own cards / grouped lists inside the content column.
  *
  * RTL: the nav is a flex row with `gap-*` — directionality flips via
@@ -51,14 +51,18 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
   }
 
   const year = new Date().getFullYear();
+  // Every link in the top nav shares the same white-on-black, gold-on-
+  // hover treatment. Active NavLinks also get an underline.
+  const navLinkBase =
+    "text-az-white hover:text-az-gold hover:underline decoration-az-gold underline-offset-4 transition";
   return (
-    <div className="min-h-screen bg-bg-grouped text-label flex flex-col">
+    <div className="min-h-screen bg-az-canvas text-az-ink flex flex-col">
       {!focus && (
         <header className="app-nav print:hidden">
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-6">
             <Link
               to={user ? "/clients" : "/"}
-              className="font-display text-[17px] font-semibold tracking-tight text-label"
+              className="font-display text-[17px] font-semibold tracking-tight text-az-white"
               aria-label={APP_NAME}
             >
               {APP_NAME}
@@ -69,9 +73,7 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
                   <NavLink
                     to="/clients"
                     className={({ isActive }) =>
-                      `text-system-blue hover:text-system-blue-hover transition ${
-                        isActive ? "text-system-blue-hover" : ""
-                      }`
+                      `${navLinkBase} ${isActive ? "underline" : ""}`
                     }
                   >
                     {t("nav.clients")}
@@ -79,9 +81,7 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
                   <NavLink
                     to="/clients/new/profile"
                     className={({ isActive }) =>
-                      `text-system-blue hover:text-system-blue-hover transition ${
-                        isActive ? "text-system-blue-hover" : ""
-                      }`
+                      `${navLinkBase} ${isActive ? "underline" : ""}`
                     }
                   >
                     {t("nav.new_client")}
@@ -92,7 +92,7 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
               <button
                 type="button"
                 onClick={toggleLocale}
-                className="text-system-blue hover:text-system-blue-hover transition"
+                className={navLinkBase}
                 aria-label="Toggle language"
                 data-testid="locale-toggle"
               >
@@ -102,7 +102,7 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="text-system-blue hover:text-system-blue-hover transition"
+                  className={navLinkBase}
                 >
                   {t("nav.signout")}
                 </button>
@@ -114,7 +114,7 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
       <main className="flex-1 w-full max-w-6xl mx-auto pb-12 print:pb-4">
         {children}
       </main>
-      <footer className="max-w-6xl mx-auto w-full px-6 py-6 text-xs text-label-tertiary print:hidden">
+      <footer className="max-w-6xl mx-auto w-full px-6 py-6 text-xs text-az-ink-subtle print:hidden">
         {t("shell.footer", { year })}
       </footer>
     </div>
