@@ -4,6 +4,10 @@ Production-ready implementation of the **Robotic Financial Advisor Simulation**
 (`Marsa_RFA_Simulation_Overview.pdf`) with a multi-user FastAPI backend
 and a React + Redux + Tailwind advisor portal.
 
+The product name (`Marsa` — Arabic مرسى, "harbor") lives in a single
+constant in the frontend (`frontend/src/config.ts`) and an env-var-backed
+setting in the backend (`APP_NAME`). Override either to rebrand.
+
 ## Structure
 
 ```
@@ -64,7 +68,9 @@ cd frontend && npm test
 ## API
 
 All endpoints are under `/api`. Auth is JWT over an HttpOnly cookie
-(`marsa_access`); `Authorization: Bearer <token>` is also accepted.
+(`marsa_access` — the cookie name derives from `APP_NAME.lower() +
+"_access"` so a brand swap renames it automatically);
+`Authorization: Bearer <token>` is also accepted.
 
 | Endpoint                     | Auth | Description                         |
 | ---------------------------- | ---- | ----------------------------------- |

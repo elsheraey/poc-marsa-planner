@@ -21,6 +21,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      APP_NAME: ${APP_NAME:-Marsa}
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: postgresql+psycopg://marsa:${POSTGRES_PASSWORD:-marsa}@db:5432/marsa

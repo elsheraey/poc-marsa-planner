@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
+import { t } from "../i18n";
 
 type Props = Readonly<{
   title: ReactNode;
@@ -22,8 +23,7 @@ export default function AppShell({ title, trailing, children, focus = false }: P
         <TopBar title={title} trailing={trailing} />
         <main className="flex-1 px-8 py-6 overflow-y-auto">{children}</main>
         <footer className="py-3 text-center text-xs text-muted print:hidden">
-          © {year}, Developed by{" "}
-          <span className="text-primary-500 font-medium">Marsa</span>
+          {t("shell.footer", { year })}
         </footer>
       </div>
     </div>

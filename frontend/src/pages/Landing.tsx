@@ -53,7 +53,7 @@ export default function Landing() {
       </main>
 
       <footer className="px-8 py-4 text-center text-xs text-white/60">
-        © {new Date().getFullYear()} Marsa
+        {t("landing.footer", { year: new Date().getFullYear() })}
       </footer>
     </div>
   );
