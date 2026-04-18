@@ -123,6 +123,18 @@ export default function SimulationReport() {
   const [inversionByScenario, setInversionByScenario] = useState<
     Record<number, SimulateInvertResult | null>
   >({});
+  // Save-simulation wire state. We disable the button once saved so the
+  // advisor can't accidentally create duplicates; one save per page load.
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
+    "idle"
+  );
+  // If the report is attached to a live client record, pass it through on
+  // save so the snapshot shows up under that client's Saved-simulations
+  // list. Otherwise it's a prospective-client what-if (client_id: null).
+  const draftClientId = useAppSelector((s) => {
+    const raw = (s.draft as unknown as { clientId?: string | null }).clientId;
+    return typeof raw === "string" && raw.length > 0 ? raw : null;
+  });
 
   // One card per backend-returned scenario (truncated to MAX). The probability
   // comes straight from `result.probability_of_goal` — no per-index synthesis.
@@ -321,6 +333,36 @@ export default function SimulationReport() {
     if (typeof globalThis.window !== "undefined") globalThis.window.print();
   }
 
+  async function handleSave() {
+    if (saveState !== "idle" || !activeRequest || !activeResult) return;
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const defaultName = `Simulation ${todayIso}`;
+    // Browser `prompt()` is fine for v1 — the UX lead called this out
+    // explicitly. Returns null on cancel.
+    const hasWindow = globalThis.window !== undefined;
+    const raw = hasWindow
+      ? globalThis.window.prompt(t("report.save.prompt"), defaultName)
+      : defaultName;
+    if (raw == null) return;
+    const name = raw.trim();
+    if (name.length === 0) return;
+    setSaveState("saving");
+    try {
+      await api.createSimulation({
+        name,
+        client_id: draftClientId,
+        request: activeRequest,
+        response: activeResult,
+      });
+      setSaveState("saved");
+      toast(t("report.save.toast.success", { name }), "success");
+    } catch (e) {
+      setSaveState("idle");
+      const msg = e instanceof ApiError ? e.message : "Save failed";
+      toast(msg, "error");
+    }
+  }
+
   return (
     <AppShell title="New Client" focus={presenting}>
       {!presenting && <WizardTabs basePath="/clients/new" />}
@@ -403,16 +445,15 @@ export default function SimulationReport() {
           </button>
           <button
             type="button"
-            className="h-9 px-4 rounded-lg border border-white/70 text-white text-sm font-semibold hover:bg-white/10"
-            onClick={() =>
-              // eslint-disable-next-line no-alert
-              alert(
-                "Snapshot save is not yet wired to the backend. Coming in the pilot release."
-              )
-            }
-            title="Requires backend: save the current simulation as a client-shareable snapshot"
+            data-testid="save-simulation-button"
+            className="h-9 px-4 rounded-lg border border-white/70 text-white text-sm font-semibold hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleSave}
+            disabled={saveState !== "idle"}
+            title="Save the current simulation as a client-shareable snapshot"
           >
-            {t("report.action.save")}
+            {saveState === "saving" && t("report.action.saving")}
+            {saveState === "saved" && t("report.action.saved")}
+            {saveState === "idle" && t("report.action.save")}
           </button>
         </div>
       </section>

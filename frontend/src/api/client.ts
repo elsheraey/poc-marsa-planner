@@ -83,6 +83,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  // Saved-simulation snapshots. `client_id: null` is a prospective-client
+  // what-if (no record to attach to yet).
+  createSimulation: (payload: {
+    name: string;
+    client_id: string | null;
+    request: SimulateRequest;
+    response: SimulateResult;
+  }) =>
+    request<SavedSimulation>("/simulations", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 export type User = { id: string; name: string; email: string };
@@ -176,4 +189,17 @@ export type SimulateInvertResult = {
   required_horizon_years: number | null;
   achieved_probability_at_required: number;
   achieved_probability_at_double: number | null;
+};
+
+// Shape returned by POST /api/simulations and GET /api/simulations/{id}.
+// `request` / `response` are the full snapshot payloads the backend stored;
+// we treat them as opaque here and only read them in the dedicated viewer.
+export type SavedSimulation = {
+  id: string;
+  name: string;
+  client_id: string | null;
+  request: SimulateRequest;
+  response: SimulateResult;
+  calibration_as_of?: string | null;
+  created_at: string;
 };

@@ -54,7 +54,16 @@ const ar: Record<string, string> = {
   "report.action.exit_present": "الخروج من وضع العرض",
   "report.action.print": "طباعة",
   "report.action.save": "حفظ المحاكاة",
+  // TODO: native-speaker review
+  "report.action.saving": "جارٍ الحفظ…",
+  // TODO: native-speaker review
+  "report.action.saved": "تم الحفظ",
   "report.action.back": "العودة إلى السيناريوهات",
+
+  // TODO: native-speaker review
+  "report.save.prompt": "اسم هذه المحاكاة",
+  // TODO: native-speaker review
+  "report.save.toast.success": "تم حفظ المحاكاة '{name}'",
 
   "report.section.probability": "احتمال تحقيق الأهداف",
   "report.section.projection": "الإسقاط",

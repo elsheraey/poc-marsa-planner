@@ -49,7 +49,12 @@ const en: Record<string, string> = {
   "report.action.exit_present": "Exit presentation mode",
   "report.action.print": "Print",
   "report.action.save": "Save simulation",
+  "report.action.saving": "Saving…",
+  "report.action.saved": "Saved",
   "report.action.back": "Back to scenarios",
+
+  "report.save.prompt": "Name this simulation",
+  "report.save.toast.success": "Saved simulation '{name}'",
 
   "report.section.probability": "Goals Achievement Probability",
   "report.section.projection": "Projection",
