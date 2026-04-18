@@ -103,13 +103,19 @@ const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach"
 };
 
 // Prefer the localised string; fall back to the backend label with
-// underscores normalised.
+// underscores normalised AND the first letter title-cased — otherwise a
+// missing key rendered as a lowercase raw token ("out of reach") clashes
+// with the capitalised surrounding UI.
 function attainabilityLabel(
   attainability: "attainable" | "aspirational" | "out_of_reach"
 ): string {
   const key = `report.${attainability}`;
   const localised = t(key);
-  return localised === key ? attainability.replace(/_/g, " ") : localised;
+  if (localised === key) {
+    const raw = attainability.replace(/_/g, " ");
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+  return localised;
 }
 
 export default function SimulationReport() {
@@ -255,19 +261,37 @@ export default function SimulationReport() {
     );
   }
 
+  // Headline branch selection:
+  //   - no goal amount → "no_goal" (informational, no probability copy)
+  //   - probability >= 80% → "met" (green, no suggestions)
+  //   - probability == 0 OR attainability == "out_of_reach" → "unreachable"
+  //     (0% fall-through used to render the shortfall template with "0%",
+  //     which reads as an honest reach but lies about the attainability
+  //     band; we now surface the band directly)
+  //   - otherwise → "shortfall" (inversion suggestions follow below)
+  const activeAttainabilityForHeadline = activeResult.attainability;
+  const isOutOfReach =
+    probabilityPct === 0 || activeAttainabilityForHeadline === "out_of_reach";
   let headlineKey: string;
   if (probabilityPct == null) {
     headlineKey = "report.headline.no_goal";
   } else if (meetsEightyPct) {
     headlineKey = "report.headline.met";
+  } else if (isOutOfReach) {
+    headlineKey = "report.headline.unreachable";
   } else {
     headlineKey = "report.headline.shortfall";
   }
+  const primaryGoalName =
+    (activeRequest as unknown as { goal_name?: string })?.goal_name ??
+    t("report.goal.default");
   const headline = t(headlineKey, {
     pct: probabilityPct ?? 0,
     monthly: activeRequest?.monthly_investment
       ? fmtEGP(activeRequest.monthly_investment)
       : "—",
+    name: draftProfile.fullName || t("report.client.default"),
+    goal: primaryGoalName,
   });
 
   const seTailPp =

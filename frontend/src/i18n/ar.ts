@@ -116,6 +116,12 @@ const ar: Record<string, string> = {
     "الخطة تحقق الهدف باحتمال ~{pct}٪.",
   "report.headline.shortfall":
     "بمساهمة شهرية {monthly}، تحقق الخطة الهدف باحتمال ~{pct}٪.",
+  "report.headline.unreachable":
+    "بمساهمة شهرية {monthly}، هدف {goal} للعميل {name} خارج نطاق التحقق ضمن هذه الخطة.",
+  // TODO: native-speaker review
+  "report.goal.default": "الهدف",
+  // TODO: native-speaker review
+  "report.client.default": "العميل",
   "report.headline.no_goal":
     "لم يُحدَّد مبلغ الهدف — الإسقاطات أدناه للعرض فقط.",
   // TODO: native-speaker review

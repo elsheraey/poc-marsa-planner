@@ -81,6 +81,10 @@ const en: Record<string, string> = {
     "Plan reaches the goal at ~{pct}% confidence.",
   "report.headline.shortfall":
     "At {monthly}/month, this plan reaches the goal with ~{pct}% confidence.",
+  "report.headline.unreachable":
+    "At {monthly}/month, {name}'s {goal} goal is out of reach under this plan.",
+  "report.goal.default": "goal",
+  "report.client.default": "the client",
   "report.headline.no_goal":
     "No goal amount set — the projection below is informational.",
   "report.suggest.monthly":
