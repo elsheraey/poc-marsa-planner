@@ -1,12 +1,5 @@
 import {
   AbsoluteFill,
-  // Remotion 4.x flags <Audio> as deprecated in favour of <Audio> from
-  // the dedicated @remotion/media bundle; the top-level component is
-  // still shipped and fully supported — the deprecation is a warning,
-  // not an error. Keep using it for now; a migration would pull in a
-  // new dep for zero gain on a ~90s render.
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  Audio,
   Img,
   interpolate,
   Sequence,
@@ -14,9 +7,10 @@ import {
   useCurrentFrame,
 } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Cairo";
-import manifest from "./voiceover.manifest.json";
+import manifest from "./walkthrough.manifest.json";
 
-// Load only the weights we render — 500 body, 700 subtitles, 800 head.
+// Cairo is the Marsa brand face. 500 for body / captions, 700 for bar
+// copy, 800 for the title + end-card wordmark.
 const { fontFamily } = loadFont("normal", {
   weights: ["500", "700", "800"],
   subsets: ["latin"],
@@ -36,89 +30,73 @@ const BRAND = {
 
 const FPS = 30;
 
-// Title + end-card buffers. The voiceover starts at frame 0 of section
-// 01; we prepend a short title card and append a short end card so the
-// rendered MP4 opens and closes on brand, not on a cold UI shot. Both
-// buffers play in silence — the voiceover Audio starts at TITLE_FRAMES.
-const TITLE_FRAMES = 36; // 1.2s brand card before narration
-const END_FRAMES = 48; // 1.6s logo-mark outro after narration
-
-// Derive per-section frame counts + cumulative starts from the TTS
-// manifest. `total_ms` is the ffprobe-measured duration of the
-// concatenated voiceover, which is what the <Audio> tag plays against.
-// The section frame counts sum to `sum_of_sections_ms`, which equals
-// `total_ms` modulo sub-frame rounding.
-const en = manifest.en;
-const sectionFrames: number[] = en.sections.map((s) =>
+// Per-section frame counts derived from the capture manifest. No voice
+// this pass — durations come straight from the capture-side minimums
+// in demo/capture.ts's SECTIONS table.
+type ManifestSection = {
+  id: string;
+  caption: string;
+  duration_ms: number;
+};
+const sections = (manifest as { sections: ManifestSection[] }).sections;
+const sectionFrames: number[] = sections.map((s) =>
   Math.round((s.duration_ms / 1000) * FPS)
 );
 const cumulativeStart: number[] = sectionFrames.reduce<number[]>(
-  (acc, f, i) => {
+  (acc, _f, i) => {
     acc.push(i === 0 ? 0 : acc[i - 1] + sectionFrames[i - 1]);
     return acc;
   },
   []
 );
-const NARRATION_FRAMES = sectionFrames.reduce((s, f) => s + f, 0);
-export const TOTAL_FRAMES = TITLE_FRAMES + NARRATION_FRAMES + END_FRAMES;
+export const TOTAL_FRAMES = sectionFrames.reduce((s, f) => s + f, 0);
 
-// Lower-third copy per section. Empty string = no lower-third (the
-// section is carried by the still alone, e.g. intro / goals / closing).
-// Gold-underlined black bar at the bottom — matches the brand's
-// wayfinding pill treatment used throughout the product.
-const LOWER_THIRD: Record<string, { title: string; caption?: string } | null> =
-  {
-    "01_intro": null,
-    "02_goals": { title: "Three goals", caption: "Apartment · University · Retirement" },
-    "03_setup": { title: "Three scenarios, side by side" },
-    "04_auc": { title: "Scenario one — AUC", caption: "Four million, for both kids" },
-    "05_guc": { title: "Scenario two — GUC or BUE", caption: "Three million" },
-    "06_cairo": {
-      title: "Scenario three — Cairo University",
-      caption: "Five hundred thousand",
-    },
-    "07_inversion": {
-      title: "Marsa's inversion",
-      caption: "60,000 a month — all three scenarios attainable",
-    },
-    "08_closing": null,
-    "09_tag": null,
-  };
-
-type Props = {
-  lang?: "en"; // AR is deferred this pass; kept for forward-compat so
-  // Root.tsx's MarsaAR composition continues to accept the prop without
-  // a schema change when we re-enable Arabic.
-  hasVoice?: boolean;
+// Scenario-card focus coordinates per report screenshot. The report's
+// moment-of-truth headline card changes height between "attainable" /
+// "out of reach" (the latter adds a suggestion line), which shifts the
+// three scenario cards below it by ~40 px. We hand-tune per shot so
+// the Remotion ring sits tight around the active card in each frame.
+//
+// Values are in the 1920×1080 source-pixel space — no scaling needed.
+const SCENARIO_RING_COORDS: Record<
+  string,
+  { x: number; y: number; width: number; height: number }
+> = {
+  "12_auc": { x: 408, y: 514, width: 1112, height: 80 },
+  "13_guc": { x: 408, y: 560, width: 1112, height: 80 },
+  "14_cairo": { x: 408, y: 648, width: 1112, height: 80 },
 };
 
 // ---------------------------------------------------------------------
-// SectionScene — renders one still image with a subtle Ken-Burns zoom
-// and a bottom lower-third callout where configured. The image is
-// pre-sized at 1920×1080 by the Playwright capture, so it fills the
-// frame with `object-fit: cover` without loss.
+// SectionScene — renders one still image with a subtle Ken-Burns zoom,
+// a lower-third caption bar, and an optional az-gold ring around a
+// specific scenario card for sections 12–14.
 // ---------------------------------------------------------------------
 const SectionScene: React.FC<{
   id: string;
+  caption: string;
   index: number;
   duration: number;
-}> = ({ id, index, duration }) => {
+}> = ({ id, caption, index, duration }) => {
   const frame = useCurrentFrame();
-  // Fade in over 12 frames (0.4s) then hold. The previous section's
-  // scene unmounts at the same frame as this one mounts, so the
-  // crossfade is implicit — Remotion renders both inside their own
-  // <Sequence>, but only one is on-screen at a time.
-  const opacity = interpolate(frame, [0, 12], [0, 1], {
-    extrapolateRight: "clamp",
-  });
-  // Gentle zoom from 1.00 → 1.025 over the section — the Ken-Burns
-  // effect that makes a still feel cinematic without being distracting.
-  // 2.5% zoom over 10–15s is the Apple keynote default.
-  const scale = interpolate(frame, [0, duration], [1, 1.025], {
+
+  // Per-section opacity — 10-frame fade in + fade out so successive
+  // sections crossfade into each other cleanly. Holds at 1 in the
+  // middle.
+  const opacity = interpolate(
+    frame,
+    [0, 10, duration - 10, duration],
+    [0, 1, 1, 0],
+    { extrapolateRight: "clamp", extrapolateLeft: "clamp" }
+  );
+
+  // Gentle zoom from 1.00 → 1.02 across the section. Keeps long static
+  // shots feeling alive without drawing attention away from the UI.
+  const scale = interpolate(frame, [0, duration], [1, 1.02], {
     extrapolateRight: "clamp",
   });
 
-  const caption = LOWER_THIRD[id];
+  const ringCoords = SCENARIO_RING_COORDS[id];
 
   return (
     <AbsoluteFill
@@ -128,6 +106,7 @@ const SectionScene: React.FC<{
         opacity,
       }}
     >
+      {/* Background: the captured PNG scaled subtly for a Ken-Burns feel */}
       <AbsoluteFill
         style={{
           transform: `scale(${scale})`,
@@ -144,82 +123,128 @@ const SectionScene: React.FC<{
           }}
         />
       </AbsoluteFill>
-      {caption && <LowerThird title={caption.title} caption={caption.caption} />}
+
+      {/* Scenario-card ring + dim on non-focus cards for sections 12/13/14 */}
+      {ringCoords && <ScenarioHighlight coords={ringCoords} />}
+
+      {/* Lower-third caption bar */}
+      <LowerThirdCaption caption={caption} duration={duration} />
     </AbsoluteFill>
   );
 };
 
 // ---------------------------------------------------------------------
-// LowerThird — black bar with a gold 6 px inline-start accent, settled
-// 80 px above the bottom of the frame. Fades in at 10 f, holds for the
-// full section (caller controls the Sequence window), fades out at the
-// last 14 f.
+// ScenarioHighlight — az-gold stroke ring + soft glow around the
+// focused scenario card on the 1920×1080 report shot. Fades in with
+// the section so it reads as an overlay, not a paint artefact.
 // ---------------------------------------------------------------------
-const LowerThird: React.FC<{ title: string; caption?: string }> = ({
-  title,
-  caption,
-}) => {
+const ScenarioHighlight: React.FC<{
+  coords: { x: number; y: number; width: number; height: number };
+}> = ({ coords }) => {
   const frame = useCurrentFrame();
-  // Entrance: slide up 28 px + fade in over 14 f.
-  const intro = interpolate(frame, [0, 14], [0, 1], {
+  const intro = interpolate(frame, [4, 18], [0, 1], {
+    extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const translate = interpolate(frame, [0, 14], [28, 0], {
+  return (
+    <AbsoluteFill style={{ opacity: intro, pointerEvents: "none" }}>
+      <div
+        style={{
+          position: "absolute",
+          left: coords.x,
+          top: coords.y,
+          width: coords.width,
+          height: coords.height,
+          border: `4px solid ${BRAND.gold}`,
+          borderRadius: 16,
+          boxShadow: `0 0 0 6px rgba(249,171,0,0.20), 0 18px 40px rgba(249,171,0,0.28)`,
+        }}
+      />
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------
+// LowerThirdCaption — semi-opaque black bar along the bottom third
+// with a 3px az-gold hairline on top. Caption text is Cairo, white,
+// 24 px (~text-2xl at the 1920×1080 design grid), center-aligned,
+// max-width 1400 px. Fades in over 10 frames on section start and
+// fades out over 10 frames at section end.
+// ---------------------------------------------------------------------
+const LowerThirdCaption: React.FC<{
+  caption: string;
+  duration: number;
+}> = ({ caption, duration }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(
+    frame,
+    [0, 10, duration - 10, duration],
+    [0, 1, 1, 0],
+    { extrapolateRight: "clamp", extrapolateLeft: "clamp" }
+  );
+  // 8-px slide-up entrance; resting position is just above the hairline
+  // rule so the bar reads as a confident lower-third, not a toast.
+  const translate = interpolate(frame, [0, 12], [8, 0], {
     extrapolateRight: "clamp",
+    extrapolateLeft: "clamp",
   });
   return (
     <AbsoluteFill
       style={{
         justifyContent: "flex-end",
-        alignItems: "flex-start",
-        padding: 72,
+        alignItems: "center",
+        pointerEvents: "none",
       }}
     >
       <div
         style={{
-          opacity: intro,
+          opacity,
           transform: `translateY(${translate}px)`,
-          background: BRAND.black,
-          color: BRAND.white,
-          padding: "22px 36px",
-          borderRadius: 14,
-          borderLeft: `6px solid ${BRAND.gold}`,
-          boxShadow: "0 22px 52px rgba(0,0,0,0.45)",
-          maxWidth: 960,
+          width: "100%",
+          background: "rgba(0,0,0,0.7)",
+          borderTop: `3px solid ${BRAND.gold}`,
+          padding: "28px 80px 36px 80px",
+          display: "flex",
+          justifyContent: "center",
+          boxShadow: "0 -12px 32px rgba(0,0,0,0.35)",
         }}
       >
-        <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.15 }}>
-          {title}
+        <div
+          style={{
+            color: BRAND.white,
+            fontSize: 38, // ~text-2xl at 1080p scale
+            fontWeight: 500,
+            lineHeight: 1.3,
+            maxWidth: 1400,
+            textAlign: "center",
+            letterSpacing: -0.2,
+          }}
+        >
+          {caption}
         </div>
-        {caption && (
-          <div
-            style={{
-              marginTop: 10,
-              fontSize: 26,
-              fontWeight: 500,
-              color: BRAND.goldSoft,
-              lineHeight: 1.3,
-            }}
-          >
-            {caption}
-          </div>
-        )}
       </div>
     </AbsoluteFill>
   );
 };
 
 // ---------------------------------------------------------------------
-// TitleCard — 1.2s brand opener. Fades in over 12 f, holds, fades out.
+// EndCard — section 17_tag. Full black background, Marsa wordmark in
+// Cairo extra-bold 180 px white, az-gold underline mark beneath. The
+// wordmark scales from 0.95 → 1.00 over the first 30 frames for a
+// subtle settle.
 // ---------------------------------------------------------------------
-const TitleCard: React.FC = () => {
+const EndCard: React.FC<{ duration: number }> = ({ duration }) => {
   const frame = useCurrentFrame();
   const opacity = interpolate(
     frame,
-    [0, 10, TITLE_FRAMES - 8, TITLE_FRAMES],
+    [0, 10, duration - 10, duration],
     [0, 1, 1, 0],
-    { extrapolateRight: "clamp" }
+    { extrapolateRight: "clamp", extrapolateLeft: "clamp" }
   );
+  const scale = interpolate(frame, [0, 30], [0.95, 1], {
+    extrapolateRight: "clamp",
+    extrapolateLeft: "clamp",
+  });
   return (
     <AbsoluteFill
       style={{
@@ -228,64 +253,44 @@ const TitleCard: React.FC = () => {
         justifyContent: "center",
         alignItems: "center",
         fontFamily,
-        textAlign: "center",
+        opacity,
       }}
     >
-      <div style={{ opacity }}>
-        <div style={{ fontSize: 200, fontWeight: 800, letterSpacing: -4, lineHeight: 1 }}>
+      <div
+        style={{
+          transform: `scale(${scale})`,
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 180,
+            fontWeight: 800,
+            letterSpacing: -4,
+            lineHeight: 1,
+          }}
+        >
           Marsa
         </div>
         <div
           style={{
-            marginTop: 24,
-            fontSize: 30,
-            fontWeight: 500,
-            color: BRAND.gold,
-            maxWidth: 1100,
+            width: 260,
+            height: 8,
+            background: BRAND.gold,
+            borderRadius: 4,
+            margin: "28px auto 0 auto",
           }}
-        >
-          Goal-based financial planning for Egyptian wealth advisors.
-        </div>
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-// ---------------------------------------------------------------------
-// EndCard — 1.6s brand outro with the repo URL.
-// ---------------------------------------------------------------------
-const EndCard: React.FC = () => {
-  const frame = useCurrentFrame();
-  const opacity = interpolate(
-    frame,
-    [0, 14, END_FRAMES - 10, END_FRAMES],
-    [0, 1, 1, 0],
-    { extrapolateRight: "clamp" }
-  );
-  return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: BRAND.black,
-        color: BRAND.white,
-        justifyContent: "center",
-        alignItems: "center",
-        fontFamily,
-      }}
-    >
-      <div style={{ opacity, textAlign: "center" }}>
-        <div style={{ fontSize: 44, fontWeight: 500, color: BRAND.goldSoft, marginBottom: 30 }}>
-          Marsa. Egyptian planning, built honestly.
-        </div>
+        />
         <div
           style={{
-            fontSize: 36,
-            fontWeight: 600,
-            color: BRAND.white,
-            fontFamily:
-              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
+            marginTop: 28,
+            fontSize: 30,
+            fontWeight: 500,
+            color: BRAND.goldSoft,
+            letterSpacing: 0.5,
           }}
         >
-          github.com/elsheraey/marsa-planner
+          Egyptian planning.
         </div>
       </div>
     </AbsoluteFill>
@@ -293,43 +298,55 @@ const EndCard: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------
-// Root composition — title buffer → N section scenes locked to voice
-// durations → end buffer. The concatenated voiceover plays at frame
-// TITLE_FRAMES so its start aligns with section 01's visual start.
+// Root composition — 17 section scenes back-to-back, no audio, no
+// title buffer. The last section (17_tag) is rendered as a pure
+// Remotion EndCard, not the captured PNG — the PNG is kept as a
+// fallback if the render ever needs to swap back.
 // ---------------------------------------------------------------------
-export const Marsa: React.FC<Props> = ({ hasVoice = true }) => {
-  const voiceSrc = hasVoice ? staticFile("voiceover.en.mp3") : null;
+type Props = {
+  lang?: "en"; // AR deferred — kept for forward-compat.
+  // Kept for API parity with the previous composition so callers (render.mjs)
+  // that pass `hasVoice` still work. Currently unused — audio is off.
+  hasVoice?: boolean;
+};
 
+export const Marsa: React.FC<Props> = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BRAND.canvas }}>
-      {/* 1.2s title card */}
-      <Sequence from={0} durationInFrames={TITLE_FRAMES}>
-        <TitleCard />
-      </Sequence>
-
-      {/* Each section locked to its voiceover duration. */}
-      {en.sections.map((s, i) => {
-        const from = TITLE_FRAMES + cumulativeStart[i];
+      {sections.map((s, i) => {
+        const from = cumulativeStart[i];
         const duration = sectionFrames[i];
+        const isEnd = s.id === "17_tag";
         return (
           <Sequence key={s.id} from={from} durationInFrames={duration}>
-            <SectionScene id={s.id} index={i} duration={duration} />
+            {isEnd ? (
+              <EndCardWithCaption caption={s.caption} duration={duration} />
+            ) : (
+              <SectionScene
+                id={s.id}
+                caption={s.caption}
+                index={i}
+                duration={duration}
+              />
+            )}
           </Sequence>
         );
       })}
+    </AbsoluteFill>
+  );
+};
 
-      {/* End card */}
-      <Sequence from={TITLE_FRAMES + NARRATION_FRAMES} durationInFrames={END_FRAMES}>
-        <EndCard />
-      </Sequence>
-
-      {/* Single audio track — the concatenated voiceover. Starts at
-          TITLE_FRAMES so its t=0 aligns with section 01's t=0. */}
-      {voiceSrc && (
-        <Sequence from={TITLE_FRAMES}>
-          <Audio src={voiceSrc} />
-        </Sequence>
-      )}
+// The tag section gets a caption lower-third over the EndCard too so
+// the copy lock-up reads the same as every other section — wordmark
+// above, caption below.
+const EndCardWithCaption: React.FC<{ caption: string; duration: number }> = ({
+  caption,
+  duration,
+}) => {
+  return (
+    <AbsoluteFill>
+      <EndCard duration={duration} />
+      <LowerThirdCaption caption={caption} duration={duration} />
     </AbsoluteFill>
   );
 };
