@@ -84,6 +84,21 @@ const slice = createSlice({
       state.results = action.payload;
       state.result = action.payload[0]?.result ?? null;
     },
+    // Rehydrate from persisted storage on app boot. Only restores the
+    // payload fields (result/results); status + error are never
+    // persisted because a fresh boot is always "idle".
+    rehydrate(
+      state,
+      action: PayloadAction<{
+        result: SimulateResult | null;
+        results: ScenarioResult[];
+      }>
+    ) {
+      state.result = action.payload.result;
+      state.results = action.payload.results;
+      state.status = "idle";
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -120,5 +135,5 @@ const slice = createSlice({
   },
 });
 
-export const { reset, setResults } = slice.actions;
+export const { reset, setResults, rehydrate } = slice.actions;
 export default slice.reducer;
