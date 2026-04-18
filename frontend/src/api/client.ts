@@ -96,6 +96,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  listSimulations: (clientId?: string | null) => {
+    const qs =
+      clientId == null || clientId === ""
+        ? ""
+        : `?client_id=${encodeURIComponent(clientId)}`;
+    return request<SavedSimulationListItem[]>(`/simulations${qs}`, {
+      retries: 1,
+    });
+  },
+  getSimulation: (id: string) =>
+    request<SavedSimulation>(`/simulations/${id}`, { retries: 1 }),
+  deleteSimulation: (id: string) =>
+    request<void>(`/simulations/${id}`, { method: "DELETE" }),
 };
 
 export type User = { id: string; name: string; email: string };
@@ -200,6 +213,17 @@ export type SavedSimulation = {
   client_id: string | null;
   request: SimulateRequest;
   response: SimulateResult;
+  calibration_as_of?: string | null;
+  created_at: string;
+};
+
+// Lighter shape returned by GET /api/simulations (list). Backend omits the
+// big `request` / `response` blobs on the list endpoint, so we only surface
+// the fields the Saved-simulations card on ClientSummary actually renders.
+export type SavedSimulationListItem = {
+  id: string;
+  name: string;
+  client_id: string | null;
   calibration_as_of?: string | null;
   created_at: string;
 };

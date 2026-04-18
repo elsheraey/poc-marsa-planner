@@ -109,6 +109,17 @@ const en: Record<string, string> = {
   "client.empty.addOne": "Add one",
   "client.years": "{n} years",
 
+  "client.section.savedSims": "Saved simulations",
+  "client.savedSims.empty": "No saved simulations yet.",
+  "client.savedSims.error": "Could not load saved simulations.",
+  "client.savedSims.col.name": "Name",
+  "client.savedSims.col.createdAt": "Created at",
+  "client.savedSims.col.probability": "Probability of goal",
+  "client.savedSims.col.attainability": "Attainability",
+  "client.savedSims.col.actions": "Actions",
+  "client.savedSims.delete": "Delete",
+  "client.savedSims.confirmDelete": "Delete saved simulation '{name}'?",
+
   "profile.section.required": "Personal info",
   "profile.section.dossier": "Advanced profile (optional)",
   "profile.section.dossier.help":

@@ -120,6 +120,27 @@ const ar: Record<string, string> = {
   "client.empty.addOne": "أضف واحدًا",
   "client.years": "{n} سنوات",
 
+  // TODO: native-speaker review
+  "client.section.savedSims": "المحاكاات المحفوظة",
+  // TODO: native-speaker review
+  "client.savedSims.empty": "لا توجد محاكاات محفوظة بعد.",
+  // TODO: native-speaker review
+  "client.savedSims.error": "تعذّر تحميل المحاكاات المحفوظة.",
+  // TODO: native-speaker review
+  "client.savedSims.col.name": "الاسم",
+  // TODO: native-speaker review
+  "client.savedSims.col.createdAt": "تاريخ الإنشاء",
+  // TODO: native-speaker review
+  "client.savedSims.col.probability": "احتمال تحقيق الهدف",
+  // TODO: native-speaker review
+  "client.savedSims.col.attainability": "قابلية التحقيق",
+  // TODO: native-speaker review
+  "client.savedSims.col.actions": "إجراءات",
+  // TODO: native-speaker review
+  "client.savedSims.delete": "حذف",
+  // TODO: native-speaker review
+  "client.savedSims.confirmDelete": "حذف المحاكاة المحفوظة '{name}'؟",
+
   "profile.section.required": "البيانات الشخصية",
   "profile.section.dossier": "الملف الموسَّع (اختياري)",
   "profile.section.dossier.help":

@@ -1,12 +1,59 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import WizardTabs from "../components/WizardTabs";
+import { toast } from "../components/Toaster";
 import { fetchClient } from "../store/slices/clientsSlice";
 import { useAppDispatch, useAppSelector } from "../store";
 import { fmtEGP } from "../utils/format";
 import { t } from "../i18n";
-import type { Goal } from "../api/client";
+import {
+  ApiError,
+  api,
+  type Goal,
+  type SavedSimulation,
+  type SavedSimulationListItem,
+} from "../api/client";
+
+// Shape we render per row in the Saved-simulations card. The list endpoint
+// only returns id/name/client_id/created_at; probability + attainability
+// come from a per-row detail fetch. `detailStatus` lets the UI distinguish
+// "still loading the detail" from "detail arrived with a null probability".
+type SavedSimRow = SavedSimulationListItem & {
+  probability: number | null;
+  attainability: "attainable" | "aspirational" | "out_of_reach" | null;
+  detailStatus: "loading" | "ready" | "error";
+};
+
+const ATTAINABILITY_CLASS: Record<
+  "attainable" | "aspirational" | "out_of_reach",
+  string
+> = {
+  attainable: "bg-emerald-100 text-emerald-700",
+  aspirational: "bg-amber-100 text-amber-700",
+  out_of_reach: "bg-rose-100 text-rose-700",
+};
+
+function attainabilityLabel(
+  a: "attainable" | "aspirational" | "out_of_reach"
+): string {
+  const key = `report.${a}`;
+  const localised = t(key);
+  return localised === key ? a.replace(/_/g, " ") : localised;
+}
+
+// Turn a backend ISO timestamp into the short local form the other cards
+// use ("2026-04-18"). Keep the time hidden to stop the column widening on
+// long UTC strings — advisors don't need minute precision here.
+function fmtDate(iso: string): string {
+  if (!iso) return "—";
+  return iso.slice(0, 10);
+}
+
+function fmtProbabilityPct(p: number | null): string {
+  if (p == null) return "—";
+  return `${Math.round(p * 100)}%`;
+}
 
 // Shape the backend currently returns for `client.profile`. Every field is
 // optional — the backend has never been strict about this and the demo
@@ -99,9 +146,137 @@ export default function ClientSummary() {
   const dispatch = useAppDispatch();
   const client = useAppSelector((s) => (id ? s.clients.byId[id] : undefined));
 
+  // Saved simulations card state. `status` drives the top-level loading /
+  // error / empty / populated branches; `rows` enrich the list entries with
+  // the per-item detail fetch (probability + attainability) the list
+  // endpoint doesn't include.
+  const [savedStatus, setSavedStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
+  const [savedError, setSavedError] = useState<string | null>(null);
+  const [savedRows, setSavedRows] = useState<SavedSimRow[]>([]);
+
   useEffect(() => {
     if (id) dispatch(fetchClient(id));
   }, [id, dispatch]);
+
+  // Fetch the saved-simulations list scoped to this client. We then fan out
+  // one detail GET per row to pull the probability + attainability the
+  // columns render. Errors on the list-level fetch surface the shared card
+  // error state; per-row detail errors degrade to "—" in that row only so
+  // one bad snapshot doesn't blank the card.
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setSavedStatus("loading");
+    setSavedError(null);
+    api
+      .listSimulations(id)
+      .then((list) => {
+        if (cancelled) return;
+        const initial: SavedSimRow[] = list.map((item) => ({
+          ...item,
+          probability: null,
+          attainability: null,
+          detailStatus: "loading",
+        }));
+        setSavedRows(initial);
+        setSavedStatus("idle");
+        // Fan out detail fetches. We don't await the Promise.all — each
+        // row's state update happens as its detail resolves, so the table
+        // progressively fills rather than blocking on the slowest row.
+        list.forEach((item) => {
+          api
+            .getSimulation(item.id)
+            .then((detail: SavedSimulation) => {
+              if (cancelled) return;
+              setSavedRows((prev) =>
+                prev.map((r) =>
+                  r.id === item.id
+                    ? {
+                        ...r,
+                        probability: detail.response.probability_of_goal,
+                        attainability: detail.response.attainability,
+                        detailStatus: "ready",
+                      }
+                    : r
+                )
+              );
+            })
+            .catch(() => {
+              if (cancelled) return;
+              setSavedRows((prev) =>
+                prev.map((r) =>
+                  r.id === item.id ? { ...r, detailStatus: "error" } : r
+                )
+              );
+            });
+        });
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        const msg =
+          e instanceof ApiError ? e.message : "Failed to load saved simulations";
+        setSavedStatus("error");
+        setSavedError(msg);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  async function handleDeleteSaved(row: SavedSimRow) {
+    const message = t("client.savedSims.confirmDelete", { name: row.name });
+    const confirmed =
+      globalThis.window !== undefined
+        ? globalThis.window.confirm(message)
+        : true;
+    if (!confirmed) return;
+    try {
+      await api.deleteSimulation(row.id);
+      // Re-fetch instead of splicing locally — keeps the row order and
+      // server-truth aligned (e.g. if another tab deleted something).
+      if (id) {
+        const list = await api.listSimulations(id);
+        setSavedRows(
+          list.map((item) => ({
+            ...item,
+            probability: null,
+            attainability: null,
+            detailStatus: "loading",
+          }))
+        );
+        list.forEach((item) => {
+          api
+            .getSimulation(item.id)
+            .then((detail) => {
+              setSavedRows((prev) =>
+                prev.map((r) =>
+                  r.id === item.id
+                    ? {
+                        ...r,
+                        probability: detail.response.probability_of_goal,
+                        attainability: detail.response.attainability,
+                        detailStatus: "ready",
+                      }
+                    : r
+                )
+              );
+            })
+            .catch(() => {
+              setSavedRows((prev) =>
+                prev.map((r) =>
+                  r.id === item.id ? { ...r, detailStatus: "error" } : r
+                )
+              );
+            });
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : "Delete failed";
+      toast(msg, "error");
+    }
+  }
 
   if (!client) {
     return (
@@ -347,6 +522,85 @@ export default function ClientSummary() {
                   <td className="py-2">{dash(g.name)}</td>
                   <td className="py-2">{egpOrDash(g.amount)}</td>
                   <td className="py-2">{dash(g.year)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="card mt-6" data-testid="saved-simulations">
+        <h3 className="font-bold mb-4">{t("client.section.savedSims")}</h3>
+        {savedStatus === "loading" && (
+          <div className="text-sm text-muted py-2">{t("common.loading")}</div>
+        )}
+        {savedStatus === "error" && (
+          <div
+            role="alert"
+            className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2"
+          >
+            {savedError ?? t("client.savedSims.error")}
+          </div>
+        )}
+        {savedStatus === "idle" && savedRows.length === 0 && (
+          <EmptyState message={t("client.savedSims.empty")} />
+        )}
+        {savedStatus === "idle" && savedRows.length > 0 && (
+          <table className="w-full text-sm">
+            <thead className="text-xs text-muted">
+              <tr>
+                <th className="text-left font-medium pb-3">
+                  {t("client.savedSims.col.name")}
+                </th>
+                <th className="text-left font-medium pb-3">
+                  {t("client.savedSims.col.createdAt")}
+                </th>
+                <th className="text-left font-medium pb-3">
+                  {t("client.savedSims.col.probability")}
+                </th>
+                <th className="text-left font-medium pb-3">
+                  {t("client.savedSims.col.attainability")}
+                </th>
+                <th className="text-right font-medium pb-3">
+                  {t("client.savedSims.col.actions")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {savedRows.map((row) => (
+                <tr
+                  key={row.id}
+                  data-testid={`saved-sim-row-${row.id}`}
+                  className="border-t border-border/60"
+                >
+                  <td className="py-2 font-medium">{row.name}</td>
+                  <td className="py-2 text-muted">{fmtDate(row.created_at)}</td>
+                  <td className="py-2">
+                    {row.detailStatus === "loading"
+                      ? "…"
+                      : fmtProbabilityPct(row.probability)}
+                  </td>
+                  <td className="py-2">
+                    {row.detailStatus === "ready" && row.attainability ? (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[row.attainability]}`}
+                      >
+                        {attainabilityLabel(row.attainability)}
+                      </span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </td>
+                  <td className="py-2 text-right">
+                    <button
+                      type="button"
+                      className="text-red-600 text-xs font-semibold hover:underline"
+                      data-testid={`delete-saved-sim-${row.id}`}
+                      onClick={() => handleDeleteSaved(row)}
+                    >
+                      {t("client.savedSims.delete")}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
