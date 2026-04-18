@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from app.config import get_settings
+
+# Cookie name is derived from APP_NAME (see app.deps.ACCESS_COOKIE_NAME).
+# Asserting against the derived value — not a hard-coded "marsa_access" —
+# means these tests keep passing after the next rebrand without a second
+# code change.
+COOKIE_NAME = f"{get_settings().app_name.lower()}_access"
+
 
 def test_register_sets_cookie_and_returns_user(client):
     r = client.post(
@@ -10,7 +18,7 @@ def test_register_sets_cookie_and_returns_user(client):
     )
     assert r.status_code == 201
     assert r.json()["user"]["email"] == "alice@example.com"
-    assert "marsa_access" in r.cookies
+    assert COOKIE_NAME in r.cookies
 
 
 def test_register_rejects_short_password(client):
@@ -82,7 +90,7 @@ def test_login_accepts_bearer_header(authed_client):
         json={"email": "alice@example.com", "password": "password123"},
     )
     assert r.status_code == 200
-    token_cookie = r.cookies.get("marsa_access")
+    token_cookie = r.cookies.get(COOKIE_NAME)
     assert token_cookie
 
     authed_client.cookies.clear()
