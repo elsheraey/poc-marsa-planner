@@ -38,11 +38,12 @@ def _git_sha() -> str:
 
 
 def _fit_stats(returns: np.ndarray, infl: np.ndarray | None = None) -> dict:
-    r = returns
+    """μ on the CPI-deflated series (§1 μ_monthly_real); σ on the nominal series."""
     if infl is not None:
-        n = min(len(r), len(infl))
-        r = (1 + r[-n:]) / (1 + infl[-n:]) - 1
-    return {"mu": float(np.mean(r)), "sigma": float(np.std(r, ddof=0))}
+        n = min(len(returns), len(infl))
+        r_real = (1 + returns[-n:]) / (1 + infl[-n:]) - 1
+        return {"mu": float(np.mean(r_real)), "sigma": float(np.std(returns[-n:], ddof=0))}
+    return {"mu": float(np.mean(returns)), "sigma": float(np.std(returns, ddof=0))}
 
 
 def _check(series: str, stats: dict) -> list[str]:
