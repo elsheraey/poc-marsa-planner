@@ -73,6 +73,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  // Server-side inversion (replaces the client-side ratio-scaling
+  // approximation in utils/inversion.ts). Solves for the monthly
+  // contribution (and, as a second pass, the horizon) that would clear
+  // `target_probability`. See backend/app/routers/simulations.py.
+  simulateInvert: (payload: SimulateInvertRequest) =>
+    request<SimulateInvertResult>("/simulate/invert", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 export type User = { id: string; name: string; email: string };
@@ -139,4 +149,31 @@ export type SimulateResult = {
   // ISO date / YYYY-MM from the backend calibration manifest. Surfaces the
   // real snapshot date the analyst pinned in `calibration_*.json`.
   calibration_as_of?: string | null;
+};
+
+// Mirrors backend.SimulateInvertRequest. `current_monthly_investment` is
+// optional and anchors the horizon pass to the advisor's *current* plan; if
+// omitted the backend reuses whatever `required_monthly_investment` it just
+// solved for.
+export type SimulateInvertRequest = {
+  duration_years: number;
+  initial_investment: number;
+  current_monthly_investment?: number | null;
+  annual_increase_pct?: number;
+  importance: "worst" | "essential" | "medium" | "best";
+  risk_tolerance: "very_low" | "low" | "moderate" | "high" | "very_high";
+  goal_target_amount: number;
+  target_probability: number; // 0.5–0.99
+  return_in_real_terms?: boolean;
+};
+
+// Mirrors backend.SimulateInvertResponse. `required_monthly_investment: null`
+// means the goal is unreachable even at the 10M-EGP/month cap;
+// `required_horizon_years: null` means even the 40y cap can't clear it at the
+// anchor monthly.
+export type SimulateInvertResult = {
+  required_monthly_investment: number | null;
+  required_horizon_years: number | null;
+  achieved_probability_at_required: number;
+  achieved_probability_at_double: number | null;
 };

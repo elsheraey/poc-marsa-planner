@@ -38,10 +38,15 @@ const ar: Record<string, string> = {
     "بمساهمة شهرية {monthly} جنيهًا، تحقق الخطة الهدف باحتمال ~{pct}٪.",
   "report.headline.no_goal":
     "لم يُحدَّد مبلغ الهدف — الإسقاطات أدناه للعرض فقط.",
+  // TODO: native-speaker review
   "report.suggest.monthly":
-    "ارفع المساهمة الشهرية إلى حوالي {monthly} جنيهًا لبلوغ الهدف باحتمال 80٪ (تقديري).",
-  "report.suggest.year":
-    "إبقِ المساهمة كما هي ومدِّد الأفق حتى عام {year} — يصل المتوسط المتوقع إلى الهدف في تلك السنة.",
+    "ارفع المساهمة الشهرية إلى {monthly} جنيهًا لبلوغ احتمال 80٪.",
+  // TODO: native-speaker review
+  "report.suggest.horizon":
+    "مدِّد الأفق حتى عام {year} أو راجع الهدف.",
+  // TODO: native-speaker review
+  "report.suggest.unreachable":
+    "هذا الهدف خارج نطاق التحقق ضمن أي خطة شهرية في نموذجنا.",
   "report.suggest.none":
     "لا يوجد حل مباشر — جرِّب إعادة التشغيل بمدخلات مختلفة.",
 

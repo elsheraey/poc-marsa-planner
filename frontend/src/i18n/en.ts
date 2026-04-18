@@ -37,9 +37,11 @@ const en: Record<string, string> = {
   "report.headline.no_goal":
     "No goal amount set — the projection below is informational.",
   "report.suggest.monthly":
-    "Raise the monthly contribution to about EGP {monthly} to reach the goal at 80% confidence (approx.).",
-  "report.suggest.year":
-    "Keep contributions as-is and extend the horizon to {year} — the median projection reaches the goal that year.",
+    "Raise monthly to EGP {monthly} to reach 80%.",
+  "report.suggest.horizon":
+    "Extend the horizon to {year} or review the goal.",
+  "report.suggest.unreachable":
+    "This goal is out of reach under any monthly plan in our model.",
   "report.suggest.none":
     "No simple inversion available — re-run with different inputs to explore.",
 

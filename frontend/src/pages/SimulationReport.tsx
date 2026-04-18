@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Area,
@@ -13,11 +13,21 @@ import {
 import AppShell from "../components/AppShell";
 import WizardTabs from "../components/WizardTabs";
 import DonutChart from "../components/DonutChart";
+import { toast } from "../components/Toaster";
 import { useAppSelector } from "../store";
 import { fmtEGP, fmtProbabilitySeTail } from "../utils/format";
 import { t } from "../i18n";
-import { computeInversion } from "../utils/inversion";
-import type { SimulateResult } from "../api/client";
+import {
+  ApiError,
+  api,
+  type SimulateInvertResult,
+  type SimulateResult,
+} from "../api/client";
+
+// Advisor-side rule-of-thumb from ux-audit-v2.md §3: we only propose an
+// inversion when the plan comes in below 80% probability. Hits every live
+// call to `/api/simulate/invert`.
+const INVERSION_TARGET_PROBABILITY = 0.8;
 
 // Product constraint: the Goals Achievement Probability grid renders at most
 // 4 donut cards. Keep in sync with MAX_SCENARIOS_PER_RUN in ScenarioStep.tsx.
@@ -107,6 +117,12 @@ export default function SimulationReport() {
   const [tab, setTab] = useState<Tab>("chart");
   const [activeScenario, setActiveScenario] = useState(0);
   const [presenting, setPresenting] = useState(false);
+  // Server-side inversion for the active scenario. `null` = not yet fetched
+  // or not applicable (goal met, or no goal target). Keyed per-scenario so
+  // flipping between tabs doesn't flash stale suggestions.
+  const [inversionByScenario, setInversionByScenario] = useState<
+    Record<number, SimulateInvertResult | null>
+  >({});
 
   // One card per backend-returned scenario (truncated to MAX). The probability
   // comes straight from `result.probability_of_goal` — no per-index synthesis.
@@ -154,6 +170,70 @@ export default function SimulationReport() {
     });
   }, [activeResult]);
 
+  // Moment-of-truth inversion for the active scenario. Derived from the
+  // backend probability + (async) inversion response. The inversion call is
+  // only meaningful when the active run has a goal target AND is below the
+  // 80% advisor bar — otherwise we show the "met" headline and no
+  // suggestions.
+  const activeRequest = results[activeScenario]?.request ?? results[0]?.request;
+  const probabilityOfGoal = activeResult?.probability_of_goal ?? null;
+  const probabilityPct =
+    probabilityOfGoal == null ? null : Math.round(probabilityOfGoal * 100);
+  const meetsEightyPct =
+    probabilityOfGoal != null && probabilityOfGoal >= INVERSION_TARGET_PROBABILITY;
+  const hasGoal =
+    activeRequest?.goal_target_amount != null &&
+    activeRequest.goal_target_amount > 0;
+  const shouldFetchInversion = !!activeResult && hasGoal && !meetsEightyPct;
+
+  // Track which scenarios have had an inversion request fired (or finished
+  // firing). We deliberately use a ref rather than adding
+  // `inversionByScenario` to the effect deps: if the effect depended on the
+  // map, the state update that records "in-flight" would re-run the effect
+  // and the cleanup's `cancelled = true` would orphan the pending fetch's
+  // `.then` — the real response would never land in state.
+  const firedInversionRef = useRef<Set<number>>(new Set());
+
+  // Fire the async inversion when the active scenario shifts or a new
+  // simulation result arrives. Keyed by scenario index so switching between
+  // cards renders the right suggestion list. We deliberately don't block
+  // the initial render: the headline always shows immediately, and the
+  // `suggestions` list is appended once the fetch resolves.
+  //
+  // NOTE: this hook sits above every early return so React's hook-ordering
+  // invariant holds across the "no result" / "loading" / "ready" branches.
+  useEffect(() => {
+    if (!shouldFetchInversion || !activeRequest) return;
+    if (firedInversionRef.current.has(activeScenario)) return;
+    firedInversionRef.current.add(activeScenario);
+    const payload = {
+      duration_years: activeRequest.duration_years,
+      initial_investment: activeRequest.initial_investment,
+      current_monthly_investment: activeRequest.monthly_investment,
+      annual_increase_pct: activeRequest.annual_increase_pct,
+      importance: activeRequest.importance,
+      risk_tolerance: activeRequest.risk_tolerance,
+      goal_target_amount: activeRequest.goal_target_amount as number,
+      target_probability: INVERSION_TARGET_PROBABILITY,
+      return_in_real_terms: true,
+    };
+    api
+      .simulateInvert(payload)
+      .then((res) => {
+        setInversionByScenario((prev) => ({ ...prev, [activeScenario]: res }));
+      })
+      .catch((e) => {
+        // Soft-fail: the headline still renders. The shared error toast
+        // surfaces ApiError shape consistently with the rest of the app.
+        const msg =
+          e instanceof ApiError ? e.message : "Could not compute inversion";
+        toast(msg, "error");
+        // Clear the in-flight marker so the advisor can trigger a retry
+        // by re-clicking the scenario (or running another simulation).
+        firedInversionRef.current.delete(activeScenario);
+      });
+  }, [shouldFetchInversion, activeScenario, activeRequest]);
+
   if (status === "loading") {
     return (
       <AppShell title="New Client">
@@ -179,28 +259,16 @@ export default function SimulationReport() {
     );
   }
 
-  // Moment-of-truth inversion for the active scenario. Uses the scenario
-  // request (monthly, initial, goal_target_amount) alongside the backend
-  // projection to recommend a required-monthly or achievable-year. Falls
-  // back gracefully when fields are missing (e.g. no goal target).
-  const activeRequest = results[activeScenario]?.request ?? results[0]?.request;
-  const inversion = computeInversion({
-    goalTargetAmount: activeRequest?.goal_target_amount,
-    currentMonthly: activeRequest?.monthly_investment ?? 0,
-    initialInvestment: activeRequest?.initial_investment ?? 0,
-    result: activeResult,
-  });
-
   let headlineKey: string;
-  if (inversion.probabilityPct == null) {
+  if (probabilityPct == null) {
     headlineKey = "report.headline.no_goal";
-  } else if (inversion.meetsEightyPct) {
+  } else if (meetsEightyPct) {
     headlineKey = "report.headline.met";
   } else {
     headlineKey = "report.headline.shortfall";
   }
   const headline = t(headlineKey, {
-    pct: inversion.probabilityPct ?? 0,
+    pct: probabilityPct ?? 0,
     monthly: activeRequest?.monthly_investment
       ? fmtEGP(activeRequest.monthly_investment)
       : "—",
@@ -213,27 +281,44 @@ export default function SimulationReport() {
   // Rounding lives in fmtProbabilitySeTail so the copy stays a dumb
   // interpolation.
   const seTailPp =
-    inversion.probabilityPct != null
+    probabilityPct != null
       ? fmtProbabilitySeTail(activeResult.probability_of_goal_se)
       : null;
   const seTail = seTailPp ? t("report.se.tail", { pp: seTailPp }) : null;
 
+  // Suggestions are derived strictly from the backend inversion response,
+  // once it arrives. Rendered below the headline; the headline itself is
+  // never blocked on this fetch.
+  const inversionResponse = inversionByScenario[activeScenario];
   const suggestions: string[] = [];
-  if (!inversion.meetsEightyPct && inversion.requiredMonthly != null) {
-    suggestions.push(
-      t("report.suggest.monthly", {
-        monthly: fmtEGP(Math.round(inversion.requiredMonthly / 1000) * 1000),
-      })
-    );
-  }
-  if (!inversion.meetsEightyPct && inversion.achievableYear != null) {
-    suggestions.push(
-      t("report.suggest.year", { year: inversion.achievableYear })
-    );
+  if (shouldFetchInversion && inversionResponse) {
+    const { required_monthly_investment, required_horizon_years } =
+      inversionResponse;
+    if (required_monthly_investment != null) {
+      // Bracket to the nearest 100 EGP — the backend solves to a 100-EGP
+      // tolerance so we drop the "approx." hedge and round display to match.
+      const bracketed =
+        Math.round(required_monthly_investment / 100) * 100;
+      suggestions.push(
+        t("report.suggest.monthly", { monthly: fmtEGP(bracketed) })
+      );
+    } else if (required_horizon_years != null) {
+      // No feasible monthly under the 10M cap, but extending the horizon
+      // clears the bar. Use the calendar-year end of the required horizon
+      // (today's year + years - 1) to match `chartData` framing.
+      const calendarYear =
+        new Date().getFullYear() + required_horizon_years - 1;
+      suggestions.push(
+        t("report.suggest.horizon", { year: calendarYear })
+      );
+    } else {
+      // Unreachable at 10M/month AND at the 40y horizon cap — honest "no".
+      suggestions.push(t("report.suggest.unreachable"));
+    }
   }
 
   function handlePrint() {
-    if (typeof window !== "undefined") window.print();
+    if (typeof globalThis.window !== "undefined") globalThis.window.print();
   }
 
   return (

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { act, screen } from "@testing-library/react";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
+import { act, screen, waitFor } from "@testing-library/react";
 import SimulationReport from "./SimulationReport";
 import { renderWithProviders } from "../test/testUtils";
-import type { SimulateResult } from "../api/client";
+import { api, type SimulateResult } from "../api/client";
 
 // Recharts renders into SVG using ResponsiveContainer which needs a real
 // width/height. jsdom has no layout, so we force a size via ResizeObserver
@@ -225,6 +225,128 @@ describe("SimulationReport moment-of-truth headline", () => {
     const headline = screen.getByTestId("moment-of-truth-headline");
     expect(headline.textContent).toMatch(/92/);
     // Goal-met branch: suggestions list is not rendered.
+    expect(screen.queryByTestId("moment-of-truth-suggestions")).toBeNull();
+  });
+});
+
+describe("SimulationReport /simulate/invert wiring", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fires the inversion call when probability < 80% and renders the unreachable fallback copy for null required_monthly_investment", async () => {
+    const invertSpy = vi
+      .spyOn(api, "simulateInvert")
+      .mockResolvedValueOnce({
+        required_monthly_investment: null,
+        required_horizon_years: null,
+        achieved_probability_at_required: 0.42,
+        achieved_probability_at_double: null,
+      });
+
+    const r1: SimulateResult = { ...baseResult, probability_of_goal: 0.35 };
+    renderWithProviders(<SimulationReport />, {
+      preloadedState: {
+        auth: {
+          user: { id: "u1", name: "Tester", email: "t@e.com" },
+          status: "idle",
+          error: null,
+          initialized: true,
+        },
+        simulation: {
+          result: r1,
+          results: [
+            {
+              name: "Base",
+              request: {
+                duration_years: 5,
+                initial_investment: 500000,
+                monthly_investment: 20000,
+                annual_increase_pct: 0,
+                importance: "essential",
+                risk_tolerance: "high",
+                goal_target_amount: 6_000_000,
+              },
+              result: r1,
+            },
+          ],
+          status: "idle",
+          error: null,
+        },
+        draft: baseDraft as never,
+      },
+    });
+
+    // Headline renders immediately without waiting for the inversion call.
+    expect(screen.getByTestId("moment-of-truth-headline")).toBeTruthy();
+
+    // Fetch fires with the current monthly as the anchor and 80% target.
+    await waitFor(() => {
+      expect(invertSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(invertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        duration_years: 5,
+        initial_investment: 500000,
+        current_monthly_investment: 20000,
+        goal_target_amount: 6_000_000,
+        target_probability: 0.8,
+      })
+    );
+
+    // When required_monthly_investment is null AND required_horizon_years is
+    // null, the UI shows the "unreachable under any monthly plan" fallback.
+    const suggestions = await screen.findByTestId("moment-of-truth-suggestions");
+    expect(suggestions.textContent).toMatch(/out of reach/i);
+  });
+
+  it("does not fire the inversion call when the plan already meets 80%", async () => {
+    const invertSpy = vi.spyOn(api, "simulateInvert").mockResolvedValue({
+      required_monthly_investment: 0,
+      required_horizon_years: 5,
+      achieved_probability_at_required: 0.92,
+      achieved_probability_at_double: 0.99,
+    });
+
+    const r1: SimulateResult = { ...baseResult, probability_of_goal: 0.9 };
+    renderWithProviders(<SimulationReport />, {
+      preloadedState: {
+        auth: {
+          user: { id: "u1", name: "Tester", email: "t@e.com" },
+          status: "idle",
+          error: null,
+          initialized: true,
+        },
+        simulation: {
+          result: r1,
+          results: [
+            {
+              name: "Base",
+              request: {
+                duration_years: 5,
+                initial_investment: 500000,
+                monthly_investment: 20000,
+                annual_increase_pct: 0,
+                importance: "essential",
+                risk_tolerance: "high",
+                goal_target_amount: 100000,
+              },
+              result: r1,
+            },
+          ],
+          status: "idle",
+          error: null,
+        },
+        draft: baseDraft as never,
+      },
+    });
+
+    // Give any accidental async fetch a tick to fire; should still be 0.
+    await new Promise((r) => setTimeout(r, 10));
+    expect(invertSpy).not.toHaveBeenCalled();
     expect(screen.queryByTestId("moment-of-truth-suggestions")).toBeNull();
   });
 });
