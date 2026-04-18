@@ -1,5 +1,5 @@
 import { expect, Page, test } from "@playwright/test";
-import { registerNewUser } from "./helpers";
+import { registerNewUser, runWizard } from "./helpers";
 
 /**
  * Market-spec §5 acceptance: the attainability badge on the report page must
@@ -16,62 +16,6 @@ import { registerNewUser } from "./helpers";
  * `text-transform: uppercase`) is "ATTAINABLE" / "OUT OF REACH", while the
  * DOM text content is lowercase. Assert against the DOM value.
  */
-async function runWizard(
-  page: Page,
-  opts: {
-    clientName: string;
-    birthdate: string;
-    goalName: string;
-    goalAmount: number;
-    goalYear: number;
-    initialInvestment: number;
-    monthlyInvestment: number;
-  }
-): Promise<void> {
-  await page.goto("/clients");
-  await page.getByRole("button", { name: /add new/i }).click();
-  await expect(page).toHaveURL(/\/clients\/new\/profile$/);
-
-  await page.getByPlaceholder("Full name").first().fill(opts.clientName);
-  await page.getByPlaceholder("dd/mm/yyyy").first().fill(opts.birthdate);
-  await page
-    .locator('select:has(option[value="very_high"])')
-    .selectOption("high");
-  await page
-    .getByRole("button", { name: /^(save|proceed to goals)$/i })
-    .click();
-  await expect(page).toHaveURL(/\/clients\/new\/goals$/);
-
-  await page.getByPlaceholder("Goal").first().fill(opts.goalName);
-  await page.getByPlaceholder("Amount").first().fill(String(opts.goalAmount));
-  await page.getByPlaceholder("Year").first().fill(String(opts.goalYear));
-  await page.getByRole("button", { name: /^save$/i }).click();
-  await expect(page).toHaveURL(/\/clients\/new\/scenario$/);
-
-  const addInvestmentBtn = page.locator(
-    'span:text-is("Investments") + button.icon-btn-add'
-  );
-  await addInvestmentBtn.click();
-  await page
-    .getByPlaceholder("Amount")
-    .first()
-    .fill(String(opts.initialInvestment));
-
-  const addMonthlyBtn = page.locator(
-    'span:text-is("Monthly Investments") + button.icon-btn-add'
-  );
-  await addMonthlyBtn.click();
-  await page
-    .getByPlaceholder("Amount")
-    .nth(1)
-    .fill(String(opts.monthlyInvestment));
-
-  await page
-    .getByRole("button", { name: /^run simulation$/i })
-    .last()
-    .click();
-  await expect(page).toHaveURL(/\/clients\/new\/report$/, { timeout: 20_000 });
-}
 
 /**
  * The badge lives inside the "Goals Achievement Probability" card. It's

@@ -1,5 +1,5 @@
-import { expect, Page, test } from "@playwright/test";
-import { registerNewUser } from "./helpers";
+import { expect, test } from "@playwright/test";
+import { registerNewUser, runWizard } from "./helpers";
 
 /**
  * UX bug (commit a70ebd4 "fix(report): remove stackId causing
@@ -16,60 +16,6 @@ import { registerNewUser } from "./helpers";
  * because the chart renders numbers into SVG paths where they aren't
  * directly inspectable.
  */
-async function runWizard(
-  page: Page,
-  opts: {
-    clientName: string;
-    birthdate: string;
-    goalName: string;
-    goalAmount: number;
-    goalYear: number;
-    initialInvestment: number;
-    monthlyInvestment: number;
-  }
-): Promise<void> {
-  await page.goto("/clients");
-  await page.getByRole("button", { name: /add new/i }).click();
-  await expect(page).toHaveURL(/\/clients\/new\/profile$/);
-
-  await page.getByPlaceholder("Full name").first().fill(opts.clientName);
-  await page.getByPlaceholder("dd/mm/yyyy").first().fill(opts.birthdate);
-  await page
-    .locator('select:has(option[value="very_high"])')
-    .selectOption("high");
-  await page
-    .getByRole("button", { name: /^(save|proceed to goals)$/i })
-    .click();
-  await expect(page).toHaveURL(/\/clients\/new\/goals$/);
-
-  await page.getByPlaceholder("Goal").first().fill(opts.goalName);
-  await page.getByPlaceholder("Amount").first().fill(String(opts.goalAmount));
-  await page.getByPlaceholder("Year").first().fill(String(opts.goalYear));
-  await page.getByRole("button", { name: /^save$/i }).click();
-  await expect(page).toHaveURL(/\/clients\/new\/scenario$/);
-
-  await page
-    .locator('span:text-is("Investments") + button.icon-btn-add')
-    .click();
-  await page
-    .getByPlaceholder("Amount")
-    .first()
-    .fill(String(opts.initialInvestment));
-
-  await page
-    .locator('span:text-is("Monthly Investments") + button.icon-btn-add')
-    .click();
-  await page
-    .getByPlaceholder("Amount")
-    .nth(1)
-    .fill(String(opts.monthlyInvestment));
-
-  await page
-    .getByRole("button", { name: /^run simulation$/i })
-    .last()
-    .click();
-  await expect(page).toHaveURL(/\/clients\/new\/report$/, { timeout: 20_000 });
-}
 
 /**
  * Parse a formatted currency cell like "EGP 1,234,567", "1٬234٬567 ج.م",
