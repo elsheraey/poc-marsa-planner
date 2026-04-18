@@ -1,4 +1,4 @@
-"""End-to-end runner for the Marsa RFA simulation.
+"""End-to-end runner for the Marsa planner simulation.
 
 Runs Part 1 (preprocessing) -> Part 2 (Monte Carlo) -> Part 3 (advice)
 for the Car / 5-year / Essential / High-risk scenario from the PDF.
@@ -72,7 +72,7 @@ def run(goal: UserGoal, seed: int = 42) -> None:
 
 
 def cli() -> tuple[UserGoal, int]:
-    ap = argparse.ArgumentParser(description="Marsa RFA — robotic financial advisor simulation")
+    ap = argparse.ArgumentParser(description="Marsa — goal-based financial planning simulation")
     ap.add_argument("--duration-years", type=int, default=5)
     ap.add_argument("--initial", type=float, default=50_000)
     ap.add_argument("--monthly", type=float, default=1_000)

@@ -85,7 +85,7 @@ def ingest(source: str) -> int:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(prog="ingest", description="Marsa RFA calibration ingest")
+    ap = argparse.ArgumentParser(prog="ingest", description="Marsa planner calibration ingest")
     sub = ap.add_subparsers(dest="cmd", required=True)
     ig = sub.add_parser("ingest", help="refit calibration snapshot from backend/data/*.csv")
     ig.add_argument("--source", choices=["azimut"], required=True)
