@@ -364,7 +364,7 @@ export default function ClientSummary() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
         <div className="card">
-          <div className="text-xs font-semibold text-accent-pink mb-1">
+          <div className="text-xs font-semibold text-accent mb-1">
             {t("client.tile.riskAppetite")}
           </div>
           <div className="font-bold">{dash(profile.riskAppetite)}</div>

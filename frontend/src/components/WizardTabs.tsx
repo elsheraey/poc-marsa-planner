@@ -4,7 +4,7 @@ import { t } from "../i18n";
 type Step = {
   to: string;
   labelKey: string;
-  tone: "primary" | "pink" | "cyan";
+  tone: "primary" | "accent" | "navy";
   icon: JSX.Element;
 };
 
@@ -23,7 +23,9 @@ const steps: Step[] = [
   {
     to: "goals",
     labelKey: "wizard.goals",
-    tone: "pink",
+    // The middle wizard step used to be a pink star. Post-rebrand it
+    // renders as an ochre star — same glyph, palette-correct tone.
+    tone: "accent",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
         <path
@@ -38,7 +40,9 @@ const steps: Step[] = [
   {
     to: "scenario",
     labelKey: "wizard.scenario",
-    tone: "cyan",
+    // Scenario step was cyan; swap to deep navy (primary-900) so the
+    // wizard shows a two-tone navy + ochre progression, not a rainbow.
+    tone: "navy",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
@@ -55,16 +59,16 @@ const steps: Step[] = [
 
 const toneStyles: Record<Step["tone"], { active: string; inactive: string }> = {
   primary: {
-    active: "bg-primary-100 text-primary-600",
-    inactive: "text-primary-400 hover:text-primary-500",
+    active: "bg-primary-100 text-primary-700",
+    inactive: "text-primary-500/70 hover:text-primary-700",
   },
-  pink: {
-    active: "bg-accent-pink/10 text-accent-pink",
-    inactive: "text-accent-pink/60 hover:text-accent-pink",
+  accent: {
+    active: "bg-accent-soft/40 text-accent",
+    inactive: "text-accent/70 hover:text-accent",
   },
-  cyan: {
-    active: "bg-accent-cyan/15 text-accent-cyan",
-    inactive: "text-accent-cyan/60 hover:text-accent-cyan",
+  navy: {
+    active: "bg-primary-100 text-primary-900",
+    inactive: "text-primary-900/60 hover:text-primary-900",
   },
 };
 
