@@ -4,7 +4,7 @@ import Logo from "../components/Logo";
 import { toast } from "../components/Toaster";
 import { clearError, register } from "../store/slices/authSlice";
 import { useAppDispatch, useAppSelector } from "../store";
-import { t } from "../i18n";
+import { hasKey, t } from "../i18n";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -165,7 +165,16 @@ export default function Register() {
                   className="text-sm text-rose-800 bg-rose-100 rounded-lg px-3 py-2"
                   role="alert"
                 >
-                  {apiError}
+                  {(() => {
+                    // See matching comment in Login.tsx — code-based i18n
+                    // lookup with a last-resort fallback to the upstream
+                    // English detail string.
+                    const key = apiError.code
+                      ? `auth.error.server.${apiError.code}`
+                      : null;
+                    if (key && hasKey(key)) return t(key);
+                    return apiError.message || t("auth.error.server.default");
+                  })()}
                 </div>
               )}
 

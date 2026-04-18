@@ -5,8 +5,7 @@ from __future__ import annotations
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
+from slowapi import Limiter
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
@@ -29,7 +28,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit_default])
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    # Our own RateLimitExceeded handler is registered in `register_exception_handlers`
+    # below — it emits the unified `{error: {code, message}}` envelope so the
+    # frontend's ApiError parser can key off `code === "rate_limited"`.
     app.add_middleware(SlowAPIMiddleware)
 
     app.add_middleware(RequestContextMiddleware)

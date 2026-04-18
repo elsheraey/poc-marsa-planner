@@ -53,6 +53,28 @@ describe("Login", () => {
     await userEvent.type(screen.getByLabelText(/email/i), "a@b.co");
     await userEvent.type(screen.getByLabelText(/password/i), "wrongpass");
     await userEvent.click(screen.getByRole("button", { name: /login/i }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/invalid credentials/i);
+    // Banner now renders the i18n lookup for `auth.error.server.unauthorized`
+    // rather than the raw backend English `invalid credentials`.
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /incorrect email or password/i
+    );
+  });
+
+  it("localises 429 rate-limit responses on the banner", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { code: "rate_limited", message: "Rate limit exceeded" },
+        }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    renderWithProviders(<Login />);
+    await userEvent.type(screen.getByLabelText(/email/i), "a@b.co");
+    await userEvent.type(screen.getByLabelText(/password/i), "password1");
+    await userEvent.click(screen.getByRole("button", { name: /login/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /too many attempts/i
+    );
   });
 });

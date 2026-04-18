@@ -64,3 +64,16 @@ export function t(key: string, vars?: Record<string, string | number>): string {
   }
   return out;
 }
+
+/**
+ * Whether `key` is defined in either the active locale or the English
+ * fallback. Used by callers that need to decide between "show a localised
+ * string" and "fall back to an upstream message" (e.g. the auth banner
+ * renders `t(auth.error.server.<code>)` when we have a key, otherwise the
+ * raw backend message). Returning `false` for unknown keys keeps `t(...)`
+ * from quietly printing the key itself as a last resort.
+ */
+export function hasKey(key: string): boolean {
+  const dict = DICTIONARIES[currentLocale] ?? en;
+  return key in dict || key in en;
+}

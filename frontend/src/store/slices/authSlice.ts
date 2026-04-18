@@ -1,11 +1,22 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { ApiError, api, User } from "../../api/client";
 
+// Shape of a server-side error as it's stored in the slice. `code` is the
+// i18n-key selector (e.g. `unauthorized`, `conflict`, `rate_limited`), and
+// `message` is the English fallback that components render when no i18n key
+// matches the code. We intentionally do NOT call `t(...)` here — the slice
+// is locale-agnostic; the component resolves the key so a mid-session
+// locale toggle updates the banner immediately.
+export type AuthErrorPayload = {
+  code: string | null;
+  message: string;
+};
+
 type AuthState = {
   user: User | null;
   status: "idle" | "loading" | "error";
   initialized: boolean;
-  error: string | null;
+  error: AuthErrorPayload | null;
 };
 
 const initialState: AuthState = {
@@ -15,34 +26,35 @@ const initialState: AuthState = {
   error: null,
 };
 
-function errMessage(e: unknown): string {
-  if (e instanceof ApiError) return e.message;
-  if (e instanceof Error) return e.message;
-  return "Request failed";
+function errPayload(e: unknown): AuthErrorPayload {
+  if (e instanceof ApiError) return { code: e.code, message: e.message };
+  if (e instanceof Error) return { code: null, message: e.message };
+  return { code: null, message: "Request failed" };
 }
 
-export const login = createAsyncThunk<User, { email: string; password: string }, { rejectValue: string }>(
-  "auth/login",
-  async (payload, { rejectWithValue }) => {
-    try {
-      const res = await api.login(payload.email, payload.password);
-      return res.user;
-    } catch (e) {
-      return rejectWithValue(errMessage(e));
-    }
+export const login = createAsyncThunk<
+  User,
+  { email: string; password: string },
+  { rejectValue: AuthErrorPayload }
+>("auth/login", async (payload, { rejectWithValue }) => {
+  try {
+    const res = await api.login(payload.email, payload.password);
+    return res.user;
+  } catch (e) {
+    return rejectWithValue(errPayload(e));
   }
-);
+});
 
 export const register = createAsyncThunk<
   User,
   { name: string; email: string; password: string },
-  { rejectValue: string }
+  { rejectValue: AuthErrorPayload }
 >("auth/register", async (payload, { rejectWithValue }) => {
   try {
     const res = await api.register(payload);
     return res.user;
   } catch (e) {
-    return rejectWithValue(errMessage(e));
+    return rejectWithValue(errPayload(e));
   }
 });
 
@@ -89,7 +101,10 @@ const slice = createSlice({
       })
       .addCase(login.rejected, (state, action) => {
         state.status = "error";
-        state.error = action.payload ?? action.error.message ?? "Login failed";
+        state.error = action.payload ?? {
+          code: null,
+          message: action.error.message ?? "Login failed",
+        };
       })
       .addCase(register.pending, (state) => {
         state.status = "loading";
@@ -101,7 +116,10 @@ const slice = createSlice({
       })
       .addCase(register.rejected, (state, action) => {
         state.status = "error";
-        state.error = action.payload ?? action.error.message ?? "Registration failed";
+        state.error = action.payload ?? {
+          code: null,
+          message: action.error.message ?? "Registration failed",
+        };
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;

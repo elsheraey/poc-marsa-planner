@@ -91,6 +91,22 @@ const ar: Record<string, string> = {
   // TODO: native-speaker review
   "auth.error.password_mismatch": "كلمتا المرور غير متطابقتين",
 
+  // Mirrors the `auth.error.server.*` block in en.ts. Looked up by backend
+  // error code (e.g. `unauthorized` → `auth.error.server.unauthorized`).
+  // TODO: native-speaker review
+  "auth.error.server.unauthorized":
+    "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  // TODO: native-speaker review
+  "auth.error.server.conflict": "هذا البريد الإلكتروني مسجَّل بالفعل.",
+  // TODO: native-speaker review
+  "auth.error.server.validation_error":
+    "يرجى مراجعة النموذج والمحاولة مرة أخرى.",
+  // TODO: native-speaker review
+  "auth.error.server.rate_limited":
+    "محاولات كثيرة جدًا. انتظر دقيقة ثم أعد المحاولة.",
+  // TODO: native-speaker review
+  "auth.error.server.default": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+
   "wizard.profile": "البيانات الشخصية",
   "wizard.goals": "الأهداف",
   "wizard.scenario": "منشئ السيناريوهات",
@@ -99,12 +115,14 @@ const ar: Record<string, string> = {
   "report.headline.met":
     "الخطة تحقق الهدف باحتمال ~{pct}٪.",
   "report.headline.shortfall":
-    "بمساهمة شهرية {monthly} جنيهًا، تحقق الخطة الهدف باحتمال ~{pct}٪.",
+    "بمساهمة شهرية {monthly}، تحقق الخطة الهدف باحتمال ~{pct}٪.",
+  "report.headline.unreachable":
+    "بمساهمة شهرية {monthly}، هدف {goal} للعميل {name} خارج نطاق التحقق ضمن هذه الخطة.",
   "report.headline.no_goal":
     "لم يُحدَّد مبلغ الهدف — الإسقاطات أدناه للعرض فقط.",
   // TODO: native-speaker review
   "report.suggest.monthly":
-    "ارفع المساهمة الشهرية إلى {monthly} جنيهًا لبلوغ احتمال 80٪.",
+    "ارفع المساهمة الشهرية إلى {monthly} لبلوغ احتمال 80٪.",
   // TODO: native-speaker review
   "report.suggest.horizon":
     "مدِّد الأفق حتى عام {year} أو راجع الهدف.",
@@ -260,6 +278,33 @@ const ar: Record<string, string> = {
   "profile.dossier.relation.daughter": "ابنة",
   "profile.cta.cancel": "إلغاء",
   "profile.cta.proceed": "المتابعة إلى الأهداف",
+
+  // TODO: native-speaker review
+  "wizard.profile.error.fullName": "الاسم الكامل مطلوب",
+  // TODO: native-speaker review
+  "wizard.profile.error.email": "أدخل بريدًا إلكترونيًا صالحًا",
+  // TODO: native-speaker review
+  "wizard.profile.error.birthdate":
+    "أدخل تاريخ ميلاد صحيحًا في الماضي (يوم/شهر/سنة)",
+  // TODO: native-speaker review
+  "wizard.profile.error.phone": "أدخل رقم هاتف (6–32 حرفًا)",
+  // TODO: native-speaker review
+  "wizard.profile.error.employmentStatus": "اختر الحالة الوظيفية",
+  // TODO: native-speaker review
+  "wizard.profile.error.riskAppetite": "اختر درجة المخاطرة",
+
+  // TODO: native-speaker review
+  "wizard.goals.error.name": "اسم الهدف مطلوب",
+  // TODO: native-speaker review
+  "wizard.goals.error.amount": "يجب أن يكون المبلغ أكبر من صفر",
+  // TODO: native-speaker review
+  "wizard.goals.error.year": "يجب أن تكون السنة هذه السنة أو أحدث",
+
+  // TODO: native-speaker review
+  "wizard.scenario.duplicate": "تكرار",
+  // TODO: native-speaker review
+  "wizard.scenario.duplicate.atCap":
+    "تعذّر التكرار: وصلت إلى الحد الأقصى {max} سيناريوهات",
 
   "report.se.tail": "± {pp} نقطة مئوية",
 };

@@ -4,7 +4,7 @@ import Logo from "../components/Logo";
 import { toast } from "../components/Toaster";
 import { clearError, login } from "../store/slices/authSlice";
 import { useAppDispatch, useAppSelector } from "../store";
-import { t } from "../i18n";
+import { hasKey, t } from "../i18n";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -127,7 +127,18 @@ export default function Login() {
                   className="text-sm text-rose-800 bg-rose-100 rounded-lg px-3 py-2"
                   role="alert"
                 >
-                  {error}
+                  {(() => {
+                    // Prefer a localised string keyed on the backend error
+                    // code (e.g. `unauthorized` → `auth.error.server.unauthorized`).
+                    // Fall back to the raw upstream English message only when
+                    // we have no translation — better than leaking backend
+                    // prose into an Arabic page.
+                    const key = error.code
+                      ? `auth.error.server.${error.code}`
+                      : null;
+                    if (key && hasKey(key)) return t(key);
+                    return error.message || t("auth.error.server.default");
+                  })()}
                 </div>
               )}
 

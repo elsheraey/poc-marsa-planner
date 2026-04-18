@@ -59,6 +59,19 @@ const en: Record<string, string> = {
   "auth.error.name_required": "Name is required",
   "auth.error.password_mismatch": "Passwords do not match",
 
+  // Localised counterparts to backend `errors.py` error codes. Keys are
+  // looked up as `auth.error.server.<code>` — if present, the banner renders
+  // the localised string; otherwise it falls back to the raw upstream
+  // `message` (the English detail string from HTTPException). Keep these
+  // in sync with the code map in `backend/app/errors.py`.
+  "auth.error.server.unauthorized": "Incorrect email or password.",
+  "auth.error.server.conflict": "This email is already registered.",
+  "auth.error.server.validation_error":
+    "Please check the form and try again.",
+  "auth.error.server.rate_limited":
+    "Too many attempts. Wait a minute and try again.",
+  "auth.error.server.default": "Something went wrong. Please try again.",
+
   "wizard.profile": "Profile",
   "wizard.goals": "Goals",
   "wizard.scenario": "Scenario Builder",
@@ -67,11 +80,13 @@ const en: Record<string, string> = {
   "report.headline.met":
     "Plan reaches the goal at ~{pct}% confidence.",
   "report.headline.shortfall":
-    "At EGP {monthly}/month, this plan reaches the goal with ~{pct}% confidence.",
+    "At {monthly}/month, this plan reaches the goal with ~{pct}% confidence.",
+  "report.headline.unreachable":
+    "At {monthly}/month, {name}'s {goal} goal is out of reach under this plan.",
   "report.headline.no_goal":
     "No goal amount set — the projection below is informational.",
   "report.suggest.monthly":
-    "Raise monthly to EGP {monthly} to reach 80%.",
+    "Raise monthly to {monthly} to reach 80%.",
   "report.suggest.horizon":
     "Extend the horizon to {year} or review the goal.",
   "report.suggest.unreachable":
@@ -206,6 +221,22 @@ const en: Record<string, string> = {
   "profile.dossier.relation.daughter": "Daughter",
   "profile.cta.cancel": "Cancel",
   "profile.cta.proceed": "Proceed to Goals",
+
+  "wizard.profile.error.fullName": "Full name is required",
+  "wizard.profile.error.email": "Enter a valid email",
+  "wizard.profile.error.birthdate":
+    "Enter a valid birthdate in the past (dd/mm/yyyy)",
+  "wizard.profile.error.phone": "Enter a phone number (6–32 characters)",
+  "wizard.profile.error.employmentStatus": "Select an employment status",
+  "wizard.profile.error.riskAppetite": "Select a risk appetite",
+
+  "wizard.goals.error.name": "Goal name is required",
+  "wizard.goals.error.amount": "Amount must be greater than zero",
+  "wizard.goals.error.year": "Year must be this year or later",
+
+  "wizard.scenario.duplicate": "Duplicate",
+  "wizard.scenario.duplicate.atCap":
+    "Cannot duplicate: already at {max} scenarios",
 
   "report.se.tail": "± {pp} pp",
 };

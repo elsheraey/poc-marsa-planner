@@ -6,6 +6,7 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from starlette import status
 
 
@@ -30,6 +31,20 @@ def register_exception_handlers(app: FastAPI) -> None:
             status.HTTP_429_TOO_MANY_REQUESTS: "rate_limited",
         }.get(exc.status_code, "http_error")
         return _error(exc.status_code, code, str(exc.detail))
+
+    @app.exception_handler(RateLimitExceeded)
+    async def _rate_limited(_: Request, exc: RateLimitExceeded) -> JSONResponse:
+        # slowapi's default handler returns a flat `{"error": "..."}` string
+        # which breaks the frontend's `ApiError.code` extraction (it'd land
+        # on `http_error` instead of `rate_limited`). Re-emit in the same
+        # `{error: {code, message}}` envelope the rest of the API uses so the
+        # UI can key on `code === "rate_limited"` and show the localised
+        # "Too many attempts…" banner.
+        return _error(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "rate_limited",
+            f"rate limit exceeded: {exc.detail}",
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation_exc(_: Request, exc: RequestValidationError) -> JSONResponse:
