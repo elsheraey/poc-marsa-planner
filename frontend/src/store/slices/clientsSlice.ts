@@ -7,9 +7,21 @@ type State = {
   byId: Record<string, ClientRecord>;
   status: "idle" | "loading" | "error";
   error: string | null;
+  // Per-id detail-fetch status + error. `fetchClient(id)` writes here so
+  // ClientSummary can render a 404 / error banner for a specific id
+  // without blocking on the list-level status.
+  detailStatus: Record<string, "idle" | "loading" | "error">;
+  detailError: Record<string, string | null>;
 };
 
-const initialState: State = { list: [], byId: {}, status: "idle", error: null };
+const initialState: State = {
+  list: [],
+  byId: {},
+  status: "idle",
+  error: null,
+  detailStatus: {},
+  detailError: {},
+};
 
 function errMessage(e: unknown): string {
   if (e instanceof ApiError) return e.message;
@@ -86,8 +98,21 @@ const slice = createSlice({
         state.status = "error";
         state.error = action.payload ?? action.error.message ?? "Failed to load clients";
       })
+      .addCase(fetchClient.pending, (state, action) => {
+        const id = action.meta.arg;
+        state.detailStatus[id] = "loading";
+        state.detailError[id] = null;
+      })
       .addCase(fetchClient.fulfilled, (state, action) => {
         state.byId[action.payload.id] = action.payload;
+        state.detailStatus[action.payload.id] = "idle";
+        state.detailError[action.payload.id] = null;
+      })
+      .addCase(fetchClient.rejected, (state, action) => {
+        const id = action.meta.arg;
+        state.detailStatus[id] = "error";
+        state.detailError[id] =
+          action.payload ?? action.error.message ?? "Client not found";
       })
       .addCase(createClient.fulfilled, (state, action) => {
         state.list.unshift(action.payload);

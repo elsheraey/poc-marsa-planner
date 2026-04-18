@@ -146,6 +146,12 @@ export default function ClientSummary() {
   const nav = useNavigate();
   const dispatch = useAppDispatch();
   const client = useAppSelector((s) => (id ? s.clients.byId[id] : undefined));
+  const detailStatus = useAppSelector((s) =>
+    id ? (s.clients.detailStatus[id] ?? "idle") : "idle"
+  );
+  const detailError = useAppSelector((s) =>
+    id ? s.clients.detailError[id] : null
+  );
 
   const [savedStatus, setSavedStatus] = useState<"idle" | "loading" | "error">(
     "idle"
@@ -263,6 +269,45 @@ export default function ClientSummary() {
       const msg = e instanceof ApiError ? e.message : "Delete failed";
       toast(msg, "error");
     }
+  }
+
+  // 404 / fetch-error surface: once the detail fetch has settled as an
+  // error, we render a page-level error banner with a link back to the
+  // clients list. This replaces the "Loading…" dead-end the page used
+  // to show on a typo'd / deleted client id.
+  if (!client && detailStatus === "error") {
+    return (
+      <AppShell>
+        <div className="px-6 pt-10 pb-6">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-3 text-sm text-az-ink-muted flex items-center gap-2"
+          >
+            <Link
+              to="/clients"
+              className="text-az-black hover:text-az-gold-hover"
+            >
+              {t("nav.clients")}
+            </Link>
+          </nav>
+          <div
+            role="alert"
+            data-testid="client-not-found"
+            className="rounded-xl bg-rose-100 text-rose-800 px-4 py-3 text-sm"
+          >
+            {detailError ?? t("client.notFound")}
+          </div>
+          <div className="mt-4">
+            <Link
+              to="/clients"
+              className="btn-plain"
+            >
+              ← {t("nav.clients")}
+            </Link>
+          </div>
+        </div>
+      </AppShell>
+    );
   }
 
   if (!client) {
