@@ -14,7 +14,7 @@ export default function NewClientLayout() {
     <AppShell>
       <header className="px-6 pt-10 pb-6">
         <h1 className="text-4xl font-bold tracking-tight">New Client</h1>
-        <p className="mt-1 text-base text-label-secondary">
+        <p className="mt-1 text-base text-az-ink-muted">
           Build a profile, capture goals, run a scenario.
         </p>
       </header>

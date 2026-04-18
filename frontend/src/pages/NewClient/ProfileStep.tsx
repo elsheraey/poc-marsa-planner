@@ -31,9 +31,9 @@ function Field({
 }>) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold text-label-secondary">
+      <span className="text-xs font-semibold text-az-ink-muted">
         {label}
-        {required && <span className="text-system-red"> *</span>}
+        {required && <span className="text-rose-600"> *</span>}
       </span>
       {children}
     </div>
@@ -48,7 +48,7 @@ function AdvancedDossier() {
   return (
     <div className="space-y-6 pt-4">
       <div className="flex items-center gap-3">
-        <span className="text-[15px] font-semibold text-label">
+        <span className="text-[15px] font-semibold text-az-ink">
           {t("profile.dossier.coClient")}
         </span>
         <button
@@ -56,12 +56,12 @@ function AdvancedDossier() {
           aria-pressed={p.hasCoClient}
           aria-label={t("profile.dossier.coClient")}
           className={`w-11 h-6 rounded-full transition ${
-            p.hasCoClient ? "bg-system-green" : "bg-gray-4"
+            p.hasCoClient ? "bg-az-black" : "bg-az-separator-strong"
           }`}
           onClick={() => upd({ hasCoClient: !p.hasCoClient })}
         >
           <span
-            className={`block w-5 h-5 rounded-full bg-white shadow transform transition ${
+            className={`block w-5 h-5 rounded-full bg-az-white shadow transform transition ${
               p.hasCoClient ? "translate-x-5" : "translate-x-0.5"
             }`}
           />
@@ -123,7 +123,7 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-[15px] font-semibold text-label">
+          <span className="text-[15px] font-semibold text-az-ink">
             {t("profile.dossier.dependents")}
           </span>
           <button
@@ -191,7 +191,7 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-[15px] font-semibold text-label">
+          <span className="text-[15px] font-semibold text-az-ink">
             {t("profile.dossier.incomeSources")}
           </span>
           <button
@@ -263,7 +263,7 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-[15px] font-semibold text-label">
+          <span className="text-[15px] font-semibold text-az-ink">
             {t("profile.dossier.assets")}
           </span>
           <button
@@ -320,7 +320,7 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-[15px] font-semibold text-label">
+          <span className="text-[15px] font-semibold text-az-ink">
             {t("profile.dossier.debts")}
           </span>
           <button
@@ -436,7 +436,7 @@ export default function ProfileStep() {
 
   return (
     <>
-      <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
+      <section className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6">
         <h2 className="text-xl font-semibold tracking-tight mb-5">
           {t("profile.section.required")}
         </h2>
@@ -505,7 +505,7 @@ export default function ProfileStep() {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
+      <section className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6">
         <details
           open={advancedOpen}
           onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
@@ -513,7 +513,7 @@ export default function ProfileStep() {
           <summary className="cursor-pointer list-none flex items-center gap-2 select-none">
             <span
               aria-hidden="true"
-              className={`text-label-tertiary transition-transform ${advancedOpen ? "rotate-90" : ""}`}
+              className={`text-az-ink-subtle transition-transform ${advancedOpen ? "rotate-90" : ""}`}
             >
               ›
             </span>
@@ -521,7 +521,7 @@ export default function ProfileStep() {
               {t("profile.section.dossier")}
             </span>
           </summary>
-          <p className="text-sm text-label-secondary mt-2 leading-relaxed">
+          <p className="text-sm text-az-ink-muted mt-2 leading-relaxed">
             {t("profile.section.dossier.help")}
           </p>
           <AdvancedDossier />

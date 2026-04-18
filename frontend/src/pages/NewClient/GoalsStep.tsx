@@ -20,9 +20,9 @@ export default function GoalsStep() {
 
   return (
     <>
-      <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
+      <section className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6">
         <div className="flex items-center gap-3 mb-5">
-          <span className="text-xl font-semibold tracking-tight text-label">
+          <span className="text-xl font-semibold tracking-tight text-az-ink">
             Goals
           </span>
           <button
@@ -36,18 +36,18 @@ export default function GoalsStep() {
         </div>
 
         {goals.length === 0 && (
-          <p className="text-[15px] text-label-secondary py-6 text-center">
-            No goals yet. Tap <span className="text-system-blue font-semibold">+</span> to add one.
+          <p className="text-[15px] text-az-ink-muted py-6 text-center">
+            No goals yet. Tap <span className="text-az-black font-semibold">+</span> to add one.
           </p>
         )}
 
         {goals.map((g, i) => (
           <div
             key={i}
-            className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-end mb-5 pb-5 border-b border-separator last:border-b-0 last:pb-0 last:mb-0"
+            className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-end mb-5 pb-5 border-b border-az-separator last:border-b-0 last:pb-0 last:mb-0"
           >
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-label-secondary">Name</span>
+              <span className="text-xs font-semibold text-az-ink-muted">Name</span>
               <input
                 className="input"
                 placeholder="Goal"
@@ -58,7 +58,7 @@ export default function GoalsStep() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-label-secondary">Amount</span>
+              <span className="text-xs font-semibold text-az-ink-muted">Amount</span>
               <input
                 className="input"
                 placeholder="Amount"
@@ -72,7 +72,7 @@ export default function GoalsStep() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-label-secondary">Year</span>
+              <span className="text-xs font-semibold text-az-ink-muted">Year</span>
               <input
                 className="input"
                 placeholder="Year"
@@ -86,7 +86,7 @@ export default function GoalsStep() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-label-secondary">Payments</span>
+              <span className="text-xs font-semibold text-az-ink-muted">Payments</span>
               <input
                 className="input"
                 placeholder="Number"
@@ -103,7 +103,7 @@ export default function GoalsStep() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-label-secondary">Inflation %</span>
+              <span className="text-xs font-semibold text-az-ink-muted">Inflation %</span>
               <input
                 className="input"
                 placeholder="%"

@@ -82,13 +82,13 @@ function GoalPicker({
   const [local, setLocal] = useState(selected);
   if (!open) return null;
   return (
-    <div className="mt-3 rounded-xl bg-bg-secondary p-4">
-      <div className="text-xs font-semibold uppercase tracking-wider text-label-secondary mb-3">
+    <div className="mt-3 rounded-xl bg-az-canvas p-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-az-ink-muted mb-3">
         Goals
       </div>
       <table className="w-full text-sm tabular">
         <thead>
-          <tr className="text-xs font-semibold uppercase tracking-wider text-label-secondary">
+          <tr className="text-xs font-semibold uppercase tracking-wider text-az-ink-muted">
             <th></th>
             <th className="text-start pb-2">Goal</th>
             <th className="text-start pb-2">Amount</th>
@@ -100,11 +100,11 @@ function GoalPicker({
           {availableGoals.map((g, i) => {
             const checked = local.includes(g.name);
             return (
-              <tr key={i} className="border-t border-separator">
+              <tr key={i} className="border-t border-az-separator">
                 <td className="py-2 w-8">
                   <input
                     type="checkbox"
-                    className="accent-system-blue w-4 h-4"
+                    className="accent-az-black w-4 h-4"
                     checked={checked}
                     onChange={() =>
                       setLocal((prev) =>
@@ -153,9 +153,9 @@ function ScenarioCard({ index }: { index: number }) {
     dispatch(actions.updateScenario({ index, patch }));
 
   return (
-    <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
+    <section className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6">
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-        <div className="text-xl font-semibold tracking-tight text-label">
+        <div className="text-xl font-semibold tracking-tight text-az-ink">
           {scenario.name}
         </div>
         <div className="flex items-center gap-4">
@@ -168,7 +168,7 @@ function ScenarioCard({ index }: { index: number }) {
           </button>
           <button
             type="button"
-            className="text-system-red text-[15px] font-semibold hover:opacity-80"
+            className="text-rose-700 text-[15px] font-semibold hover:text-rose-800"
             onClick={() => dispatch(actions.removeScenario(index))}
           >
             Remove
@@ -180,7 +180,7 @@ function ScenarioCard({ index }: { index: number }) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <div>
-              <div className="text-xs font-semibold text-label-secondary mb-1.5">
+              <div className="text-xs font-semibold text-az-ink-muted mb-1.5">
                 Scenario Name
               </div>
               <input
@@ -191,7 +191,7 @@ function ScenarioCard({ index }: { index: number }) {
               />
             </div>
             <div>
-              <div className="text-xs font-semibold text-label-secondary mb-1.5">
+              <div className="text-xs font-semibold text-az-ink-muted mb-1.5">
                 Model
               </div>
               <select
@@ -209,7 +209,7 @@ function ScenarioCard({ index }: { index: number }) {
 
           <div className="mb-5">
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-[15px] font-semibold text-label">
+              <span className="text-[15px] font-semibold text-az-ink">
                 Select Goals
               </span>
               <button
@@ -225,7 +225,7 @@ function ScenarioCard({ index }: { index: number }) {
                 {scenario.goalNames.map((name) => (
                   <span
                     key={name}
-                    className="pill bg-system-blue-tint text-system-blue"
+                    className="pill bg-az-gold-soft text-az-black"
                   >
                     {name}
                   </span>
@@ -329,7 +329,7 @@ function GroupList<T extends Record<string, number>>({
           e2e tests use (`span:text-is("Investments") + button.icon-btn-add`).
           Do not restructure.
         */}
-        <span className="text-[15px] font-semibold text-label">{title}</span>
+        <span className="text-[15px] font-semibold text-az-ink">{title}</span>
         <button type="button" className="icon-btn-add" onClick={onAdd} aria-label={`Add ${title}`}>
           +
         </button>
@@ -344,7 +344,7 @@ function GroupList<T extends Record<string, number>>({
             const key = keys[c];
             return (
               <div key={c}>
-                <div className="text-xs font-semibold text-label-secondary mb-1.5">
+                <div className="text-xs font-semibold text-az-ink-muted mb-1.5">
                   {label}
                 </div>
                 <input
