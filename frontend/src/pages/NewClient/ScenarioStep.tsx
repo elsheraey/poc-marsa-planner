@@ -2,9 +2,61 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { actions, Scenario } from "./draftSlice";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { runSimulation } from "../../store/slices/simulationSlice";
+import { runScenarioBatch } from "../../store/slices/simulationSlice";
 import { toast } from "../../components/Toaster";
 import { fmtEGP } from "../../utils/format";
+import type { SimulateRequest } from "../../api/client";
+
+// Product constraint: the simulation report renders at most 4 donut cards in
+// the Goals Achievement Probability grid. Keep this in sync with
+// SimulationReport.tsx (MAX_SCENARIOS_RENDERED) so the "extra scenarios were
+// dropped" toast matches the visual behaviour.
+const MAX_SCENARIOS_PER_RUN = 4;
+
+type BuildCtx = {
+  duration: number;
+  nowYear: number;
+  goals: { name: string; amount: number; year: number; inflationRate: number }[];
+  riskAppetite: "very_low" | "low" | "moderate" | "high" | "very_high";
+};
+
+// Build a SimulateRequest for a single scenario. Returns `request: null`
+// when the scenario has no money in (initial + monthly both zero) so the
+// caller can surface it as "skipped" without throwing.
+function buildScenarioRequest(
+  s: Scenario,
+  ctx: BuildCtx
+): { name: string; request: SimulateRequest | null } {
+  const monthlyTotal = s.monthlyInvestments.reduce((sum, m) => sum + m.amount, 0);
+  const initial = s.investments.reduce((sum, inv) => sum + inv.amount, 0);
+  const hasMoneyIn = initial > 0 || monthlyTotal > 0;
+  if (hasMoneyIn) {
+    const annualIncrease = (s.monthlyInvestments[0]?.annualIncrease ?? 0) / 100;
+    const selectedGoals = s.goalNames.length
+      ? ctx.goals.filter((g) => s.goalNames.includes(g.name))
+      : ctx.goals;
+    const goalTargetAmount = selectedGoals.reduce((sum, g) => {
+      const years = Math.max(0, (g.year || ctx.nowYear) - ctx.nowYear);
+      const rate = (g.inflationRate ?? 0) / 100;
+      const inflated = (g.amount || 0) * Math.pow(1 + rate, years);
+      return sum + inflated;
+    }, 0);
+
+    return {
+      name: s.name,
+      request: {
+        duration_years: ctx.duration,
+        initial_investment: initial,
+        monthly_investment: monthlyTotal,
+        annual_increase_pct: annualIncrease,
+        importance: "essential",
+        risk_tolerance: ctx.riskAppetite,
+        goal_target_amount: goalTargetAmount > 0 ? goalTargetAmount : undefined,
+      },
+    };
+  }
+  return { name: s.name, request: null };
+}
 
 function BaseReportPromoCard() {
   return (
@@ -340,52 +392,50 @@ export default function ScenarioStep() {
   }, [goals]);
 
   async function runAll() {
-    const s = scenarios[0];
-    if (!s) {
+    if (scenarios.length === 0) {
       toast("Add at least one scenario before running a simulation", "error");
-      return;
-    }
-    const monthlyTotal = s.monthlyInvestments.reduce((sum, m) => sum + m.amount, 0);
-    const initial = s.investments.reduce((sum, inv) => sum + inv.amount, 0);
-    if (initial <= 0 && monthlyTotal <= 0) {
-      toast("Add at least one investment or monthly contribution", "error");
       return;
     }
     if (goals.length === 0 || goals.every((g) => !g.name || !g.amount)) {
       toast("Add at least one goal with a name and target amount", "error");
       return;
     }
-    const annualIncrease =
-      s.monthlyInvestments[0]?.annualIncrease != null
-        ? s.monthlyInvestments[0].annualIncrease / 100
-        : 0;
+
     const duration = Math.min(60, Math.max(1, totalYears));
-
-    // Total goal amount = sum of goal amounts, each inflated from today's
-    // value to its target year using simple compound inflation if provided.
     const nowYear = new Date().getFullYear();
-    const selectedGoals = s.goalNames.length
-      ? goals.filter((g) => s.goalNames.includes(g.name))
-      : goals;
-    const goalTargetAmount = selectedGoals.reduce((sum, g) => {
-      const years = Math.max(0, (g.year || nowYear) - nowYear);
-      const rate = (g.inflationRate ?? 0) / 100;
-      const inflated = (g.amount || 0) * Math.pow(1 + rate, years);
-      return sum + inflated;
-    }, 0);
 
-    const res = await dispatch(
-      runSimulation({
-        duration_years: duration,
-        initial_investment: initial,
-        monthly_investment: monthlyTotal,
-        annual_increase_pct: annualIncrease,
-        importance: "essential",
-        risk_tolerance: profile.riskAppetite,
-        goal_target_amount: goalTargetAmount > 0 ? goalTargetAmount : undefined,
-      })
+    // Build one SimulateRequest per scenario: profile + goals are shared,
+    // investments / monthly / loans come from each scenario. Scenarios with
+    // no money in at all are skipped — the backend would reject them anyway
+    // and advisors don't want empty cards.
+    const candidates = scenarios.slice(0, MAX_SCENARIOS_PER_RUN);
+    const built = candidates.map((s) =>
+      buildScenarioRequest(s, { duration, nowYear, goals, riskAppetite: profile.riskAppetite })
     );
-    if (runSimulation.fulfilled.match(res)) {
+    const batch: { name: string; request: SimulateRequest }[] = built
+      .filter((b) => b.request !== null)
+      .map((b) => ({ name: b.name, request: b.request as SimulateRequest }));
+    const skipped = built.filter((b) => b.request === null).map((b) => b.name);
+
+    if (batch.length === 0) {
+      toast("Add at least one investment or monthly contribution", "error");
+      return;
+    }
+    if (skipped.length > 0) {
+      toast(
+        `Skipped ${skipped.length} scenario${skipped.length === 1 ? "" : "s"} with no investments: ${skipped.join(", ")}`,
+        "error"
+      );
+    }
+    if (scenarios.length > MAX_SCENARIOS_PER_RUN) {
+      toast(
+        `Only the first ${MAX_SCENARIOS_PER_RUN} scenarios are simulated; the rest were dropped.`,
+        "error"
+      );
+    }
+
+    const res = await dispatch(runScenarioBatch(batch));
+    if (runScenarioBatch.fulfilled.match(res)) {
       nav("/clients/new/report");
     }
   }

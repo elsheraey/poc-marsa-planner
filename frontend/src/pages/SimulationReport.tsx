@@ -16,6 +16,7 @@ import DonutChart from "../components/DonutChart";
 import { useAppSelector } from "../store";
 import { fmtEGP } from "../utils/format";
 import { t } from "../i18n";
+import type { SimulateResult } from "../api/client";
 
 // Product constraint: the Goals Achievement Probability grid renders at most
 // 4 donut cards. Keep in sync with MAX_SCENARIOS_PER_RUN in ScenarioStep.tsx.
@@ -78,6 +79,16 @@ const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach"
   aspirational: "bg-amber-100 text-amber-700",
   out_of_reach: "bg-rose-100 text-rose-700",
 };
+
+// Prefer the localised string; fall back to the backend label with
+// underscores normalised if the i18n key is missing.
+function attainabilityLabel(
+  attainability: "attainable" | "aspirational" | "out_of_reach"
+): string {
+  const key = `report.${attainability}`;
+  const localised = t(key);
+  return localised === key ? attainability.replace(/_/g, " ") : localised;
+}
 
 export default function SimulationReport() {
   const nav = useNavigate();
@@ -145,7 +156,7 @@ export default function SimulationReport() {
     );
   }
 
-  if (!result || scenarioCards.length === 0) {
+  if (!activeResult || scenarioCards.length === 0) {
     return (
       <AppShell title="New Client">
         <WizardTabs basePath="/clients/new" />
@@ -210,20 +221,12 @@ export default function SimulationReport() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <h3 className="font-bold">Goals Achievement Probability</h3>
-            {result.attainability && (
+            {activeResult.attainability && (
               <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[result.attainability]}`}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[activeResult.attainability]}`}
                 title="Attainability band based on P15 / median real-terms projection"
               >
-                {/* Prefer the localised string; fall back to the backend
-                    label with underscores normalised if the key is missing. */}
-                {(() => {
-                  const key = `report.${result.attainability}`;
-                  const localised = t(key);
-                  return localised === key
-                    ? result.attainability.replace(/_/g, " ")
-                    : localised;
-                })()}
+                {attainabilityLabel(activeResult.attainability)}
               </span>
             )}
           </div>
@@ -237,11 +240,29 @@ export default function SimulationReport() {
           Probability of funding all goals
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          aria-live="polite"
+          data-testid="scenario-cards"
+        >
           {scenarioCards.map((sc, i) => (
-            <div key={sc.name + i} className="flex flex-col items-center">
+            <div
+              key={sc.name + i}
+              className="flex flex-col items-center"
+              data-testid={`scenario-card-${i}`}
+              data-scenario-name={sc.name}
+              data-probability={sc.probability}
+            >
               <div className="text-sm font-medium mb-3 text-center">{sc.name}</div>
               <DonutChart percent={sc.probability} />
+              {sc.result.attainability && (
+                <span
+                  className={`mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[sc.result.attainability]}`}
+                  title="Attainability band for this scenario"
+                >
+                  {attainabilityLabel(sc.result.attainability)}
+                </span>
+              )}
               <button
                 className={`mt-3 px-4 h-8 rounded-full text-xs font-semibold ${
                   i === activeScenario
@@ -249,6 +270,7 @@ export default function SimulationReport() {
                     : "bg-primary-500 text-white"
                 }`}
                 onClick={() => setActiveScenario(i)}
+                aria-pressed={i === activeScenario}
               >
                 {i === activeScenario ? "Displayed" : "Display"}
               </button>
@@ -261,7 +283,9 @@ export default function SimulationReport() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="font-bold">{scenarioCards[activeScenario]?.name}</div>
-            <div className="text-xs text-muted">{scenarios.length} scenarios</div>
+            <div className="text-xs text-muted">
+              {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"}
+            </div>
           </div>
           <div className="flex items-center gap-1 bg-surface p-1 rounded-lg">
             <button
@@ -422,7 +446,7 @@ export default function SimulationReport() {
         )}
       </section>
 
-      <DisclosureBanner calibrationAsOf={result.calibration_as_of} />
+      <DisclosureBanner calibrationAsOf={activeResult.calibration_as_of} />
 
       <div className="flex items-center justify-between mt-6">
         <button

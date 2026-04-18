@@ -43,6 +43,110 @@ afterAll(() => {
   vi.restoreAllMocks();
 });
 
+// Baseline draft fixture (profile/goals/scenarios) — reused across tests so
+// each test only declares the slice it cares about.
+const baseDraft = {
+  profile: {
+    fullName: "Sample Client",
+    email: "sample@example.com",
+    birthdate: "",
+    phone: "",
+    employmentStatus: "",
+    employmentIncome: 0,
+    hasCoClient: false,
+    coClient: {
+      fullName: "",
+      birthdate: "",
+      employmentStatus: "",
+      employmentIncome: 0,
+    },
+    dependents: [],
+    incomeSources: [],
+    assets: [],
+    debts: [],
+    monthlyExpenses: 0,
+    riskAppetite: "moderate",
+  },
+  goals: [],
+  scenarios: [
+    {
+      name: "Base",
+      model: "balanced",
+      goalNames: [],
+      investments: [{ amount: 100000, year: 2026 }],
+      monthlyInvestments: [{ amount: 5000, annualIncrease: 0 }],
+      loans: [],
+    },
+  ],
+};
+
+describe("SimulationReport per-scenario probability", () => {
+  it("renders one donut per result with the backend probability (no synthesis)", () => {
+    const r1: SimulateResult = { ...baseResult, probability_of_goal: 0.72 };
+    const r2: SimulateResult = { ...baseResult, probability_of_goal: 0.41 };
+    const r3: SimulateResult = {
+      ...baseResult,
+      probability_of_goal: 0.08,
+      attainability: "out_of_reach",
+    };
+
+    renderWithProviders(<SimulationReport />, {
+      preloadedState: {
+        auth: {
+          user: { id: "u1", name: "Tester", email: "t@e.com" },
+          status: "idle",
+          error: null,
+          initialized: true,
+        },
+        simulation: {
+          result: r1,
+          results: [
+            { name: "Conservative", request: {} as never, result: r1 },
+            { name: "Balanced", request: {} as never, result: r2 },
+            { name: "Aggressive", request: {} as never, result: r3 },
+          ],
+          status: "idle",
+          error: null,
+        },
+        draft: baseDraft as never,
+      },
+    });
+
+    const cards = screen.getAllByTestId(/^scenario-card-\d+$/) as HTMLElement[];
+    expect(cards).toHaveLength(3);
+    expect(cards[0].dataset.scenarioName).toBe("Conservative");
+    expect(cards[0].dataset.probability).toBe("72");
+    expect(cards[1].dataset.scenarioName).toBe("Balanced");
+    expect(cards[1].dataset.probability).toBe("41");
+    expect(cards[2].dataset.scenarioName).toBe("Aggressive");
+    expect(cards[2].dataset.probability).toBe("8");
+  });
+
+  it("aria-live polite on donut grid so screen readers announce updates", () => {
+    renderWithProviders(<SimulationReport />, {
+      preloadedState: {
+        auth: {
+          user: { id: "u1", name: "Tester", email: "t@e.com" },
+          status: "idle",
+          error: null,
+          initialized: true,
+        },
+        simulation: {
+          result: baseResult,
+          results: [
+            { name: "Base", request: {} as never, result: baseResult },
+          ],
+          status: "idle",
+          error: null,
+        },
+        draft: baseDraft as never,
+      },
+    });
+    const grid = screen.getByTestId("scenario-cards");
+    expect(grid.getAttribute("aria-live")).toBe("polite");
+  });
+});
+
 describe("SimulationReport stacking", () => {
   it("renders unstacked optimistic >= median >= pessimistic in the table", async () => {
     const { container } = renderWithProviders(<SimulationReport />, {
