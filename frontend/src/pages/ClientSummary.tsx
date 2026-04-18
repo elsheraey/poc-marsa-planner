@@ -15,23 +15,23 @@ import {
   type SavedSimulationListItem,
 } from "../api/client";
 
-// Shape we render per row in the Saved-simulations card. The list endpoint
-// only returns id/name/client_id/created_at; probability + attainability
-// come from a per-row detail fetch. `detailStatus` lets the UI distinguish
-// "still loading the detail" from "detail arrived with a null probability".
+// Shape we render per row in the Saved-simulations section.
 type SavedSimRow = SavedSimulationListItem & {
   probability: number | null;
   attainability: "attainable" | "aspirational" | "out_of_reach" | null;
   detailStatus: "loading" | "ready" | "error";
 };
 
+// Muted attainability palette — 900 ink on 100 tint. Same decision as
+// SimulationReport: the old 700/600 fills were too saturated for the
+// cream surface.
 const ATTAINABILITY_CLASS: Record<
   "attainable" | "aspirational" | "out_of_reach",
   string
 > = {
-  attainable: "bg-emerald-100 text-emerald-700",
-  aspirational: "bg-amber-100 text-amber-700",
-  out_of_reach: "bg-rose-100 text-rose-700",
+  attainable: "bg-emerald-100 text-emerald-900",
+  aspirational: "bg-amber-100 text-amber-900",
+  out_of_reach: "bg-rose-100 text-rose-900",
 };
 
 function attainabilityLabel(
@@ -42,9 +42,6 @@ function attainabilityLabel(
   return localised === key ? a.replace(/_/g, " ") : localised;
 }
 
-// Turn a backend ISO timestamp into the short local form the other cards
-// use ("2026-04-18"). Keep the time hidden to stop the column widening on
-// long UTC strings — advisors don't need minute precision here.
 function fmtDate(iso: string): string {
   if (!iso) return "—";
   return iso.slice(0, 10);
@@ -55,19 +52,12 @@ function fmtProbabilityPct(p: number | null): string {
   return `${Math.round(p * 100)}%`;
 }
 
-// Shape the backend currently returns for `client.profile`. Every field is
-// optional — the backend has never been strict about this and the demo
-// used to paper over gaps with hardcoded names/incomes (famously another
-// advisor's wife's name for *every* client). We now render the real
-// record and show a localised empty state when a field is genuinely
-// missing.
 type CoClient = {
   fullName?: string;
   birthdate?: string;
   employmentStatus?: string;
   employmentIncome?: number;
 };
-
 type Dependent = { name?: string; relation?: string; birthdate?: string };
 type IncomeSource = { source?: string; amount?: number; annualIncrease?: number };
 type Asset = { name?: string; amount?: number };
@@ -77,7 +67,6 @@ type Debt = {
   duration?: number;
   interestRate?: number;
 };
-
 type Profile = {
   fullName?: string;
   birthdate?: string;
@@ -108,26 +97,23 @@ function egpOrDash(value: number | undefined | null): string {
 
 function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
-    <div className="flex gap-2 text-sm py-1.5">
-      <span className="text-muted">{label}:</span>
-      <span className="text-ink font-medium">{value}</span>
+    <div className="grid grid-cols-[minmax(140px,1fr)_2fr] gap-4 py-2 border-t border-rule text-sm">
+      <span className="label self-center">{label}</span>
+      <span className="text-ink">{value}</span>
     </div>
   );
 }
 
 function EmptyState({ message, cta }: Readonly<{ message: string; cta?: string }>) {
   return (
-    <div className="text-sm text-muted py-2">
+    <p className="font-serif italic text-ink-muted py-4">
       {message}
-      {cta && <span className="mx-1">·</span>}
-      {cta && <span className="text-primary-500 font-medium">{cta}</span>}
-    </div>
+      {cta && <span className="mx-2">·</span>}
+      {cta && <span className="text-ink underline decoration-accent underline-offset-4">{cta}</span>}
+    </p>
   );
 }
 
-// Sum a numeric field across a collection, treating missing/NaN as 0. If the
-// collection itself is missing we return null so the UI can show "—" rather
-// than a fake EGP 0 that looks like real data.
 function sumOrNull<T>(
   items: T[] | undefined,
   pick: (item: T) => number | undefined
@@ -146,13 +132,9 @@ export default function ClientSummary() {
   const dispatch = useAppDispatch();
   const client = useAppSelector((s) => (id ? s.clients.byId[id] : undefined));
 
-  // Saved simulations card state. `status` drives the top-level loading /
-  // error / empty / populated branches; `rows` enrich the list entries with
-  // the per-item detail fetch (probability + attainability) the list
-  // endpoint doesn't include.
-  const [savedStatus, setSavedStatus] = useState<
-    "idle" | "loading" | "error"
-  >("idle");
+  const [savedStatus, setSavedStatus] = useState<"idle" | "loading" | "error">(
+    "idle"
+  );
   const [savedError, setSavedError] = useState<string | null>(null);
   const [savedRows, setSavedRows] = useState<SavedSimRow[]>([]);
 
@@ -160,11 +142,6 @@ export default function ClientSummary() {
     if (id) dispatch(fetchClient(id));
   }, [id, dispatch]);
 
-  // Fetch the saved-simulations list scoped to this client. We then fan out
-  // one detail GET per row to pull the probability + attainability the
-  // columns render. Errors on the list-level fetch surface the shared card
-  // error state; per-row detail errors degrade to "—" in that row only so
-  // one bad snapshot doesn't blank the card.
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -182,9 +159,6 @@ export default function ClientSummary() {
         }));
         setSavedRows(initial);
         setSavedStatus("idle");
-        // Fan out detail fetches. We don't await the Promise.all — each
-        // row's state update happens as its detail resolves, so the table
-        // progressively fills rather than blocking on the slowest row.
         list.forEach((item) => {
           api
             .getSimulation(item.id)
@@ -234,8 +208,6 @@ export default function ClientSummary() {
     if (!confirmed) return;
     try {
       await api.deleteSimulation(row.id);
-      // Re-fetch instead of splicing locally — keeps the row order and
-      // server-truth aligned (e.g. if another tab deleted something).
       if (id) {
         const list = await api.listSimulations(id);
         setSavedRows(
@@ -280,8 +252,10 @@ export default function ClientSummary() {
 
   if (!client) {
     return (
-      <AppShell title={t("nav.clients")}>
-        <div className="card">{t("common.loading")}</div>
+      <AppShell>
+        <p className="font-serif italic text-ink-muted py-12 text-center">
+          {t("common.loading")}
+        </p>
       </AppShell>
     );
   }
@@ -299,28 +273,35 @@ export default function ClientSummary() {
 
   return (
     <AppShell
-      title={
-        <span className="flex items-center gap-2">
-          <Link to="/clients" className="text-muted hover:text-primary-500">
-            {t("nav.clients")}
-          </Link>
-          <span className="text-muted" aria-hidden="true">
-            ›
-          </span>
-          <span>{client.name}</span>
-        </span>
-      }
       trailing={
-        <button className="btn-primary" onClick={() => nav("/clients/new/profile")}>
+        <button
+          type="button"
+          className="text-ink hover:underline underline-offset-4"
+          onClick={() => nav("/clients/new/profile")}
+        >
           {t("client.modify")}
         </button>
       }
     >
+      <div className="mb-8 text-xs uppercase tracking-widest text-ink-muted">
+        <Link to="/clients" className="hover:text-ink">
+          {t("nav.clients")}
+        </Link>
+        <span className="mx-2" aria-hidden="true">
+          /
+        </span>
+        <span className="text-ink">{client.name}</span>
+      </div>
+
+      <h1 className="font-serif text-4xl tracking-tight mb-10">{client.name}</h1>
+
       <WizardTabs basePath={`/clients/${id}`} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <section className="card">
-          <h3 className="font-bold mb-4">{t("client.section.info")}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <section>
+          <h3 className="font-serif text-2xl tracking-tight mb-4">
+            {t("client.section.info")}
+          </h3>
           <InfoRow label={t("client.field.fullName")} value={dash(profile.fullName ?? client.name)} />
           <InfoRow label={t("client.field.mobile")} value={dash(client.phone)} />
           <InfoRow label={t("client.field.email")} value={dash(client.email)} />
@@ -335,8 +316,10 @@ export default function ClientSummary() {
           />
         </section>
 
-        <section className="card">
-          <h3 className="font-bold mb-4">{t("client.section.coClient")}</h3>
+        <section>
+          <h3 className="font-serif text-2xl tracking-tight mb-4">
+            {t("client.section.coClient")}
+          </h3>
           {hasCoClient ? (
             <>
               <InfoRow
@@ -362,127 +345,125 @@ export default function ClientSummary() {
         </section>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <div className="card">
-          <div className="text-xs font-semibold text-accent mb-1">
-            {t("client.tile.riskAppetite")}
-          </div>
-          <div className="font-bold">{dash(profile.riskAppetite)}</div>
+      <section className="border-t border-rule pt-8 mt-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div>
+          <div className="label mb-2">{t("client.tile.riskAppetite")}</div>
+          <div className="font-serif text-xl">{dash(profile.riskAppetite)}</div>
         </div>
-        <div className="card">
-          <div className="text-xs font-semibold text-muted mb-1">
-            {t("client.tile.totalAssets")}
-          </div>
-          <div className="font-bold">{egpOrDash(totalAssets)}</div>
+        <div>
+          <div className="label mb-2">{t("client.tile.totalAssets")}</div>
+          <div className="font-serif text-xl tabular">{egpOrDash(totalAssets)}</div>
         </div>
-        <div className="card">
-          <div className="text-xs font-semibold text-red-500 mb-1">
-            {t("client.tile.totalDebts")}
-          </div>
-          <div className="font-bold">{egpOrDash(totalDebts)}</div>
+        <div>
+          <div className="label mb-2">{t("client.tile.totalDebts")}</div>
+          <div className="font-serif text-xl tabular">{egpOrDash(totalDebts)}</div>
         </div>
-        <div className="card">
-          <div className="text-xs font-semibold text-primary-500 mb-1">
-            {t("client.tile.monthlyExpenses")}
-          </div>
-          <div className="font-bold">{egpOrDash(profile.monthlyExpenses)}</div>
+        <div>
+          <div className="label mb-2">{t("client.tile.monthlyExpenses")}</div>
+          <div className="font-serif text-xl tabular">{egpOrDash(profile.monthlyExpenses)}</div>
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-        <section className="card md:col-span-2">
-          <h3 className="font-bold mb-4">{t("client.section.incomeSources")}</h3>
-          {incomeSources.length === 0 ? (
-            <EmptyState message={t("client.empty.incomeSources")} cta={t("client.empty.addOne")} />
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="text-xs text-muted">
-                <tr>
-                  <th className="text-left font-medium pb-3">
-                    {t("client.col.source")}
-                  </th>
-                  <th className="text-left font-medium pb-3">{t("client.col.amount")}</th>
-                  <th className="text-left font-medium pb-3">
-                    {t("client.col.annualIncrease")}
-                  </th>
+      <section className="border-t border-rule pt-8 mt-12">
+        <h3 className="font-serif text-2xl tracking-tight mb-4">
+          {t("client.section.incomeSources")}
+        </h3>
+        {incomeSources.length === 0 ? (
+          <EmptyState message={t("client.empty.incomeSources")} cta={t("client.empty.addOne")} />
+        ) : (
+          <table className="w-full text-sm border-t border-b border-rule tabular">
+            <thead>
+              <tr className="text-xs uppercase tracking-widest text-ink-muted">
+                <th className="text-start font-normal py-3">{t("client.col.source")}</th>
+                <th className="text-start font-normal py-3">{t("client.col.amount")}</th>
+                <th className="text-start font-normal py-3">
+                  {t("client.col.annualIncrease")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {incomeSources.map((row, i) => (
+                <tr key={`income-${i}`} className="border-t border-rule">
+                  <td className="py-2">{dash(row.source)}</td>
+                  <td className="py-2">{egpOrDash(row.amount)}</td>
+                  <td className="py-2">
+                    {row.annualIncrease != null && Number.isFinite(row.annualIncrease)
+                      ? `${row.annualIncrease}%`
+                      : "—"}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {incomeSources.map((row, i) => (
-                  <tr key={`income-${i}`} className="border-t border-border/60">
-                    <td className="py-2">{dash(row.source)}</td>
-                    <td className="py-2">{egpOrDash(row.amount)}</td>
-                    <td className="py-2">
-                      {row.annualIncrease != null && Number.isFinite(row.annualIncrease)
-                        ? `${row.annualIncrease}%`
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
 
-        <section className="card">
-          <h3 className="font-bold mb-4">{t("client.section.dependents")}</h3>
-          {dependents.length === 0 ? (
-            <EmptyState message={t("client.empty.dependents")} cta={t("client.empty.addOne")} />
-          ) : (
-            dependents.map((d, i) => (
-              <div key={`dep-${i}`} className="mb-3">
-                <div className="font-semibold">{dash(d.name)}</div>
-                <div className="text-xs text-muted">
+      <section className="border-t border-rule pt-8 mt-12">
+        <h3 className="font-serif text-2xl tracking-tight mb-4">
+          {t("client.section.dependents")}
+        </h3>
+        {dependents.length === 0 ? (
+          <EmptyState message={t("client.empty.dependents")} cta={t("client.empty.addOne")} />
+        ) : (
+          <div className="space-y-4">
+            {dependents.map((d, i) => (
+              <div key={`dep-${i}`} className="border-t border-rule pt-3">
+                <div className="font-serif text-base">{dash(d.name)}</div>
+                <div className="text-xs text-ink-muted">
                   {dash(d.relation)}
                   {d.birthdate ? ` · ${d.birthdate}` : ""}
                 </div>
               </div>
-            ))
-          )}
-        </section>
-      </div>
+            ))}
+          </div>
+        )}
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <section className="card">
-          <h3 className="font-bold text-green-600 mb-4">{t("client.section.assets")}</h3>
+      <section className="border-t border-rule pt-8 mt-12 grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div>
+          <h3 className="font-serif text-2xl tracking-tight mb-4">
+            {t("client.section.assets")}
+          </h3>
           {assets.length === 0 ? (
             <EmptyState message={t("client.empty.assets")} cta={t("client.empty.addOne")} />
           ) : (
-            <table className="w-full text-sm">
-              <thead className="text-xs text-muted">
-                <tr>
-                  <th className="text-left font-medium pb-3">{t("client.col.asset")}</th>
-                  <th className="text-right font-medium pb-3">{t("client.col.amount")}</th>
+            <table className="w-full text-sm border-t border-b border-rule tabular">
+              <thead>
+                <tr className="text-xs uppercase tracking-widest text-ink-muted">
+                  <th className="text-start font-normal py-3">{t("client.col.asset")}</th>
+                  <th className="text-end font-normal py-3">{t("client.col.amount")}</th>
                 </tr>
               </thead>
               <tbody>
                 {assets.map((row, i) => (
-                  <tr key={`asset-${i}`} className="border-t border-border/60">
+                  <tr key={`asset-${i}`} className="border-t border-rule">
                     <td className="py-2">{dash(row.name)}</td>
-                    <td className="py-2 text-right">{egpOrDash(row.amount)}</td>
+                    <td className="py-2 text-end">{egpOrDash(row.amount)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-        </section>
-        <section className="card">
-          <h3 className="font-bold text-red-500 mb-4">{t("client.section.debts")}</h3>
+        </div>
+        <div>
+          <h3 className="font-serif text-2xl tracking-tight mb-4">
+            {t("client.section.debts")}
+          </h3>
           {debts.length === 0 ? (
             <EmptyState message={t("client.empty.debts")} cta={t("client.empty.addOne")} />
           ) : (
-            <table className="w-full text-sm">
-              <thead className="text-xs text-muted">
-                <tr>
-                  <th className="text-left font-medium pb-3">{t("client.col.debt")}</th>
-                  <th className="text-left font-medium pb-3">{t("client.col.amount")}</th>
-                  <th className="text-left font-medium pb-3">{t("client.col.duration")}</th>
-                  <th className="text-left font-medium pb-3">{t("client.col.interestRate")}</th>
+            <table className="w-full text-sm border-t border-b border-rule tabular">
+              <thead>
+                <tr className="text-xs uppercase tracking-widest text-ink-muted">
+                  <th className="text-start font-normal py-3">{t("client.col.debt")}</th>
+                  <th className="text-start font-normal py-3">{t("client.col.amount")}</th>
+                  <th className="text-start font-normal py-3">{t("client.col.duration")}</th>
+                  <th className="text-start font-normal py-3">{t("client.col.interestRate")}</th>
                 </tr>
               </thead>
               <tbody>
                 {debts.map((row, i) => (
-                  <tr key={`debt-${i}`} className="border-t border-border/60">
+                  <tr key={`debt-${i}`} className="border-t border-rule">
                     <td className="py-2">{dash(row.name)}</td>
                     <td className="py-2">{egpOrDash(row.amount)}</td>
                     <td className="py-2">
@@ -500,25 +481,27 @@ export default function ClientSummary() {
               </tbody>
             </table>
           )}
-        </section>
-      </div>
+        </div>
+      </section>
 
-      <section className="card mt-6">
-        <h3 className="font-bold mb-4">{t("client.section.goals")}</h3>
+      <section className="border-t border-rule pt-8 mt-12">
+        <h3 className="font-serif text-2xl tracking-tight mb-4">
+          {t("client.section.goals")}
+        </h3>
         {goals.length === 0 ? (
           <EmptyState message={t("client.empty.goals")} cta={t("client.empty.addOne")} />
         ) : (
-          <table className="w-full text-sm">
-            <thead className="text-xs text-muted">
-              <tr>
-                <th className="text-left font-medium pb-3">{t("client.col.goal")}</th>
-                <th className="text-left font-medium pb-3">{t("client.col.amount")}</th>
-                <th className="text-left font-medium pb-3">{t("client.col.year")}</th>
+          <table className="w-full text-sm border-t border-b border-rule tabular">
+            <thead>
+              <tr className="text-xs uppercase tracking-widest text-ink-muted">
+                <th className="text-start font-normal py-3">{t("client.col.goal")}</th>
+                <th className="text-start font-normal py-3">{t("client.col.amount")}</th>
+                <th className="text-start font-normal py-3">{t("client.col.year")}</th>
               </tr>
             </thead>
             <tbody>
               {goals.map((g, i) => (
-                <tr key={`goal-${i}`} className="border-t border-border/60">
+                <tr key={`goal-${i}`} className="border-t border-rule">
                   <td className="py-2">{dash(g.name)}</td>
                   <td className="py-2">{egpOrDash(g.amount)}</td>
                   <td className="py-2">{dash(g.year)}</td>
@@ -529,15 +512,20 @@ export default function ClientSummary() {
         )}
       </section>
 
-      <section className="card mt-6" data-testid="saved-simulations">
-        <h3 className="font-bold mb-4">{t("client.section.savedSims")}</h3>
+      <section
+        className="border-t border-rule pt-8 mt-12"
+        data-testid="saved-simulations"
+      >
+        <h3 className="font-serif text-2xl tracking-tight mb-4">
+          {t("client.section.savedSims")}
+        </h3>
         {savedStatus === "loading" && (
-          <div className="text-sm text-muted py-2">{t("common.loading")}</div>
+          <p className="font-serif italic text-ink-muted py-3">{t("common.loading")}</p>
         )}
         {savedStatus === "error" && (
           <div
             role="alert"
-            className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2"
+            className="text-sm text-accent border-t border-b border-accent py-3"
           >
             {savedError ?? t("client.savedSims.error")}
           </div>
@@ -546,22 +534,22 @@ export default function ClientSummary() {
           <EmptyState message={t("client.savedSims.empty")} />
         )}
         {savedStatus === "idle" && savedRows.length > 0 && (
-          <table className="w-full text-sm">
-            <thead className="text-xs text-muted">
-              <tr>
-                <th className="text-left font-medium pb-3">
+          <table className="w-full text-sm border-t border-b border-rule tabular">
+            <thead>
+              <tr className="text-xs uppercase tracking-widest text-ink-muted">
+                <th className="text-start font-normal py-3">
                   {t("client.savedSims.col.name")}
                 </th>
-                <th className="text-left font-medium pb-3">
+                <th className="text-start font-normal py-3">
                   {t("client.savedSims.col.createdAt")}
                 </th>
-                <th className="text-left font-medium pb-3">
+                <th className="text-start font-normal py-3">
                   {t("client.savedSims.col.probability")}
                 </th>
-                <th className="text-left font-medium pb-3">
+                <th className="text-start font-normal py-3">
                   {t("client.savedSims.col.attainability")}
                 </th>
-                <th className="text-right font-medium pb-3">
+                <th className="text-end font-normal py-3">
                   {t("client.savedSims.col.actions")}
                 </th>
               </tr>
@@ -571,10 +559,10 @@ export default function ClientSummary() {
                 <tr
                   key={row.id}
                   data-testid={`saved-sim-row-${row.id}`}
-                  className="border-t border-border/60"
+                  className="border-t border-rule"
                 >
-                  <td className="py-2 font-medium">{row.name}</td>
-                  <td className="py-2 text-muted">{fmtDate(row.created_at)}</td>
+                  <td className="py-2 font-serif">{row.name}</td>
+                  <td className="py-2 text-ink-muted">{fmtDate(row.created_at)}</td>
                   <td className="py-2">
                     {row.detailStatus === "loading"
                       ? "…"
@@ -583,18 +571,18 @@ export default function ClientSummary() {
                   <td className="py-2">
                     {row.detailStatus === "ready" && row.attainability ? (
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[row.attainability]}`}
+                        className={`px-2 py-0.5 text-[10px] uppercase tracking-widest ${ATTAINABILITY_CLASS[row.attainability]}`}
                       >
                         {attainabilityLabel(row.attainability)}
                       </span>
                     ) : (
-                      <span className="text-muted">—</span>
+                      <span className="text-ink-muted">—</span>
                     )}
                   </td>
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-end">
                     <button
                       type="button"
-                      className="text-red-600 text-xs font-semibold hover:underline"
+                      className="text-accent text-xs hover:underline underline-offset-4"
                       data-testid={`delete-saved-sim-${row.id}`}
                       onClick={() => handleDeleteSaved(row)}
                     >

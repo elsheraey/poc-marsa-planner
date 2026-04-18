@@ -10,6 +10,15 @@ function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toISOString().slice(0, 10);
 }
 
+/**
+ * Editorial clients list.
+ *
+ * No card wrapper, no drop-shadow. A serif "All Clients" heading with a
+ * small-caps "Add new" action on the right; below, a plain table bounded
+ * by top/bottom rules, with one hairline between rows. Empty / error /
+ * loading branches render centred serif italic paragraphs rather than
+ * coloured blocks — same ethos as the rest of the document.
+ */
 export default function ClientsList() {
   const dispatch = useAppDispatch();
   const nav = useNavigate();
@@ -34,118 +43,114 @@ export default function ClientsList() {
   const slice = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <AppShell title="Clients">
-      <section className="card">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold">All Clients</h2>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-                <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              <input
-                className="input pl-9 h-10 w-72"
-                placeholder="Search client"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setPage(1);
-                }}
-                aria-label="Search clients"
-              />
-            </div>
-            <button className="btn-primary" onClick={() => nav("/clients/new/profile")}>
-              Add New
-            </button>
-          </div>
+    <AppShell>
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <h1 className="font-serif text-4xl tracking-tight">All Clients</h1>
+        <button
+          className="btn"
+          onClick={() => nav("/clients/new/profile")}
+        >
+          Add New
+        </button>
+      </div>
+
+      <div className="mb-8">
+        <label className="label block mb-2" htmlFor="clients-search">
+          Search
+        </label>
+        <input
+          id="clients-search"
+          className="input max-w-md"
+          placeholder="Name or email"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Search clients"
+        />
+      </div>
+
+      {status === "loading" && clients.length === 0 && (
+        <p className="py-16 text-center font-serif italic text-ink-muted">
+          Loading clients…
+        </p>
+      )}
+
+      {status === "error" && (
+        <div
+          className="border-t border-b border-accent py-3 my-4 text-sm text-accent"
+          role="alert"
+        >
+          {error ?? "Failed to load clients"}
         </div>
+      )}
 
-        {status === "loading" && clients.length === 0 && (
-          <div className="py-12 text-center text-muted">Loading clients…</div>
-        )}
+      {status !== "loading" && filtered.length === 0 && (
+        <p className="py-16 text-center font-serif italic text-ink-muted">
+          {q ? "No clients match your search." : "No clients yet. Add your first one."}
+        </p>
+      )}
 
-        {status === "error" && (
-          <div className="mb-4 rounded-lg bg-red-50 text-red-700 px-4 py-3 text-sm" role="alert">
-            {error ?? "Failed to load clients"}
-          </div>
-        )}
-
-        {status !== "loading" && filtered.length === 0 && (
-          <div className="py-12 text-center text-muted">
-            {q ? "No clients match your search." : "No clients yet. Add your first one."}
-          </div>
-        )}
-
-        {filtered.length > 0 && (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-muted text-xs">
-                <th className="text-left font-medium pb-4">Client details</th>
-                <th className="text-left font-medium pb-4">Client ID</th>
-                <th className="text-left font-medium pb-4">Phone</th>
-                <th className="text-left font-medium pb-4">Last modified</th>
+      {filtered.length > 0 && (
+        <table className="w-full text-sm border-t border-b border-rule">
+          <thead>
+            <tr className="text-xs uppercase tracking-widest text-ink-muted">
+              <th className="text-start font-normal py-4">Client details</th>
+              <th className="text-start font-normal py-4">Client ID</th>
+              <th className="text-start font-normal py-4">Phone</th>
+              <th className="text-start font-normal py-4">Last modified</th>
+            </tr>
+          </thead>
+          <tbody>
+            {slice.map((c) => (
+              <tr
+                key={c.id}
+                className="border-t border-rule hover:bg-paper-deep cursor-pointer"
+                onClick={() => nav(`/clients/${c.id}`)}
+              >
+                <td className="py-4">
+                  <div className="font-serif text-base">{c.name}</div>
+                  <div className="text-xs text-ink-muted">{c.email}</div>
+                </td>
+                <td className="py-4 tabular">{c.clientId}</td>
+                <td className="py-4 tabular">{c.phone ?? "—"}</td>
+                <td className="py-4 tabular">{formatDate(c.lastModified)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {slice.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-t border-border/60 hover:bg-surface cursor-pointer"
-                  onClick={() => nav(`/clients/${c.id}`)}
-                >
-                  <td className="py-4">
-                    <div className="font-semibold">{c.name}</div>
-                    <div className="text-xs text-muted">{c.email}</div>
-                  </td>
-                  <td className="py-4">{c.clientId}</td>
-                  <td className="py-4">{c.phone ?? "—"}</td>
-                  <td className="py-4">{formatDate(c.lastModified)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+            ))}
+          </tbody>
+        </table>
+      )}
 
-        {filtered.length > 0 && (
-          <div className="flex items-center justify-end gap-4 mt-6 text-sm text-muted">
-            <span>Page</span>
-            <input
-              className="input h-9 w-14 text-center"
-              value={page}
-              onChange={(e) => setPage(Math.max(1, Math.min(pages, Number(e.target.value) || 1)))}
-              aria-label="Page number"
-            />
-            <span>of</span>
-            <div className="h-9 w-14 rounded-xl border border-border flex items-center justify-center">
-              {pages}
-            </div>
-            <button
-              className="w-9 h-9 rounded-xl border border-border disabled:opacity-40"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              aria-label="Previous page"
-            >
-              ‹
-            </button>
-            <button
-              className="w-9 h-9 rounded-xl border border-border disabled:opacity-40"
-              disabled={page >= pages}
-              onClick={() => setPage((p) => p + 1)}
-              aria-label="Next page"
-            >
-              ›
-            </button>
-          </div>
-        )}
-      </section>
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-end gap-4 mt-8 text-sm text-ink-muted tabular">
+          <span className="uppercase tracking-widest text-xs">Page</span>
+          <input
+            className="input h-9 w-12 text-center"
+            value={page}
+            onChange={(e) => setPage(Math.max(1, Math.min(pages, Number(e.target.value) || 1)))}
+            aria-label="Page number"
+          />
+          <span className="uppercase tracking-widest text-xs">of</span>
+          <span>{pages}</span>
+          <button
+            className="px-3 h-9 border border-rule text-ink hover:border-ink disabled:opacity-40"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            aria-label="Previous page"
+          >
+            ‹
+          </button>
+          <button
+            className="px-3 h-9 border border-rule text-ink hover:border-ink disabled:opacity-40"
+            disabled={page >= pages}
+            onClick={() => setPage((p) => p + 1)}
+            aria-label="Next page"
+          >
+            ›
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

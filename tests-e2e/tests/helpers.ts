@@ -34,19 +34,22 @@ export async function registerNewUser(
 }
 
 /**
- * Extract the first probability percent (e.g. "~42%" -> 42) rendered in
- * any DonutChart on the simulation report page. Waits for at least one to be
- * visible before reading.
+ * Extract the first probability percent (e.g. "42%" -> 42) rendered on
+ * the simulation report page. Waits for at least one to be visible
+ * before reading.
  *
- * The donut now renders `~${Math.round(p)}%` (honest to the Monte Carlo
- * standard error per market-spec §4c); the leading "~" is optional so
- * earlier artefacts still parse.
+ * Post-rebrand the report replaced the DonutChart with a ProbabilityBar
+ * — a flat editorial bar with the percent rendered in a div labelled
+ * `data-testid="probability-bar-label"`. The earlier implementation
+ * looked for `svg text` inside the donut; we now read the div label
+ * directly. The leading "~" is optional so any intermediate artefact
+ * still parses.
  */
 export async function readFirstProbabilityPercent(page: Page): Promise<number> {
-  const donutText = page.locator("svg text", { hasText: /%$/ }).first();
-  await expect(donutText).toBeVisible({ timeout: 15_000 });
-  const raw = (await donutText.textContent()) ?? "";
+  const barLabel = page.getByTestId("probability-bar-label").first();
+  await expect(barLabel).toBeVisible({ timeout: 15_000 });
+  const raw = (await barLabel.textContent()) ?? "";
   const m = /~?([\d.]+)\s*%/.exec(raw);
-  if (!m) throw new Error(`Could not parse percent from donut text: ${raw}`);
+  if (!m) throw new Error(`Could not parse percent from probability bar: ${raw}`);
   return Number(m[1]);
 }

@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Area,
-  ComposedChart,
-  CartesianGrid,
   Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,7 +10,7 @@ import {
 } from "recharts";
 import AppShell from "../components/AppShell";
 import WizardTabs from "../components/WizardTabs";
-import DonutChart from "../components/DonutChart";
+import ProbabilityBar from "../components/ProbabilityBar";
 import { toast } from "../components/Toaster";
 import { useAppSelector } from "../store";
 import { fmtEGP, fmtProbabilitySeTail } from "../utils/format";
@@ -29,8 +27,8 @@ import {
 // call to `/api/simulate/invert`.
 const INVERSION_TARGET_PROBABILITY = 0.8;
 
-// Product constraint: the Goals Achievement Probability grid renders at most
-// 4 donut cards. Keep in sync with MAX_SCENARIOS_PER_RUN in ScenarioStep.tsx.
+// Product constraint: the report renders at most 4 scenario rows. Keep in
+// sync with MAX_SCENARIOS_PER_RUN in ScenarioStep.tsx.
 const MAX_SCENARIOS_RENDERED = 4;
 
 // Fallback used only when the backend calibration manifest is missing/malformed
@@ -39,12 +37,15 @@ const CALIBRATION_FALLBACK = "calibration: 2026-04";
 
 function fmtCalibration(raw: string | null | undefined): string {
   if (!raw) return CALIBRATION_FALLBACK;
-  // Normalise `YYYY-MM-DD` to `YYYY-MM` for the disclosure line (month-level
-  // precision is what the frontend copy calls for); keep shorter values as-is.
   const trimmed = raw.length >= 7 ? raw.slice(0, 7) : raw;
   return `calibration: ${trimmed}`;
 }
 
+/**
+ * Disclosure banner. Editorial, not a card: a 1px top rule, a small-caps
+ * summary toggle, a bullet list inside when open. No rounded corners, no
+ * background fill.
+ */
 function DisclosureBanner({
   calibrationAsOf,
 }: Readonly<{ calibrationAsOf: string | null | undefined }>) {
@@ -52,21 +53,21 @@ function DisclosureBanner({
   const now = new Date();
   const nowStr = now.toISOString().replace("T", " ").slice(0, 16) + " UTC";
   return (
-    <div
+    <section
       data-testid="simulation-disclosure"
-      className="mt-5 rounded-xl border border-border bg-surface/60"
+      className="border-t border-rule py-6 mt-16 text-xs text-ink-muted"
     >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-muted hover:text-ink"
+        className="w-full flex items-center justify-between uppercase tracking-widest text-ink-muted hover:text-ink"
         aria-expanded={open}
       >
         <span>{t("report.disclosure")}</span>
-        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+        <span aria-hidden="true">{open ? "–" : "+"}</span>
       </button>
       {open && (
-        <ul className="px-5 pb-4 space-y-2 text-[11px] leading-relaxed text-muted list-disc list-inside">
+        <ul className="mt-4 space-y-2 leading-relaxed list-disc list-inside">
           <li>{t("report.disclosure.mc")}</li>
           <li>{t("report.disclosure.real")}</li>
           <li>{t("report.disclosure.past")}</li>
@@ -79,65 +80,55 @@ function DisclosureBanner({
           <li>{t("report.disclosure.regulator")}</li>
         </ul>
       )}
-    </div>
+    </section>
   );
 }
 
 type Tab = "chart" | "table";
 
+/*
+  Muted attainability palette. The saturated 700/600 fills from the old
+  pill badges would stab through the cream — we drop to 900 ink on 100
+  tints, which read as a quiet editorial annotation. Contrast against
+  bg-{color}-100 clears 4.5:1 at 900.
+*/
 const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach", string> = {
-  attainable: "bg-emerald-100 text-emerald-700",
-  aspirational: "bg-amber-100 text-amber-700",
-  out_of_reach: "bg-rose-100 text-rose-700",
+  attainable: "bg-emerald-100 text-emerald-900",
+  aspirational: "bg-amber-100 text-amber-900",
+  out_of_reach: "bg-rose-100 text-rose-900",
 };
 
 // Prefer the localised string; fall back to the backend label with
-// underscores normalised if the i18n key is missing.
+// underscores normalised.
 function attainabilityLabel(
   attainability: "attainable" | "aspirational" | "out_of_reach"
 ): string {
   const key = `report.${attainability}`;
   const localised = t(key);
-  // Use the global-regex form of replace so both underscores in
-  // "out_of_reach" are replaced. An earlier `replace("_", " ")` passed a
-  // literal string and only hit the first underscore — "out of_reach"
-  // shipped briefly. (ES2020 target lacks String.prototype.replaceAll;
-  // /_/g is equivalent.)
   return localised === key ? attainability.replace(/_/g, " ") : localised;
 }
 
 export default function SimulationReport() {
   const nav = useNavigate();
   const results = useAppSelector((s) => s.simulation.results);
-  // `result` is kept as a backward-compat fallback for callers that set the
-  // legacy single-result shape; prefer `results[0]` when present.
   const legacyResult = useAppSelector((s) => s.simulation.result);
   const status = useAppSelector((s) => s.simulation.status);
   const draftProfile = useAppSelector((s) => s.draft.profile);
   const [tab, setTab] = useState<Tab>("chart");
   const [activeScenario, setActiveScenario] = useState(0);
   const [presenting, setPresenting] = useState(false);
-  // Server-side inversion for the active scenario. `null` = not yet fetched
-  // or not applicable (goal met, or no goal target). Keyed per-scenario so
-  // flipping between tabs doesn't flash stale suggestions.
+  const [reportTitle, setReportTitle] = useState("Simulation report 1");
   const [inversionByScenario, setInversionByScenario] = useState<
     Record<number, SimulateInvertResult | null>
   >({});
-  // Save-simulation wire state. We disable the button once saved so the
-  // advisor can't accidentally create duplicates; one save per page load.
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
     "idle"
   );
-  // If the report is attached to a live client record, pass it through on
-  // save so the snapshot shows up under that client's Saved-simulations
-  // list. Otherwise it's a prospective-client what-if (client_id: null).
   const draftClientId = useAppSelector((s) => {
     const raw = (s.draft as unknown as { clientId?: string | null }).clientId;
     return typeof raw === "string" && raw.length > 0 ? raw : null;
   });
 
-  // One card per backend-returned scenario (truncated to MAX). The probability
-  // comes straight from `result.probability_of_goal` — no per-index synthesis.
   const scenarioCards = useMemo(() => {
     let src: { name: string; result: SimulateResult }[] = [];
     if (results.length > 0) {
@@ -170,23 +161,10 @@ export default function SimulationReport() {
         optimistic,
         median,
         pessimistic,
-        // Derived bands for the ribbon visualisation. Recharts renders an
-        // <Area> from y=0 by default; to draw a band between pessimistic and
-        // optimistic we stack a transparent base at `pessimistic` and a delta
-        // on top. The displayed values (tooltip/table) use the unstacked
-        // `optimistic` / `median` / `pessimistic` fields above, so the QA
-        // stacking assertion (optimistic >= median >= pessimistic) holds.
-        bandBase: pessimistic,
-        bandDelta: Math.max(0, optimistic - pessimistic),
       };
     });
   }, [activeResult]);
 
-  // Moment-of-truth inversion for the active scenario. Derived from the
-  // backend probability + (async) inversion response. The inversion call is
-  // only meaningful when the active run has a goal target AND is below the
-  // 80% advisor bar — otherwise we show the "met" headline and no
-  // suggestions.
   const activeRequest = results[activeScenario]?.request ?? results[0]?.request;
   const probabilityOfGoal = activeResult?.probability_of_goal ?? null;
   const probabilityPct =
@@ -198,22 +176,8 @@ export default function SimulationReport() {
     activeRequest.goal_target_amount > 0;
   const shouldFetchInversion = !!activeResult && hasGoal && !meetsEightyPct;
 
-  // Track which scenarios have had an inversion request fired (or finished
-  // firing). We deliberately use a ref rather than adding
-  // `inversionByScenario` to the effect deps: if the effect depended on the
-  // map, the state update that records "in-flight" would re-run the effect
-  // and the cleanup's `cancelled = true` would orphan the pending fetch's
-  // `.then` — the real response would never land in state.
   const firedInversionRef = useRef<Set<number>>(new Set());
 
-  // Fire the async inversion when the active scenario shifts or a new
-  // simulation result arrives. Keyed by scenario index so switching between
-  // cards renders the right suggestion list. We deliberately don't block
-  // the initial render: the headline always shows immediately, and the
-  // `suggestions` list is appended once the fetch resolves.
-  //
-  // NOTE: this hook sits above every early return so React's hook-ordering
-  // invariant holds across the "no result" / "loading" / "ready" branches.
   useEffect(() => {
     if (!shouldFetchInversion || !activeRequest) return;
     if (firedInversionRef.current.has(activeScenario)) return;
@@ -235,35 +199,33 @@ export default function SimulationReport() {
         setInversionByScenario((prev) => ({ ...prev, [activeScenario]: res }));
       })
       .catch((e) => {
-        // Soft-fail: the headline still renders. The shared error toast
-        // surfaces ApiError shape consistently with the rest of the app.
         const msg =
           e instanceof ApiError ? e.message : "Could not compute inversion";
         toast(msg, "error");
-        // Clear the in-flight marker so the advisor can trigger a retry
-        // by re-clicking the scenario (or running another simulation).
         firedInversionRef.current.delete(activeScenario);
       });
   }, [shouldFetchInversion, activeScenario, activeRequest]);
 
   if (status === "loading") {
     return (
-      <AppShell title="New Client">
+      <AppShell>
         <WizardTabs basePath="/clients/new" />
-        <div className="card py-16 text-center text-muted">Running simulation…</div>
+        <p className="text-center text-ink-muted font-serif italic py-16">
+          Running simulation…
+        </p>
       </AppShell>
     );
   }
 
   if (!activeResult || scenarioCards.length === 0) {
     return (
-      <AppShell title="New Client">
+      <AppShell>
         <WizardTabs basePath="/clients/new" />
-        <div className="card py-16 text-center">
-          <p className="text-muted mb-4">
+        <div className="py-16 text-center">
+          <p className="font-serif italic text-ink-muted mb-6">
             No simulation has been run yet. Go back and run a scenario to see the report.
           </p>
-          <button className="btn-primary" onClick={() => nav("/clients/new/scenario")}>
+          <button className="btn" onClick={() => nav("/clients/new/scenario")}>
             Back to Scenarios
           </button>
         </div>
@@ -286,45 +248,30 @@ export default function SimulationReport() {
       : "—",
   });
 
-  // Honest-SE tail on the moment-of-truth headline. The backend already
-  // attaches `probability_of_goal_se` to SimulateResponse; render it only
-  // when the engine returned a measurable SE (≥ 0.001 decimal = 0.1 pp)
-  // and only when we actually have a probability sentence to append to.
-  // Rounding lives in fmtProbabilitySeTail so the copy stays a dumb
-  // interpolation.
   const seTailPp =
     probabilityPct != null
       ? fmtProbabilitySeTail(activeResult.probability_of_goal_se)
       : null;
   const seTail = seTailPp ? t("report.se.tail", { pp: seTailPp }) : null;
 
-  // Suggestions are derived strictly from the backend inversion response,
-  // once it arrives. Rendered below the headline; the headline itself is
-  // never blocked on this fetch.
   const inversionResponse = inversionByScenario[activeScenario];
   const suggestions: string[] = [];
   if (shouldFetchInversion && inversionResponse) {
     const { required_monthly_investment, required_horizon_years } =
       inversionResponse;
     if (required_monthly_investment != null) {
-      // Bracket to the nearest 100 EGP — the backend solves to a 100-EGP
-      // tolerance so we drop the "approx." hedge and round display to match.
       const bracketed =
         Math.round(required_monthly_investment / 100) * 100;
       suggestions.push(
         t("report.suggest.monthly", { monthly: fmtEGP(bracketed) })
       );
     } else if (required_horizon_years != null) {
-      // No feasible monthly under the 10M cap, but extending the horizon
-      // clears the bar. Use the calendar-year end of the required horizon
-      // (today's year + years - 1) to match `chartData` framing.
       const calendarYear =
         new Date().getFullYear() + required_horizon_years - 1;
       suggestions.push(
         t("report.suggest.horizon", { year: calendarYear })
       );
     } else {
-      // Unreachable at 10M/month AND at the 40y horizon cap — honest "no".
       suggestions.push(t("report.suggest.unreachable"));
     }
   }
@@ -336,9 +283,7 @@ export default function SimulationReport() {
   async function handleSave() {
     if (saveState !== "idle" || !activeRequest || !activeResult) return;
     const todayIso = new Date().toISOString().slice(0, 10);
-    const defaultName = `Simulation ${todayIso}`;
-    // Browser `prompt()` is fine for v1 — the UX lead called this out
-    // explicitly. Returns null on cancel.
+    const defaultName = reportTitle || `Simulation ${todayIso}`;
     const hasWindow = globalThis.window !== undefined;
     const raw = hasWindow
       ? globalThis.window.prompt(t("report.save.prompt"), defaultName)
@@ -363,40 +308,22 @@ export default function SimulationReport() {
     }
   }
 
+  const clientName = draftProfile.fullName || "New client";
+  const clientEmail = draftProfile.email || "";
+
   return (
-    <AppShell title="New Client" focus={presenting}>
+    <AppShell focus={presenting}>
       {!presenting && <WizardTabs basePath="/clients/new" />}
 
       {/*
-        Moment-of-truth headline. Replaces the decorative purple-hero +
-        cosmetic button row. The advisor now sees one sentence answering
-        "can my client afford this?" as the first thing on the page.
+        Moment-of-truth headline — at the TOP of the page, above every
+        other element. No hero panel, no gradient, no decorative chrome.
+        The page opens with the sentence that answers "can my client
+        afford this?", set in a large serif, and nothing more.
       */}
-      <section
-        className="rounded-2xl bg-report-gradient text-white p-8 print:bg-white print:text-ink"
-        data-testid="moment-of-truth"
-      >
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="min-w-0">
-            <div className="text-xs font-semibold opacity-80 mb-1 print:opacity-100">
-              {t("report.title")}
-            </div>
-            <div className="text-lg font-bold truncate">
-              {draftProfile.fullName || "New client"}
-            </div>
-          </div>
-          {activeResult.attainability && (
-            <span
-              className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[activeResult.attainability]}`}
-              title="Attainability band based on P15 / median real-terms projection"
-            >
-              {attainabilityLabel(activeResult.attainability)}
-            </span>
-          )}
-        </div>
-
+      <section data-testid="moment-of-truth" className="mb-12">
         <p
-          className="text-2xl md:text-3xl font-extrabold tracking-tight leading-snug max-w-3xl"
+          className="font-serif text-3xl md:text-4xl tracking-tight leading-tight text-ink"
           data-testid="moment-of-truth-headline"
         >
           {headline}
@@ -404,7 +331,7 @@ export default function SimulationReport() {
             <>
               {" "}
               <em
-                className="text-base md:text-lg font-semibold italic opacity-90"
+                className="text-xl md:text-2xl text-ink-muted not-italic tabular"
                 data-testid="moment-of-truth-se"
               >
                 {seTail}
@@ -415,145 +342,178 @@ export default function SimulationReport() {
 
         {suggestions.length > 0 && (
           <ul
-            className="mt-4 space-y-1 text-sm md:text-base text-white/95 print:text-ink"
+            className="mt-6 space-y-2 text-base text-ink-muted"
             data-testid="moment-of-truth-suggestions"
           >
             {suggestions.map((s) => (
-              <li key={s} className="flex items-start gap-2">
-                <span aria-hidden="true" className="mt-1">•</span>
-                <span>{s}</span>
+              <li key={s} className="leading-relaxed">
+                — {s}
               </li>
             ))}
           </ul>
         )}
+      </section>
 
-        <div className="mt-6 flex flex-wrap items-center gap-2 print:hidden">
+      {/*
+        Client masthead. A thin rule underneath, name in serif, email in
+        small-caps ink-muted below. Replaces the gradient "Report" panel.
+      */}
+      <header className="border-b border-rule pb-6 mb-10 flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <div className="label mb-1">{t("report.title")}</div>
+          <h2 className="font-serif text-2xl tracking-tight truncate">
+            {clientName}
+          </h2>
+          {clientEmail && (
+            <div className="label mt-1">{clientEmail}</div>
+          )}
+        </div>
+        <div className="flex items-center gap-6 print:hidden">
           <button
             type="button"
-            className="h-9 px-4 rounded-lg bg-white/95 text-primary-600 text-sm font-semibold hover:bg-white"
             onClick={() => setPresenting((p) => !p)}
             aria-pressed={presenting}
+            className="text-sm text-ink hover:underline underline-offset-4"
           >
             {presenting ? t("report.action.exit_present") : t("report.action.present")}
           </button>
           <button
             type="button"
-            className="h-9 px-4 rounded-lg border border-white/70 text-white text-sm font-semibold hover:bg-white/10"
             onClick={handlePrint}
+            className="text-sm text-ink hover:underline underline-offset-4"
           >
             {t("report.action.print")}
           </button>
           <button
             type="button"
             data-testid="save-simulation-button"
-            className="h-9 px-4 rounded-lg border border-white/70 text-white text-sm font-semibold hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleSave}
             disabled={saveState !== "idle"}
-            title="Save the current simulation as a client-shareable snapshot"
+            className="text-sm text-ink hover:underline underline-offset-4 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveState === "saving" && t("report.action.saving")}
             {saveState === "saved" && t("report.action.saved")}
             {saveState === "idle" && t("report.action.save")}
           </button>
         </div>
+      </header>
+
+      {/*
+        Editable report title. A plain unstyled input with a bottom rule
+        on focus — writes to local state only; `handleSave` uses it as
+        the default when the user hits "Save simulation".
+      */}
+      <input
+        aria-label="Report title"
+        value={reportTitle}
+        onChange={(e) => setReportTitle(e.target.value)}
+        className="font-serif text-2xl tracking-tight bg-transparent border-0 border-b border-transparent focus:border-rule outline-none w-full mb-10 py-2 px-0"
+      />
+
+      {/*
+        Scenario list. Vertical stack of sections, each separated by a
+        top rule. Click a row to promote it to "active"; the selected
+        row gets the accent underline.
+      */}
+      <section
+        aria-live="polite"
+        data-testid="scenario-cards"
+        className="mb-12"
+      >
+        <h3 className="font-serif text-2xl tracking-tight mb-6">
+          {t("report.section.probability")}
+        </h3>
+        {scenarioCards.map((sc, i) => (
+          <button
+            type="button"
+            key={sc.name + i}
+            data-testid={`scenario-card-${i}`}
+            data-scenario-name={sc.name}
+            data-probability={sc.probability}
+            aria-pressed={i === activeScenario}
+            onClick={() => setActiveScenario(i)}
+            className={`w-full text-start border-t border-rule py-6 grid grid-cols-1 md:grid-cols-[2fr_3fr_1fr] gap-6 items-center hover:bg-paper-deep transition ${
+              i === activeScenario ? "border-t-2 border-t-accent" : ""
+            }`}
+          >
+            <div className="font-serif text-xl tracking-tight">{sc.name}</div>
+            <ProbabilityBar
+              percent={sc.probability}
+              seTail={
+                i === activeScenario
+                  ? fmtProbabilitySeTail(sc.result.probability_of_goal_se)
+                  : null
+              }
+            />
+            {sc.result.attainability && (
+              <span
+                className={`text-xs uppercase tracking-widest px-2 py-0.5 justify-self-start md:justify-self-end ${ATTAINABILITY_CLASS[sc.result.attainability]}`}
+                title="Attainability band based on P15 / median real-terms projection"
+              >
+                {attainabilityLabel(sc.result.attainability)}
+              </span>
+            )}
+          </button>
+        ))}
       </section>
 
-      <section className="card mt-6 print:break-inside-avoid">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold">{t("report.section.scenarios")}</h3>
-          <span className="text-xs text-muted">
-            {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"} · N=10k
-          </span>
-        </div>
-
-        <div
-          className="grid grid-cols-2 md:grid-cols-4 gap-4"
-          aria-live="polite"
-          data-testid="scenario-cards"
-        >
-          {scenarioCards.map((sc, i) => (
+      {/*
+        Projection. Section rule, small-caps header, a toggle sitting to
+        the right as plain text (no pill tab). The chart is all ink lines
+        — no gradient fills, no cartesian grid.
+      */}
+      <section className="border-t border-rule pt-6 mb-12">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-serif text-2xl tracking-tight">
+            {t("report.section.projection")}
+          </h3>
+          <div className="flex items-center gap-4 text-xs uppercase tracking-widest">
             <button
               type="button"
-              key={sc.name + i}
-              className={`flex flex-col items-center p-3 rounded-xl border ${
-                i === activeScenario
-                  ? "border-primary-500 bg-primary-50"
-                  : "border-border hover:bg-surface"
-              }`}
-              data-testid={`scenario-card-${i}`}
-              data-scenario-name={sc.name}
-              data-probability={sc.probability}
-              onClick={() => setActiveScenario(i)}
-              aria-pressed={i === activeScenario}
-            >
-              <div className="text-sm font-medium mb-3 text-center">{sc.name}</div>
-              <DonutChart percent={sc.probability} size={90} stroke={8} />
-              {sc.result.attainability && (
-                <span
-                  className={`mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[sc.result.attainability]}`}
-                  title="Attainability band for this scenario"
-                >
-                  {attainabilityLabel(sc.result.attainability)}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card mt-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="font-bold">{scenarioCards[activeScenario]?.name}</div>
-            <div className="text-xs text-muted">
-              {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 bg-surface p-1 rounded-lg">
-            <button
-              className={`w-9 h-8 rounded-md ${
-                tab === "chart" ? "bg-primary-100 text-primary-600" : "text-muted"
-              }`}
               onClick={() => setTab("chart")}
               title="Chart"
+              className={tab === "chart" ? "text-ink underline decoration-accent underline-offset-4" : "text-ink-muted hover:text-ink"}
             >
-              ≋
+              Chart
             </button>
             <button
-              className={`w-9 h-8 rounded-md ${
-                tab === "table" ? "bg-primary-100 text-primary-600" : "text-muted"
-              }`}
+              type="button"
               onClick={() => setTab("table")}
               title="Table"
+              className={tab === "table" ? "text-ink underline decoration-accent underline-offset-4" : "text-ink-muted hover:text-ink"}
             >
-              ☰
+              Table
             </button>
           </div>
+        </div>
+        <div className="text-xs text-ink-muted mb-4">
+          {scenarioCards[activeScenario]?.name} · {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"} · N=10k
         </div>
 
         {tab === "chart" ? (
-          <div style={{ width: "100%", height: 360 }}>
+          <div style={{ width: "100%", height: 320 }}>
             <ResponsiveContainer>
-              <ComposedChart data={chartData}>
-                <defs>
-                  <linearGradient id="g-band" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#86E3A9" stopOpacity={0.55} />
-                    <stop offset="100%" stopColor="#F7A678" stopOpacity={0.35} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+              <LineChart
+                data={chartData}
+                margin={{ top: 8, right: 8, left: 8, bottom: 8 }}
+              >
+                <XAxis
+                  dataKey="year"
+                  tick={{ fontSize: 11, fill: "#6B655C" }}
+                  stroke="#1A1816"
+                  axisLine={{ stroke: "#1A1816", strokeWidth: 1 }}
+                  tickLine={{ stroke: "#1A1816" }}
+                />
                 <YAxis
                   tickFormatter={(v) => fmtEGP(v, { compact: true })}
-                  tick={{ fontSize: 12 }}
-                  label={{
-                    value: "Portfolio value (EGP)",
-                    angle: -90,
-                    position: "insideLeft",
-                    style: { fill: "#6B7280", fontSize: 11 },
-                  }}
+                  tick={{ fontSize: 11, fill: "#6B655C" }}
+                  stroke="#1A1816"
+                  axisLine={{ stroke: "#1A1816", strokeWidth: 1 }}
+                  tickLine={{ stroke: "#1A1816" }}
+                  width={72}
                 />
                 <Tooltip
+                  cursor={{ stroke: "#6B655C", strokeWidth: 1, strokeDasharray: "2 4" }}
                   content={({ active, payload, label }) => {
                     if (!active || !payload || payload.length === 0) return null;
                     const row = payload[0].payload as {
@@ -564,87 +524,82 @@ export default function SimulationReport() {
                     return (
                       <div
                         style={{
-                          background: "#fff",
-                          border: "1px solid #E5E7EB",
-                          borderRadius: 12,
+                          background: "#FBF8F1",
+                          border: "1px solid #E8E2D4",
                           padding: "8px 12px",
                           fontSize: 12,
+                          color: "#1A1816",
+                          fontVariantNumeric: "tabular-nums",
                         }}
                       >
-                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
-                        <div style={{ color: "#4FAE6E" }}>
-                          Optimistic: {fmtEGP(row.optimistic)}
+                        <div style={{ marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.1em", fontSize: 10, color: "#6B655C" }}>
+                          {label}
                         </div>
-                        <div style={{ color: "#D4AC33" }}>
-                          Median: {fmtEGP(row.median)}
-                        </div>
-                        <div style={{ color: "#D47C33" }}>
-                          Pessimistic: {fmtEGP(row.pessimistic)}
-                        </div>
+                        <div>Optimistic: {fmtEGP(row.optimistic)}</div>
+                        <div>Median: {fmtEGP(row.median)}</div>
+                        <div>Pessimistic: {fmtEGP(row.pessimistic)}</div>
                       </div>
                     );
                   }}
                 />
-                {/* Transparent base stacks the band up to the pessimistic curve */}
-                <Area
+                {/* P15 — dashed muted */}
+                <Line
                   type="monotone"
-                  dataKey="bandBase"
-                  stackId="band"
-                  stroke="none"
-                  fill="transparent"
-                  activeDot={false}
-                  legendType="none"
+                  dataKey="pessimistic"
+                  stroke="#6B655C"
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                  dot={false}
                   isAnimationActive={false}
+                  name="Pessimistic"
                 />
-                {/* Delta stacks on top to fill up to the optimistic curve */}
-                <Area
-                  type="monotone"
-                  dataKey="bandDelta"
-                  stackId="band"
-                  stroke="none"
-                  fill="url(#g-band)"
-                  activeDot={false}
-                  legendType="none"
-                  isAnimationActive={false}
-                  name="Optimistic–Pessimistic band"
-                />
+                {/* Median — solid ink */}
                 <Line
                   type="monotone"
                   dataKey="median"
-                  stroke="#D4AC33"
-                  strokeWidth={2.5}
+                  stroke="#1A1816"
+                  strokeWidth={1.5}
                   dot={false}
+                  isAnimationActive={false}
                   name="Median"
                 />
-              </ComposedChart>
+                {/* P85 — dashed muted */}
+                <Line
+                  type="monotone"
+                  dataKey="optimistic"
+                  stroke="#6B655C"
+                  strokeWidth={1}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  isAnimationActive={false}
+                  name="Optimistic"
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <div className="text-center text-xs text-primary-500 font-semibold mb-3">
-              Portfolio Value by the end of the year
-            </div>
             {(() => {
               const birthYear = draftProfile.birthdate
                 ? new Date(draftProfile.birthdate).getFullYear()
                 : null;
               const showAge = birthYear != null && !Number.isNaN(birthYear);
               return (
-                <table className="w-full text-sm">
-                  <thead className="text-xs text-muted">
-                    <tr>
+                <table className="w-full text-sm tabular">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-widest text-ink-muted">
                       {showAge && (
-                        <th className="text-left font-medium pb-3">Client age</th>
+                        <th className="text-start font-normal pb-3">Client age</th>
                       )}
-                      <th className="text-left font-medium pb-3">Year</th>
-                      <th className="text-left font-medium pb-3">Optimistic</th>
-                      <th className="text-left font-medium pb-3">Median</th>
-                      <th className="text-left font-medium pb-3">Pessimistic</th>
+                      <th className="text-start font-normal pb-3">Year</th>
+                      <th className="text-start font-normal pb-3">Optimistic</th>
+                      <th className="text-start font-normal pb-3">Median</th>
+                      <th className="text-start font-normal pb-3">Pessimistic</th>
                     </tr>
                   </thead>
                   <tbody>
                     {chartData.map((row) => (
-                      <tr key={row.year} className="border-t border-border/60">
+                      <tr key={row.year} className="border-t border-rule">
                         {showAge && (
                           <td className="py-2">{row.year - (birthYear as number)} years</td>
                         )}
@@ -670,13 +625,13 @@ export default function SimulationReport() {
 
       <DisclosureBanner calibrationAsOf={activeResult.calibration_as_of} />
 
-      <div className="flex items-center justify-between mt-6 print:hidden">
+      <div className="flex items-center justify-between mt-10 print:hidden">
         <button
           type="button"
-          className="text-primary-500 text-sm font-semibold"
+          className="text-sm text-ink hover:underline underline-offset-4"
           onClick={() => nav("/clients/new/scenario")}
         >
-          {t("report.action.back")}
+          ← {t("report.action.back")}
         </button>
       </div>
     </AppShell>
