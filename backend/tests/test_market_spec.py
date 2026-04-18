@@ -18,8 +18,10 @@ Coverage map (market-spec.md section → tests here):
 
 from __future__ import annotations
 
+import json
 import math
 import time
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -253,3 +255,309 @@ def test_latency_slo_warm_cache(authed_client):
             f"warm latencies exceeded 800 ms SLO (likely shared-box load): "
             f"{[round(x, 1) for x in latencies_ms]}"
         )
+
+
+# -------------------------------------------------------------------
+# §4(c) Monte Carlo standard error — probability_of_goal_se
+# -------------------------------------------------------------------
+#
+# The engineer is landing `probability_of_goal_se` on SimulateResponse per
+# spec §4(c): SE = sqrt(p*(1-p)/N), N=10_000. These tests check both the
+# presence/shape and the numeric formula. If the field hasn't been wired
+# up yet the tests skip gracefully so the suite stays green across the
+# eng/analyst/UX commit order (see QA task §3).
+#
+# TODO: remove the skip path once the engineer lands the
+#       `probability_of_goal_se` field on SimulateResponse (docs/next.md:18
+#       — "Engineer: Add `probability_of_goal_se` to `SimulateResponse`").
+
+
+def _has_se_field(client) -> bool:
+    """True iff /api/simulate includes probability_of_goal_se in the body."""
+    body = _post(client, goal_target_amount=100_000)
+    return "probability_of_goal_se" in body
+
+
+def test_probability_of_goal_se_reported(authed_client):
+    """Spec §4(c): response carries a non-null SE ≤ 0.005 at N=10k for a
+    realistic payload."""
+    if not _has_se_field(authed_client):
+        pytest.skip(
+            "probability_of_goal_se not yet on SimulateResponse — "
+            "waiting for engineer commit (see docs/next.md §Engineer)"
+        )
+    body = _post(
+        authed_client,
+        duration_years=10,
+        initial_investment=100_000,
+        monthly_investment=5_000,
+        goal_target_amount=1_000_000,
+    )
+    se = body["probability_of_goal_se"]
+    assert se is not None, "SE should be non-null when goal_target_amount is set"
+    assert isinstance(se, (int, float))
+    assert math.isfinite(se)
+    assert se >= 0.0
+    # §4(c): max SE = sqrt(0.25/10000) = 0.005 at p=0.5.
+    assert se <= 0.005 + 1e-9, f"SE {se} exceeds 0.005 ceiling at N=10k"
+
+
+def test_probability_of_goal_se_matches_binomial_formula(authed_client):
+    """SE ≈ sqrt(p*(1-p)/N) within 1e-4, using the 500k/2y/20k case from §8."""
+    if not _has_se_field(authed_client):
+        pytest.skip(
+            "probability_of_goal_se not yet on SimulateResponse — "
+            "waiting for engineer commit (see docs/next.md §Engineer)"
+        )
+    body = _post(
+        authed_client,
+        duration_years=2,
+        initial_investment=500_000,
+        monthly_investment=20_000,
+        risk_tolerance="very_high",
+        goal_target_amount=6_000_000,
+    )
+    p = body["probability_of_goal"]
+    se = body["probability_of_goal_se"]
+    assert p is not None and se is not None
+    expected = math.sqrt(p * (1.0 - p) / 10_000.0)
+    assert abs(se - expected) < 1e-4, (
+        f"SE {se} deviates from sqrt(p*(1-p)/N)={expected:.6f} by > 1e-4 "
+        f"(p={p})"
+    )
+
+
+# -------------------------------------------------------------------
+# Horizon cap at 40 years (spec §6/§9)
+# -------------------------------------------------------------------
+#
+# The engineer is dropping the schema max from 60 to 40 years. Until that
+# commit lands `duration_years=41` will validate and return 200; we xfail
+# in that case so the test becomes green automatically once the cap moves.
+#
+# TODO: remove the xfail branch once the engineer lands the 40-year cap
+#       (docs/next.md §Engineer — "cap `HORIZON_MONTHS` 480").
+
+
+def test_horizon_cap_at_40_years(authed_client):
+    """duration_years=41 must be rejected (422) per the 40-year horizon cap."""
+    r = authed_client.post(
+        "/api/simulate",
+        json={**BASE_PAYLOAD, "duration_years": 41, "goal_target_amount": 100_000},
+    )
+    if r.status_code == 200:
+        pytest.xfail(
+            "40-year horizon cap not yet enforced in SimulateRequest — "
+            "waiting for engineer commit (docs/next.md §Engineer)"
+        )
+    assert r.status_code == 422, (
+        f"expected 422 for duration_years=41, got {r.status_code}: {r.text}"
+    )
+
+
+# -------------------------------------------------------------------
+# Attainability consistency with projection bands (§5)
+# -------------------------------------------------------------------
+
+
+_ATTAINABILITY_PAYLOADS = [
+    # (name, overrides) — covers all three buckets across realistic inputs.
+    (
+        "out_of_reach_stretch",
+        {
+            "duration_years": 5,
+            "initial_investment": 50_000,
+            "monthly_investment": 1_000,
+            "risk_tolerance": "high",
+            "goal_target_amount": 1_000_000,
+        },
+    ),
+    (
+        "attainable_easy",
+        {
+            "duration_years": 5,
+            "initial_investment": 50_000,
+            "monthly_investment": 1_000,
+            "risk_tolerance": "high",
+            "goal_target_amount": 50_000,
+        },
+    ),
+    (
+        "aspirational_midrange",
+        {
+            "duration_years": 10,
+            "initial_investment": 50_000,
+            "monthly_investment": 2_000,
+            "risk_tolerance": "high",
+            "goal_target_amount": 400_000,
+        },
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "name,overrides",
+    _ATTAINABILITY_PAYLOADS,
+    ids=[p[0] for p in _ATTAINABILITY_PAYLOADS],
+)
+def test_attainability_consistency_with_projection(authed_client, name, overrides):
+    """Spec §5 (real-terms default):
+      attainability == "out_of_reach" iff median_final_real < goal_real
+      attainability == "attainable"   iff P15_final_real   >= goal_real
+
+    In real-terms mode the service defines goal_real at the target year as
+    goal_target / median(cum_inflation_final). We can't recover that factor
+    from a single response, so we fetch the nominal run for the same payload
+    and derive the (median) inflation deflator from the ratio of nominal to
+    real median-terminal values:
+
+        deflator ≈ median_nominal_final / median_real_final
+        goal_real_at_target ≈ goal_target / deflator
+
+    This is exact when the service computes real paths as
+    nominal_paths / cum_infl (which it does in service.run_advisor).
+    """
+    # Real-terms run (default).
+    body = _post(authed_client, **overrides)
+    proj = body["projection"]
+    badge = body["attainability"]
+    goal = float(overrides["goal_target_amount"])
+
+    # Companion nominal run to derive the deflator used for goal_real.
+    nominal_body = _post(authed_client, return_in_real_terms=False, **overrides)
+
+    median_real_final = float(proj["median"][-1])
+    p15_real_final = float(proj["pessimistic"][-1])
+    median_nominal_final = float(nominal_body["projection"]["median"][-1])
+
+    # median_nominal / median_real ≈ median(cum_infl_final); invert to get
+    # the goal-in-today's-EGP at the target year.
+    assert median_real_final > 0
+    deflator = median_nominal_final / median_real_final
+    goal_real_at_target = goal / deflator
+
+    if badge == "out_of_reach":
+        assert median_real_final < goal_real_at_target, (
+            f"{name}: out_of_reach but median_real_final={median_real_final:,.0f} "
+            f">= goal_real={goal_real_at_target:,.0f}"
+        )
+    if badge == "attainable":
+        # Allow a tiny numerical slack (0.5%) — the deflator we derive here
+        # is taken from the *median* of the real projection, not exactly
+        # median(cum_infl_final).
+        assert p15_real_final >= goal_real_at_target * 0.995, (
+            f"{name}: attainable but P15_real_final={p15_real_final:,.0f} "
+            f"< goal_real={goal_real_at_target:,.0f}"
+        )
+    if badge == "aspirational":
+        # median >= goal_real AND P15 < goal_real.
+        assert median_real_final >= goal_real_at_target * 0.995, (
+            f"{name}: aspirational but median < goal_real "
+            f"({median_real_final:,.0f} < {goal_real_at_target:,.0f})"
+        )
+        assert p15_real_final <= median_real_final, (
+            f"{name}: aspirational band invariant violated "
+            f"P15={p15_real_final} median={median_real_final}"
+        )
+
+
+# -------------------------------------------------------------------
+# Numerical stability across a variety of goals (§9)
+# -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "goal",
+    [0.0, 1.0, 100_000.0, 1_000_000.0, 10_000_000.0, 1e10],
+    ids=["g0", "g1", "g100k", "g1m", "g10m", "g10b"],
+)
+def test_projection_no_nan_or_inf(authed_client, goal):
+    """Run sim across a wide sweep of goal targets — no NaN/Inf anywhere."""
+    body = _post(authed_client, goal_target_amount=goal)
+    proj = body["projection"]
+    for key in ("pessimistic", "median", "optimistic"):
+        arr = proj[key]
+        assert len(arr) == BASE_PAYLOAD["duration_years"]
+        for v in arr:
+            assert isinstance(v, (int, float))
+            assert math.isfinite(v), (
+                f"non-finite value {v!r} in projection.{key} at goal={goal}"
+            )
+            assert not math.isnan(v), (
+                f"NaN in projection.{key} at goal={goal}: {arr}"
+            )
+    # probability should also be in [0,1] and finite.
+    p = body["probability_of_goal"]
+    assert p is not None
+    assert math.isfinite(p) and 0.0 - 1e-9 <= p <= 1.0 + 1e-9, p
+
+
+# -------------------------------------------------------------------
+# Analyst calibration file — real-data sanity (§1)
+# -------------------------------------------------------------------
+#
+# The analyst is replacing the synthetic CSVs with real Egyptian market
+# data and shipping a calibration manifest at
+# backend/data/calibration_2026-04.json that pins the monthly μ/σ used to
+# fit the distributions. This test validates that the calibration numbers
+# land in realistic ranges; skips when the file is absent so we don't
+# block backend commits on analyst work.
+#
+# TODO: remove the skip path once the analyst lands
+#       backend/data/calibration_2026-04.json (docs/next.md §Analyst —
+#       "replace backend/data/*.csv with real Egyptian market data").
+
+
+def _calibration_path() -> Path:
+    # backend/tests/test_market_spec.py -> backend/data/calibration_2026-04.json
+    return Path(__file__).resolve().parent.parent / "data" / "calibration_2026-04.json"
+
+
+def test_real_data_calibration_in_expected_range():
+    path = _calibration_path()
+    if not path.exists():
+        pytest.skip(
+            f"{path.name} missing — waiting for analyst commit (real "
+            "Egyptian market-data calibration)"
+        )
+    with path.open("r", encoding="utf-8") as f:
+        calib = json.load(f)
+
+    # The calibration manifest is expected to shape like:
+    #   {"equity": {"mu": <monthly>, "sigma": ...}, "mmf": {...}, "inflation": {...}}
+    # Be lenient on naming — the analyst may nest under a "marginals" key or
+    # use "fixed" instead of "mmf". Look up defensively.
+    def _mu(node_keys: tuple[str, ...]) -> float:
+        for key in node_keys:
+            if key in calib:
+                node = calib[key]
+                break
+            if "marginals" in calib and key in calib["marginals"]:
+                node = calib["marginals"][key]
+                break
+        else:  # pragma: no cover — raised with context for analyst to see
+            raise AssertionError(
+                f"calibration missing any of {node_keys} (top-level keys: "
+                f"{list(calib)})"
+            )
+        assert "mu" in node, f"calibration node for {node_keys} has no 'mu'"
+        return float(node["mu"])
+
+    equity_mu = _mu(("equity", "variable", "abc_equity_fund"))
+    mmf_mu = _mu(("mmf", "fixed", "ebe_money_market_fund", "money_market"))
+    inflation_mu = _mu(("inflation", "cpi"))
+
+    # Real-data sanity — monthly arithmetic means. The thresholds match
+    # the QA task spec exactly: equity μ ≥ 0.005 (~6% annual nominal),
+    # mmf μ ≥ 0.01 (~12% annual — high-yield EGP MMFs), inflation μ ≥
+    # 0.005 (~6% annual CPI). See docs/analyst-report.md.
+    assert equity_mu >= 0.005, (
+        f"equity μ={equity_mu} below 0.005 — double-check the series units"
+    )
+    assert mmf_mu >= 0.01, (
+        f"mmf μ={mmf_mu} below 0.01 — EGP MMF yield looks too low"
+    )
+    assert inflation_mu >= 0.005, (
+        f"inflation μ={inflation_mu} below 0.005 — Egyptian CPI should not "
+        f"be near-zero in this sample"
+    )
