@@ -69,24 +69,14 @@ export default function AppShell({ trailing, children, focus = false }: Props) {
             </Link>
             <nav className="flex items-center gap-6 text-[15px] font-semibold">
               {user && (
-                <>
-                  <NavLink
-                    to="/clients"
-                    className={({ isActive }) =>
-                      `${navLinkBase} ${isActive ? "underline" : ""}`
-                    }
-                  >
-                    {t("nav.clients")}
-                  </NavLink>
-                  <NavLink
-                    to="/clients/new/profile"
-                    className={({ isActive }) =>
-                      `${navLinkBase} ${isActive ? "underline" : ""}`
-                    }
-                  >
-                    {t("nav.new_client")}
-                  </NavLink>
-                </>
+                <NavLink
+                  to="/clients"
+                  className={({ isActive }) =>
+                    `${navLinkBase} ${isActive ? "underline" : ""}`
+                  }
+                >
+                  {t("nav.clients")}
+                </NavLink>
               )}
               {trailing}
               <button
