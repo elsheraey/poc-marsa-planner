@@ -138,9 +138,20 @@ const ar: Record<string, string> = {
     "{appName} يحوِّل محاكاتك إلى حوار — بالعربية أو الإنجليزية.",
   "landing.body":
     "مصمَّم للمستشارين الماليين في مصر لتشغيل خطط موثوقة تراعي التضخم أمام العميل. جنيه مصري حقيقي، أنظمة اقتصادية حقيقية، قرارات حقيقية.",
-  "landing.cta": "دخول المستشار",
+  "landing.cta": "ادخل إلى البوابة",
   // TODO: native-speaker review
   "landing.footer": "© {year} {appName}",
+
+  // TODO: native-speaker review — editorial-voice section copy
+  "landing.section.credible.title": "إجابة مدروسة، لا لوحة مؤشرات.",
+  "landing.section.credible.body":
+    "كل رقم هو تقدير مونت-كارلو مصحوبًا بخطئه المعياري على الصفحة. لا رسوم دائرية، ولا عدّادات زينة، ولا دقة مُختلقة.",
+  "landing.section.inflation.title": "تراعي التضخم، بالجنيه المصري.",
+  "landing.section.inflation.body":
+    "الإسقاطات معروضة بالجنيه المصري الحقيقي. مصدر البيانات ونافذة المعايرة يظهران بجوار كل تقرير — فالمستشار، وليس الرسم البياني، هو من يحمل المصداقية.",
+  "landing.section.arabic.title": "قابل للقراءة بالعربية أو الإنجليزية.",
+  "landing.section.arabic.body":
+    "يُعكس المستند بالكامل بسلاسة من اليمين إلى اليسار. يرى العميل الذي يقرأ التقرير بالعربية الفواصل الشعرية نفسها والطباعة المدروسة نفسها التي يراها المستشار.",
 
   // TODO: native-speaker review
   "shell.footer": "© {year}، من تطوير {appName}",

@@ -99,8 +99,18 @@ const en: Record<string, string> = {
     "{appName} turns your Monte Carlo into a conversation — in Arabic or English.",
   "landing.body":
     "Built for Egyptian financial advisors to run credible, inflation-aware plans in front of the client. Real EGP, real regimes, real decisions.",
-  "landing.cta": "Advisor sign-in",
+  "landing.cta": "Open the portal",
   "landing.footer": "© {year} {appName}",
+
+  "landing.section.credible.title": "A considered answer, not a dashboard.",
+  "landing.section.credible.body":
+    "Every figure is a Monte-Carlo estimate with its standard error on the page. No pie charts, no gauge dials, no invented precision.",
+  "landing.section.inflation.title": "Inflation-aware, in EGP.",
+  "landing.section.inflation.body":
+    "Projections are expressed in real Egyptian pounds. The calibration manifest and data window appear alongside every report — so the advisor, not the chart, carries the credibility.",
+  "landing.section.arabic.title": "Readable in Arabic or English.",
+  "landing.section.arabic.body":
+    "The entire document mirrors cleanly into right-to-left. A client reading the report in Arabic sees the same hairline rules and the same considered typography the advisor sees.",
 
   "shell.footer": "© {year}, Developed by {appName}",
 

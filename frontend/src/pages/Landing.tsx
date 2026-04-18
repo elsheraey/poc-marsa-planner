@@ -1,59 +1,112 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Logo from "../components/Logo";
-import { t } from "../i18n";
+import { getLocale, setLocale, t } from "../i18n";
 
-// Advisor-voiced landing page. The previous copy targeted end-investors
-// ("Start your investment plan now / be one step ahead") while the CTA
-// targeted advisors — a recognisability-killer in the first second of
-// the demo. This page now names the advisor's problem and claims the
-// thirty-second answer as the product promise.
+function toggleLocale() {
+  const next = getLocale() === "ar" ? "en" : "ar";
+  setLocale(next);
+  globalThis.window.location.reload();
+}
+
+/**
+ * Editorial landing page.
+ *
+ * A single cream column — serif headline, two-sentence lede, one
+ * inline-link CTA, three below-the-fold paragraphs separated by
+ * hairline rules. No hero gradient, no dual CTAs, no dot grid. Reads as
+ * "a considered document" rather than a SaaS marketing splash.
+ */
 export default function Landing() {
   const nav = useNavigate();
+  const year = new Date().getFullYear();
+
   return (
-    <div className="min-h-screen bg-hero-gradient text-white flex flex-col">
-      <header className="flex items-center justify-between px-8 py-6">
-        <Logo variant="light" />
-        <button
-          type="button"
-          className="h-10 px-5 rounded-lg bg-white/10 hover:bg-white/20 text-sm font-semibold"
-          onClick={() => nav("/login")}
-        >
-          {t("landing.cta")}
-        </button>
+    <div className="min-h-screen bg-paper text-ink flex flex-col">
+      <header className="border-b border-rule">
+        <div className="max-w-5xl mx-auto px-8 h-16 flex items-center justify-between">
+          <Logo />
+          <Link
+            to="/login"
+            className="text-sm text-ink hover:underline underline-offset-4"
+          >
+            {t("landing.cta")}
+          </Link>
+        </div>
       </header>
 
-      <main className="flex-1 flex items-center px-8">
-        <div className="max-w-3xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
+      <main className="flex-1">
+        <article className="max-w-prose mx-auto px-8 py-24">
+          <h1 className="font-serif tracking-tight text-ink text-5xl md:text-6xl mb-8">
             {t("landing.title")}
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-6 leading-snug">
+          <p className="text-lg text-ink mb-4 leading-relaxed">
             {t("landing.subtitle")}
           </p>
-          <p className="text-white/75 max-w-2xl mb-10 leading-relaxed">
+          <p className="text-base text-ink-muted mb-8 leading-relaxed">
             {t("landing.body")}
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <p className="text-base">
             <button
               type="button"
-              className="h-12 px-8 rounded-lg bg-white text-primary-600 text-sm font-semibold hover:bg-white/90"
               onClick={() => nav("/login")}
+              className="text-ink underline decoration-accent underline-offset-4 hover:decoration-2"
             >
-              {t("landing.cta")}
+              {t("landing.cta")} →
             </button>
-            <button
-              type="button"
-              className="h-12 px-8 rounded-lg border border-white/60 text-white text-sm font-semibold hover:bg-white/10"
-              onClick={() => nav("/register")}
+          </p>
+
+          <section className="border-t border-rule pt-8 mt-16">
+            <h2 className="font-serif text-2xl mb-3">
+              {t("landing.section.credible.title")}
+            </h2>
+            <p className="text-ink-muted leading-relaxed">
+              {t("landing.section.credible.body")}
+            </p>
+          </section>
+
+          <section className="border-t border-rule pt-8 mt-12">
+            <h2 className="font-serif text-2xl mb-3">
+              {t("landing.section.inflation.title")}
+            </h2>
+            <p className="text-ink-muted leading-relaxed">
+              {t("landing.section.inflation.body")}
+            </p>
+          </section>
+
+          <section className="border-t border-rule pt-8 mt-12">
+            <h2 className="font-serif text-2xl mb-3">
+              {t("landing.section.arabic.title")}
+            </h2>
+            <p className="text-ink-muted leading-relaxed">
+              {t("landing.section.arabic.body")}
+            </p>
+          </section>
+
+          <p className="mt-16">
+            <Link
+              to="/register"
+              data-testid="registerLink"
+              className="text-ink underline decoration-accent underline-offset-4 hover:decoration-2"
             >
-              {t("auth.register")}
-            </button>
-          </div>
-        </div>
+              {t("auth.register")} →
+            </Link>
+          </p>
+        </article>
       </main>
 
-      <footer className="px-8 py-4 text-center text-xs text-white/60">
-        {t("landing.footer", { year: new Date().getFullYear() })}
+      <footer className="border-t border-rule">
+        <div className="max-w-5xl mx-auto px-8 py-6 flex items-center justify-between text-xs uppercase tracking-widest text-ink-muted">
+          <span>{t("landing.footer", { year })}</span>
+          <button
+            type="button"
+            onClick={toggleLocale}
+            className="hover:text-ink"
+            data-testid="locale-toggle"
+            aria-label="Toggle language"
+          >
+            {t("locale.toggle")}
+          </button>
+        </div>
       </footer>
     </div>
   );

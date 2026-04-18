@@ -8,6 +8,11 @@ import { t } from "../i18n";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Editorial Register page. Mirror of the Login layout: cream paper, a
+ * serif heading, italic serif subheading, bottom-rule inputs, editorial
+ * outline button, single small link to Sign in. No split-panel hero.
+ */
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,95 +45,122 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-      <div className="relative bg-hero-gradient text-white flex flex-col justify-between p-10 overflow-hidden">
-        <Logo variant="light" className="self-start" />
-        <div className="relative text-center max-w-sm mx-auto mt-20">
-          <h2 className="text-2xl font-bold mb-3">{t("auth.register.welcome")}</h2>
-          <p className="text-white/80">{t("auth.register.subheading")}</p>
+    <div className="min-h-screen bg-paper text-ink">
+      <div className="max-w-md mx-auto px-8 py-24">
+        <div className="mb-16">
+          <Link to="/" aria-label="Home">
+            <Logo />
+          </Link>
         </div>
-        <div />
-      </div>
 
-      <div className="flex items-center justify-center p-10">
-        <form className="w-full max-w-md" onSubmit={onSubmit} noValidate>
-          <h1 className="text-3xl font-extrabold mb-8">{t("auth.register.heading")}</h1>
+        <h1 className="font-serif text-4xl tracking-tight mb-2">
+          {t("auth.register.heading")}
+        </h1>
+        <p className="font-serif italic text-ink-muted mb-10 leading-relaxed">
+          {t("auth.register.subheading")}
+        </p>
 
-          <label className="label block mb-2" htmlFor="reg-name">
-            {t("auth.register.name")}
-          </label>
-          <input
-            id="reg-name"
-            className="input mb-1"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoComplete="name"
-            aria-invalid={!!errs.name}
-            required
-          />
-          <div className="h-5 text-xs text-red-600">{errs.name}</div>
+        <form onSubmit={onSubmit} noValidate className="space-y-8">
+          <div>
+            <label className="label block mb-2" htmlFor="reg-name">
+              {t("auth.register.name")}
+            </label>
+            <input
+              id="reg-name"
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+              aria-invalid={!!errs.name}
+              required
+            />
+            {errs.name && <div className="text-xs text-accent mt-2">{errs.name}</div>}
+          </div>
 
-          <label className="label block mb-2" htmlFor="reg-email">
-            {t("auth.register.email")}
-          </label>
-          <input
-            id="reg-email"
-            className="input mb-1"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            aria-invalid={!!errs.email}
-            required
-          />
-          <div className="h-5 text-xs text-red-600">{errs.email}</div>
+          <div>
+            <label className="label block mb-2" htmlFor="reg-email">
+              {t("auth.register.email")}
+            </label>
+            <input
+              id="reg-email"
+              className="input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              aria-invalid={!!errs.email}
+              required
+            />
+            {errs.email && <div className="text-xs text-accent mt-2">{errs.email}</div>}
+          </div>
 
-          <label className="label block mb-2" htmlFor="reg-password">
-            {t("auth.register.password")}
-          </label>
-          <input
-            id="reg-password"
-            className="input mb-1"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            aria-invalid={!!errs.password}
-            required
-          />
-          <div className="h-5 text-xs text-red-600">{errs.password}</div>
+          <div>
+            <label className="label block mb-2" htmlFor="reg-password">
+              {t("auth.register.password")}
+            </label>
+            <input
+              id="reg-password"
+              className="input"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              aria-invalid={!!errs.password}
+              required
+            />
+            {errs.password && (
+              <div className="text-xs text-accent mt-2">{errs.password}</div>
+            )}
+          </div>
 
-          <label className="label block mb-2" htmlFor="reg-confirm">
-            {t("auth.register.confirm_password")}
-          </label>
-          <input
-            id="reg-confirm"
-            className="input mb-1"
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            autoComplete="new-password"
-            aria-invalid={!!errs.confirm}
-            required
-          />
-          <div className="h-5 text-xs text-red-600">{errs.confirm}</div>
+          <div>
+            <label className="label block mb-2" htmlFor="reg-confirm">
+              {t("auth.register.confirm_password")}
+            </label>
+            <input
+              id="reg-confirm"
+              className="input"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              aria-invalid={!!errs.confirm}
+              required
+            />
+            {errs.confirm && (
+              <div className="text-xs text-accent mt-2">{errs.confirm}</div>
+            )}
+          </div>
 
           {apiError && (
-            <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-2" role="alert">
+            <div
+              className="text-sm text-accent border-t border-accent pt-3"
+              role="alert"
+            >
               {apiError}
             </div>
           )}
 
-          <button className="btn-primary w-full h-12 mt-6" disabled={status === "loading"}>
-            {status === "loading" ? t("auth.register.submitting") : t("auth.register.submit")}
+          <button
+            type="submit"
+            className="btn w-full"
+            disabled={status === "loading"}
+          >
+            {status === "loading"
+              ? t("auth.register.submitting")
+              : t("auth.register.submit")}
           </button>
-          <div className="text-center text-xs text-muted mt-4">
-            {t("auth.register.have_account")}{" "}
-            <Link className="text-primary-500 font-semibold" to="/login">
-              {t("auth.register.sign_in")}
-            </Link>
-          </div>
         </form>
+
+        <p className="mt-8 text-sm text-ink-muted">
+          {t("auth.register.have_account")}{" "}
+          <Link
+            className="text-ink underline decoration-accent underline-offset-4"
+            to="/login"
+          >
+            {t("auth.register.sign_in")}
+          </Link>
+        </p>
       </div>
     </div>
   );

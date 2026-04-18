@@ -8,6 +8,23 @@ import { t } from "../i18n";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Editorial Login page.
+ *
+ * Single cream column, `max-w-md` wide, centred. No split-panel hero, no
+ * gradient, no decorative SVG. Bottom-rule inputs with plain <label>
+ * elements above, an editorial outline button at the bottom, and a
+ * small "create an account" link underneath.
+ *
+ * ACCESSIBILITY:
+ *   - Each <input> is wired to its <label> via htmlFor/id.
+ *   - Inline field errors get `text-accent text-xs` and sit in the flow
+ *     so AT users hear them right after the field.
+ *   - The server error surfaces via `role="alert"` so it's announced.
+ *   - The ink outline button has a visible `:focus-visible` ring from the
+ *     browser default plus `focus:outline-accent` to keep keyboard nav
+ *     unambiguous against the cream.
+ */
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,73 +53,94 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-      <div className="relative bg-hero-gradient text-white flex flex-col justify-between p-10 overflow-hidden">
-        <Logo variant="light" className="self-start" />
-        <div className="relative text-center max-w-sm mx-auto">
-          <h2 className="text-2xl font-bold mb-3">{t("auth.login.welcome")}</h2>
-          <p className="text-white/80">{t("auth.login.subheading")}</p>
+    <div className="min-h-screen bg-paper text-ink">
+      <div className="max-w-md mx-auto px-8 py-24">
+        <div className="mb-16">
+          <Link to="/" aria-label="Home">
+            <Logo />
+          </Link>
         </div>
-        <div />
-      </div>
 
-      <div className="flex items-center justify-center p-10">
-        <form className="w-full max-w-md" onSubmit={onSubmit} noValidate>
-          <h1 className="text-3xl font-extrabold mb-8">{t("auth.login.heading")}</h1>
+        <h1 className="font-serif text-4xl tracking-tight mb-2">
+          {t("auth.login.heading")}
+        </h1>
+        <p className="font-serif italic text-ink-muted mb-10 leading-relaxed">
+          {t("auth.login.subheading")}
+        </p>
 
-          <label className="label block mb-2" htmlFor="login-email">
-            {t("auth.login.email")}
-          </label>
-          <input
-            id="login-email"
-            className="input mb-1"
-            placeholder={t("auth.login.email_placeholder")}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            autoComplete="email"
-            aria-invalid={!!fieldErrors.email}
-            required
-          />
-          {fieldErrors.email && (
-            <div className="text-xs text-red-600 mb-3">{fieldErrors.email}</div>
-          )}
-          {!fieldErrors.email && <div className="mb-4" />}
+        <form onSubmit={onSubmit} noValidate className="space-y-8">
+          <div>
+            <label
+              className="label block mb-2"
+              htmlFor="login-email"
+            >
+              {t("auth.login.email")}
+            </label>
+            <input
+              id="login-email"
+              className="input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              autoComplete="email"
+              aria-invalid={!!fieldErrors.email}
+              required
+            />
+            {fieldErrors.email && (
+              <div className="text-xs text-accent mt-2">{fieldErrors.email}</div>
+            )}
+          </div>
 
-          <label className="label block mb-2" htmlFor="login-password">
-            {t("auth.login.password")}
-          </label>
-          <input
-            id="login-password"
-            className="input"
-            placeholder={t("auth.login.password_placeholder")}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            autoComplete="current-password"
-            aria-invalid={!!fieldErrors.password}
-            required
-          />
-          {fieldErrors.password && (
-            <div className="text-xs text-red-600 mt-1">{fieldErrors.password}</div>
-          )}
+          <div>
+            <label
+              className="label block mb-2"
+              htmlFor="login-password"
+            >
+              {t("auth.login.password")}
+            </label>
+            <input
+              id="login-password"
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={!!fieldErrors.password}
+              required
+            />
+            {fieldErrors.password && (
+              <div className="text-xs text-accent mt-2">{fieldErrors.password}</div>
+            )}
+          </div>
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-4" role="alert">
+            <div
+              className="text-sm text-accent border-t border-accent pt-3"
+              role="alert"
+            >
               {error}
             </div>
           )}
 
-          <button className="btn-primary w-full h-12 mt-6" disabled={status === "loading"}>
+          <button
+            type="submit"
+            className="btn w-full"
+            disabled={status === "loading"}
+          >
             {status === "loading" ? t("auth.login.submitting") : t("auth.login.submit")}
           </button>
-          <div className="text-center text-xs text-muted mt-4">
-            {t("auth.login.need_account")}{" "}
-            <Link className="text-primary-500 font-semibold" to="/register">
-              {t("auth.login.sign_up")}
-            </Link>
-          </div>
         </form>
+
+        <p className="mt-8 text-sm text-ink-muted">
+          {t("auth.login.need_account")}{" "}
+          <Link
+            className="text-ink underline decoration-accent underline-offset-4"
+            to="/register"
+            data-testid="registerLink"
+          >
+            {t("auth.login.sign_up")}
+          </Link>
+        </p>
       </div>
     </div>
   );
