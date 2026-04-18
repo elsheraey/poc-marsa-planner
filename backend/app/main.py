@@ -17,6 +17,7 @@ from .middleware import RequestContextMiddleware
 from .routers import auth as auth_router
 from .routers import clients as clients_router
 from .routers import simulation as simulation_router
+from .routers import simulations as simulations_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -46,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router.router, prefix=api_prefix)
     app.include_router(clients_router.router, prefix=api_prefix)
     app.include_router(simulation_router.router, prefix=api_prefix)
+    app.include_router(simulations_router.router, prefix=api_prefix)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:

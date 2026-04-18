@@ -165,3 +165,33 @@ class SimulateResponse(BaseModel):
     # analyst ships at `backend/data/calibration_*.json`. Surfaces the real
     # snapshot date to the frontend disclosure banner (no hardcoded fallback).
     calibration_as_of: str | None = None
+
+
+# ---------- Saved simulations (persistence) ----------
+class SimulationIn(BaseModel):
+    name: Annotated[str, Field(min_length=1, max_length=255)]
+    client_id: str | None = None
+    request: SimulateRequest
+    response: SimulateResponse
+
+
+class SimulationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    client_id: str | None = None
+    request: dict = Field(validation_alias="request_payload")
+    response: dict = Field(validation_alias="response_payload")
+    calibration_as_of: str | None = None
+    created_at: datetime
+
+
+class SimulationListOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    client_id: str | None = None
+    calibration_as_of: str | None = None
+    created_at: datetime
