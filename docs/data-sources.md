@@ -167,6 +167,64 @@ https://www.cbe.org.eg/en/monetary-policy/inflation
 
 ---
 
+## Snapshot schema (`backend/data/calibration_YYYY-MM.json`)
+
+**Schema version:** 2 (iteration 2, 2026-04-18).
+
+Single canonical shape, used by the analyst's hand-committed snapshot, the
+ingest CLI's output, and any API field that surfaces calibration metadata.
+Iteration 1 had two drifting shapes (`series.*.mu_monthly` from the analyst's
+commit vs. `fits.*.mu` from the ingest CLI). Iteration 2 picks the analyst's
+shape as canonical because (a) it is already committed, (b) it carries the
+`distribution`, `params`, `sample_size`, `source_url`, and `notes` fields
+needed for reproducibility and audit, and (c) `backend/tests/test_market_spec.py`
+already reads it.
+
+**Canonical keys (required):**
+
+| Key path                             | Type           | Meaning                                                 |
+|--------------------------------------|----------------|---------------------------------------------------------|
+| `calibration_id`                     | string         | `calibration_<YYYY-MM>`; matches filename.              |
+| `schema_version`                     | integer        | `2` for iteration 2; bump on breaking changes.          |
+| `spec_version`                       | string         | Human-readable pointer to the market-spec.md section.   |
+| `as_of`                              | ISO-8601 date  | **Single source of truth for calibration date.**        |
+| `git_commit`                         | string         | HEAD at refresh time.                                   |
+| `source`                             | string         | Upstream source tag (e.g. `azimut`).                    |
+| `fit_window.<asset>.start/end/n`     | string / int   | Data window used for the fit.                           |
+| `series.<asset>.distribution`        | string         | Marginal family (`t`, `norm`, ...).                     |
+| `series.<asset>.params`              | list[float]    | scipy-style params for the distribution.                |
+| `series.<asset>.mu_monthly`          | float          | Nominal μ; same as `mu_monthly_nominal`.                |
+| `series.<asset>.mu_monthly_nominal`  | float          | Nominal arithmetic mean of monthly returns.             |
+| `series.<asset>.mu_monthly_real`     | float          | CPI-deflated μ (equity and MMF only; omit for inflation).|
+| `series.<asset>.sigma_monthly`       | float          | Nominal σ; same as `sigma_monthly_nominal`.             |
+| `series.<asset>.sample_size`         | integer        | n used in the fit.                                      |
+| `series.<asset>.source_url`          | string         | Primary data source URL.                                |
+| `series.<asset>.notes`               | string         | Any substitution or extension note.                     |
+| `fit_range_check.<asset>`            | object         | μ, σ, range pair, and `pass` boolean per market-spec §1.|
+| `empirical_correlation.order`        | list[string]   | Asset order of the matrix rows / cols.                  |
+| `empirical_correlation.matrix`       | list[list[float]] | 3×3 Pearson ρ on the full window.                    |
+| `correlation_range_check.*`          | object         | ρ and acceptable range per market-spec §2.              |
+
+**API field naming (engineering):** `/api/simulate` surfaces the calibration
+date as `calibration_as_of` in the response payload. The API field reads its
+value directly from snapshot `as_of` — the JSON file uses the short form, the
+HTTP response namespaces it. Do not rename the JSON key.
+
+**Deprecated shape (transitional):** `backend/ingest.py` currently writes a
+flatter shape — `fits.<asset>.mu`, `fits.<asset>.sigma`, `empirical_corr`,
+`corr_labels` — as its output on ingest. This is the iteration-1 shape and is
+deprecated. The committed snapshot uses the canonical shape above; the CLI's
+next touch (tracked as TODO in `docs/market-spec.md` §Conflicts) is to
+rewrite its output to the canonical shape. Until then, the CLI's output
+should be treated as a guardrail-check side effect, not as a committable
+snapshot — hand-promote ingest results into the canonical shape before
+committing.
+
+**Migration rule:** `schema_version` bumps require a spec amendment PR and
+CEO + CTO co-sign per `market-spec.md` §10.
+
+---
+
 ## Refresh procedure
 
 To regenerate the three CSVs and a new calibration snapshot (monthly

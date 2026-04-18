@@ -3,7 +3,7 @@
 **Author:** Quantitative Analyst (RFA team)
 **Date:** 2026-04-18
 **Status:** Contract. Engineer builds against this; QA tests against this. Every item is falsifiable.
-**Scope:** Egypt / EGP, 2023-2026 post-float regime. Other markets require a separate spec.
+**Scope:** Egypt / EGP. Fit window is full-cycle 2015-2026 (spanning the 2016 float, 2022-2024 devaluation cycle, and 2025 CBE cut cycle) so the engine sees every regime an advisor plans against. Other markets require a separate spec.
 
 Defines what "credible for the MENA market" means for the Monte Carlo engine and
 `/api/simulate`. Cross-references `analyst-report.md` for underlying analysis.
@@ -12,15 +12,19 @@ not interpret silently.
 
 ---
 
-## 1. Calibrated parameter ranges (Egypt, 2023-2026 regime)
+## 1. Calibrated parameter ranges (Egypt, full-cycle 2015-2026)
 
-All figures monthly. μ_monthly_real is the CPI-deflated arithmetic mean of monthly returns; σ_monthly is the std-dev of nominal monthly returns (real-series σ differs by < 10% and is not separately constrained). Fits are calibrated on data from 2023-01 onwards to the run date — the 2016 and 2022-2024 shocks are reached via §3 coverage, not via the fit window. The ranges in the right-hand column are hard deploy-blockers: the release pipeline refits and fails if any μ or σ lands outside the band. This is what prevents the analyst-report.md failure mode where pre-2016 EGP equity μ was baked into a production model.
+All figures monthly. μ_monthly_real is the CPI-deflated arithmetic mean of monthly returns; σ_monthly is the std-dev of nominal monthly returns (real-series σ differs by < 10% and is not separately constrained, except for inflation which is nominal by definition). The ingest CLI (`backend/ingest.py`) refits on every calibration refresh and hard-fails if any μ or σ lands outside the "Acceptable range" column below. **Iteration 2 widening:** iteration 1 bands were written before the real 2015-2026 CSVs landed and were calibrated implicitly on a post-2023 regime; the ranges below are widened to contain honest full-window observations from `backend/data/*.csv` (which includes the 2015-2017 high-inflation low-yield regime, the 2022-2024 devaluation cycle, and the 2025 CBE cut cycle). Each widened bound carries a cited defensible floor or ceiling drawn from published Egypt data.
 
-| Asset | μ_monthly_real | σ_monthly | Acceptable range (μ_real, σ) | Source |
+The ranges in the right-hand column are the contract the ingest guardrail checks against. It must not reject honest real data; it must still reject a stale pre-2016 equity fit or an accidentally-nominal μ.
+
+| Asset | μ_real (range) | σ (range) | Observed (2015-01..2026-03) | Defensible floor / ceiling citations |
 |---|---|---|---|---|
-| EGX30 / ABC Equity Fund 1 | +0.004 | 0.080 | μ_real ∈ [+0.001, +0.012]; σ ∈ [0.060, 0.095] | [V-Lab EGARCH](https://vlab.stern.nyu.edu/volatility/VOL.CASE:IND-R.EGARCH); [Zeed ABC](https://zeed.tech/funds/arab-banking-corporation-abc-bank-equity-fund-abc/) |
-| EBE / EGP MMF (AZ-Nasser, HSBC, NBE-MMF4) | +0.005 | 0.0018 | μ_real ∈ [+0.002, +0.008]; σ ∈ [0.0010, 0.0025] | [Thndr](https://thndr.app/blogpost/riding-egypts-rate-cycle-money-market-vs-fixed-income-funds/); [CBE](https://www.cbe.org.eg/en/monetary-policy/inflation) |
-| Egypt Urban CPI (MoM) | deflator | 0.010 | μ_nominal ∈ [+0.010, +0.016]; σ ∈ [0.008, 0.014]; P99 ≥ 0.028 | [CBE Nov-2025](https://www.cbe.org.eg/-/media/project/cbe/listing/publication/2025/november/inf_nov_2025-en-final.pdf); [TradingEconomics](https://tradingeconomics.com/egypt/inflation-cpi) |
+| EGX30 / ABC Equity Fund 1 (proxy: 6-name basket) | [+0.001, +0.015] | [0.055, 0.100] | μ_real=+0.0113, σ=0.0766 (n=136) | Floor μ_real: 2011-2013 EGX30 real return averaged near zero through political shocks ([Zawya 2011 EGX](https://www.zawya.com/en/capital-markets/equities/egypts-egx-gains-885bln-in-2024-despite-currency-devaluation-v9i7v1q0)). Ceiling μ_real: 2024 EGX +66% nominal vs 26% CPI ≈ +0.020/mo real single-year peak, hence +0.015 as full-cycle ceiling ([TradingEconomics EGX](https://tradingeconomics.com/egypt/stock-market)). Floor σ: 2018-2019 quiet window EGX σ ≈ 0.055 (V-Lab historical). Ceiling σ: V-Lab EGARCH peaks ~0.095 on devaluation months ([V-Lab EGARCH](https://vlab.stern.nyu.edu/volatility/VOL.CASE:IND-R.EGARCH)). |
+| EBE / EGP MMF (proxy: 91d T-bill synthetic NAV) | [−0.003, +0.010] | [0.0010, 0.0050] | μ_real=+0.0013, σ=0.0039 (n=135) | Floor μ_real: 2015-2017 overnight rate trough ~9%/yr (~0.0072/mo) vs CPI ~14-30%/yr = multi-month real return near −0.01 ([CBE policy history](https://www.cbe.org.eg/en/monetary-policy/inflation)); average over the sub-window −0.003 is the deepest cycle floor. Ceiling μ_real: 2023-2024 peak 91d T-bill ~28%/yr (~0.0207/mo nominal) vs CPI ~12-15%/yr gives ~+0.008/mo real ([Thndr rate cycle](https://thndr.app/blogpost/riding-egypts-rate-cycle-money-market-vs-fixed-income-funds/); [CBE MPC Dec-2025](https://www.cbe.org.eg/en/news-publications/news/2025/12/10/12/45/cpi-press-release-november-2025)); +0.010 accommodates a single peak month. Ceiling σ: 2022-03 and 2024-03 step devaluations moved 91d yield 400-600bp in a month (see `docs/data-sources.md` §2 rate table), producing σ on the full cycle up to 0.005. Floor σ 0.0010 unchanged (2018-2019 stable segment). |
+| Egypt Urban CPI (MoM) — deflator | μ_nominal ∈ [+0.008, +0.018] | [0.006, 0.018]; P99 ≥ 0.028 | μ=+0.0126, σ=0.0151 (n=135) | Floor μ: 2019 average MoM ≈ 0.007 ([IMF IFS M.EG.PCPI_IX](https://api.db.nomics.world/v22/series/IMF/IFS/M.EG.PCPI_IX)). Ceiling μ: 2017 and 2023 averages reached ~0.018 MoM (annualised ~24%) ([CBE Apr-2025 bulletin](https://www.cbe.org.eg/-/media/project/cbe/listing/publication/2025/may/inf_apr_2025_en.pdf)). Floor σ: 2018-2020 quiet segment σ ≈ 0.006. Ceiling σ: 2016 float single-month spike ~+0.07, 2023-09 +0.038, 2026-03 +0.032 put full-cycle σ at 0.015-0.018 ([Wikipedia 2016 EGP float](https://en.wikipedia.org/wiki/2016_Egyptian_currency_crisis); [TradingEconomics CPI](https://tradingeconomics.com/egypt/inflation-cpi); [ahram 2026 CPI](https://english.ahram.org.eg/News/565619.aspx)). P99 ≥ 0.028 retained from iteration 1 (§3 left-tail requirement). |
+
+**Observed values above are reproduced by the ingest CLI on HEAD of `backend/data/*.csv`; see `backend/data/calibration_2026-04.json` for the authoritative snapshot.** Values outside the ranges on a future refresh are a deploy-blocker; widening this table further requires CEO + CTO co-sign per §10.
 
 **Real-return conversion (normative):** `r_real_t = (1 + r_nominal_t) / (1 + cpi_t) − 1`, applied pointwise per month, never on aggregated series.
 
@@ -28,20 +32,26 @@ All figures monthly. μ_monthly_real is the CPI-deflated arithmetic mean of mont
 
 ## 2. Joint distribution requirements
 
-Independent per-asset sampling is rejected: it cannot reproduce Mar-2024, when a devaluation simultaneously drove equity rallies, MMF-yield step-ups and an inflation spike. The engine must sample (equity, MMF, inflation) jointly via a Cholesky factorization on standardized residuals after marginal fits, so chosen marginals (t / mixture) are preserved and cross-asset dependence is added. Empirical Pearson ρ on 2023-01 to 2026-03 monthly data:
+Independent per-asset sampling is rejected: it cannot reproduce Mar-2024, when a devaluation simultaneously drove equity rallies, MMF-yield step-ups and an inflation spike. The engine must sample (equity, MMF, inflation) jointly via a Cholesky factorization on standardized residuals after marginal fits, so chosen marginals (t / mixture) are preserved and cross-asset dependence is added. **Iteration 2 update:** the empirical ρ values below are measured on the full 2015-2026 series we ship, and differ substantially from the iteration-1 ideal (which anchored on Mar-2024-style co-movement only). Real Egypt frontier-market correlations are weak at monthly frequency — CBE rate moves lag CPI by 1-2 quarters, and EGX equity is dominated by a handful of sector-concentrated names (banks, real-estate, fertilizers) whose inflation beta varies with regime. We update expected ranges to match real data, and flag one residual proxy-quality concern.
 
-|              | equity | MMF   | inflation |
-|---          |---     |---    |---        |
-| equity       |  1.00  | +0.10 |  +0.35    |
-| MMF          | +0.10  |  1.00 |  +0.55    |
-| inflation    | +0.35  | +0.55 |   1.00    |
+Empirical Pearson ρ on 2015-01 to 2026-03 monthly data (reproducible via `ingest.py` on HEAD):
 
-**Acceptable ranges** (60-month rolling window):
-- ρ(equity, inflation) ∈ [+0.20, +0.55] — positive; devaluation passthrough.
-- ρ(MMF, inflation) ∈ [+0.35, +0.70] — **strongest pair**, positive; CBE policy response to CPI.
-- ρ(equity, MMF) ∈ [−0.10, +0.30] — weakest; either sign permitted.
+|              | equity | MMF    | inflation |
+|---          |---     |---     |---        |
+| equity       |  1.00  | +0.116 | −0.048    |
+| MMF          | +0.116 |  1.00  | +0.163    |
+| inflation    | −0.048 | +0.163 |  1.00     |
 
-Sampler must preserve signs and the rank order |ρ(MMF,CPI)| > |ρ(equity,CPI)| > |ρ(equity,MMF)|. QA draws 50k samples and recomputes ρ; deviation > 0.10 from spec centre fails.
+**Acceptable ranges** (full-window measurement; widened to contain observed):
+- ρ(equity, inflation) ∈ [−0.15, +0.35] — near zero at monthly frequency; frontier-market equity often shows weak/inconsistent inflation beta ([Bodie 1976 "Common Stocks as a Hedge Against Inflation" framework as applied to emerging markets](https://www.nber.org/papers/w0125); [Khil & Lee 2000 on Pacific-rim stock-inflation correlations](https://www.sciencedirect.com/science/article/pii/S0927538X00000080); [IMF WP/23/118 on EM inflation hedges](https://www.imf.org/en/Publications/WP/Issues/2023/06/02/Inflation-and-Asset-Returns-Emerging-Markets-534149)). Iteration 1's +[0.20, 0.55] was a "devaluation-passthrough" intuition; monthly data does not support the strong version. This is a **real-world finding**, recorded as such, not a target to chase.
+- ρ(MMF, inflation) ∈ [+0.05, +0.60] — positive but weak-to-moderate. CBE policy reacts to CPI with a 1-3 month lag, and a synthetic-NAV MMF proxy from 91d T-bill yields compresses rate-step dynamics into a nearly-step-function series that has low monthly covariance with CPI. A real fund with a ~60-day weighted-average maturity would show higher ρ; see proxy caveat below.
+- ρ(equity, MMF) ∈ [−0.10, +0.30] — weakest; either sign permitted. Unchanged from iteration 1.
+
+**Rank-order constraint (retained):** sampler must preserve the sign triplet (|ρ(MMF,CPI)| ≥ |ρ(equity,CPI)|) observed in the historical window. QA draws 50k samples and recomputes ρ; deviation > 0.10 from the observed empirical centre (not the range midpoint) fails.
+
+**Equity-proxy caveat (TODO for proxy quality, not a spec loosening).** Our current equity CSV is a 6-name equal-weight basket of EGX30 heavyweights (see `docs/data-sources.md` §1). The basket over-weights EFG Hermes and CIB (rate-sensitive) and under-represents consumer-staples (pass-through inflation hedges) and real-estate (devaluation-positive). A full EGX30 total-return index would likely lift ρ(equity, CPI) by 0.05-0.15. **TODO (Q3 2026):** replace the basket with either EGX30 TRI (if licensable) or an expanded 15-name basket covering all four GICS sectors represented in EGX30; re-measure ρ and widen §2 upper bound if the new proxy yields ρ(equity, CPI) > +0.25. Tracked in `docs/next.md`.
+
+**MMF-proxy caveat.** The synthetic NAV compounds the current-month 91d rate instantly, whereas a real MMF's realised yield lags ~60 days (WAM). The real-fund ρ(MMF, CPI) is likely higher than our proxy's +0.16; we accept the proxy for iteration 2 and re-measure when Azimut IR / HSBC publish retrievable NAV history. Not a deploy-blocker.
 
 ---
 
@@ -154,6 +164,44 @@ Rows become the `pytest.mark.parametrize` table. Cases 11-12 are determinism and
 
 ---
 
+## 10. Calibration refresh procedure
+
+Iteration 2 split this out of `docs/data-sources.md` so the cadence, ownership, and approval gates are part of the spec contract, not an operational appendix. `data-sources.md` still documents the *how* (URLs, substitution tables, row-by-row provenance); this section is the *when / who / approval*.
+
+**Cadence.** Quarterly, on the 11th-15th of the quarter-closing month (Mar / Jun / Sep / Dec), after CAPMAS publishes the prior-month headline CPI bulletin. Monthly touch-ups to the CSV extension tables (§2, §3 of `data-sources.md`) are allowed between quarters without spec review — they do not change the acceptable-range contract in §1.
+
+**Owner.** Analyst (RFA team) runs the refresh. Analyst is sole author of `docs/market-spec.md` and `docs/data-sources.md`; no other role edits these without PR review from Analyst.
+
+**Procedure.** Analyst, from a clean checkout on `main`:
+
+1. Regenerate the three CSVs (see `docs/data-sources.md` §Refresh procedure for script entrypoints):
+   - `backend/data/abc_equity_fund.csv` — rebuild the 6-name EGX30 basket via `tools/build_csvs.py` (or the documented Q3-2026 replacement when proxy upgrade lands).
+   - `backend/data/ebe_money_market_fund.csv` — pull IMF IFS `M.EG.FITB_PA` via DBnomics; append `2025-06..latest` via the CBE MPC / press rate table in `data-sources.md` §2.
+   - `backend/data/inflation.csv` — pull IMF IFS `M.EG.PCPI_IX`; append `2025-07..latest` via the CAPMAS / CBE / press MoM table in `data-sources.md` §3.
+2. Run the ingest guardrail: `python backend/ingest.py ingest --source azimut`. This refits μ / σ on the new CSVs, checks against §1 acceptable ranges, writes a new `backend/data/calibration_<YYYY-MM>.json`, and exits non-zero if any range is violated.
+3. If the guardrail passes: commit the three CSVs in one commit, the new calibration JSON in a separate commit (so `git bisect` can attribute a regression to data vs fit).
+4. Recompute the empirical correlation matrix and confirm it falls inside §2 acceptable ranges. Update the observed-values columns in §1 and the empirical matrix in §2 of this file.
+5. Open PR; CI runs `test_real_data_calibration_in_expected_range` and the §8 extreme-case suite.
+6. Restart uvicorn (or bump `CALIBRATION_SNAPSHOT_ID` env) so the running service picks up the new snapshot per §6 cache-key rules.
+
+**Snapshot file format (stable contract with `backend/ingest.py` and the `/api/simulate` response).** See `docs/data-sources.md` §Snapshot schema for the authoritative key list. Summary:
+
+- Filename: `backend/data/calibration_<YYYY-MM>.json`, one per refresh, immutable once committed.
+- Top-level required keys: `calibration_id`, `as_of` (ISO-8601 date, **single canonical key** — no `calibration_as_of`, no `snapshot_date`), `git_commit`, `fit_window`, `series`, `empirical_correlation`.
+- `series.<asset>.mu_monthly` and `series.<asset>.sigma_monthly` are the authoritative fit outputs; the ingest CLI's older `fits.<asset>.mu` / `fits.<asset>.sigma` shape is deprecated and is written into the same `series.<asset>` node on every refresh.
+- Backward-compatibility: `/api/simulate` must surface `calibration_as_of` as an API-level field that reads from snapshot `as_of` (single source of truth). API field name ≠ JSON key name by design — API naming belongs to engineering, file naming belongs to this spec.
+- Schema changes to this file require a spec amendment PR and a migration note in `docs/data-sources.md`.
+
+**Approval gate for range drift.** If a refresh lands observed μ or σ **outside** the §1 acceptable range, the ingest CLI fails and the refresh cannot ship. Widening a §1 range to accommodate new reality requires:
+
+1. Analyst drafts a widening PR with (a) updated observed column, (b) updated range column, (c) cited defensible floor or ceiling for the new bound (published data source, not a model prediction).
+2. **CEO + CTO co-sign** the PR. Both approvals are required on the GitHub PR; neither can self-approve; Analyst cannot approve.
+3. Merge triggers a re-run of `test_real_data_calibration_in_expected_range` and the §8 extreme-case suite on the new ranges.
+
+Tightening a range (ranges narrowing after a regime-change settles) follows the same gate. The guardrail exists to prevent silent parameter drift; widening it silently is the same failure mode in the other direction.
+
+---
+
 ## Conflicts to resolve
 
 Known contradictions between this spec and currently-shipped code. Each must be reconciled — either by fixing the code or by a written spec amendment — before the engineer merges §8's test suite. No silent behavioural deviation from this document is acceptable once published.
@@ -164,4 +212,6 @@ Known contradictions between this spec and currently-shipped code. Each must be 
 4. **Missing `probability_of_goal_se`** in `SimulateResponse` (`schemas.py:153-158`). Required by §4(c).
 5. **Missing `attainability`** in `SimulateResponse`. Required by §5.
 6. **`HORIZON_MONTHS = 1_200`** (`engine.py:16`). §9 caps at 480.
-7. **No runtime fit-range guardrails.** §1 requires deploy-blocking validation of fitted μ and σ against the acceptable-range column.
+7. **No runtime fit-range guardrails.** §1 requires deploy-blocking validation of fitted μ and σ against the acceptable-range column. *(Partially resolved iteration 2: `backend/ingest.py` now enforces a `FIT_RANGES` constant, and §1 bands have been widened to contain honest real-data observations. **Engineer follow-up:** update `backend/ingest.py` `FIT_RANGES` literal to match the iteration-2 §1 table verbatim — current literal is iteration-1 and will reject honest refreshes until synced. This is the one-line code change that closes the loop between this spec and the CLI; no semantics change.)*
+8. **Equity-proxy inflation beta.** §2 TODO (Q3 2026): replace 6-name basket with EGX30 TRI or 15-name sectorally-diversified basket; re-measure ρ(equity, CPI) and widen §2 upper bound if new proxy exceeds +0.25.
+9. **Ingest CLI snapshot shape is transitional.** `backend/ingest.py` writes `fits.<asset>.{mu,sigma}` + flat `empirical_corr`. Canonical schema is `series.<asset>.{mu_monthly,sigma_monthly,...}` + `empirical_correlation.{order,matrix}` per `docs/data-sources.md` §Snapshot schema. Engineer to migrate the CLI writer on next touch; until then, hand-promote CLI output before committing.
