@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { ClientRecord } from "../../api/client";
 
 export type Dependent = { name: string; relation: string; birthdate: string };
 export type IncomeSource = { source: string; amount: number; annualIncrease: number };
@@ -12,6 +13,11 @@ export type Goal = {
   inflationRate: number;
 };
 export type Scenario = {
+  // Stable client-side identifier. Used as the React key for ScenarioCard
+  // so the card does NOT remount when the scenario's user-editable name
+  // changes. Populated at creation (addScenario / duplicateScenario) and
+  // back-filled for pre-existing persisted drafts at slice init.
+  id: string;
   name: string;
   model: string;
   goalNames: string[];
@@ -19,6 +25,15 @@ export type Scenario = {
   monthlyInvestments: { amount: number; annualIncrease: number }[];
   loans: { amount: number; year: number; duration: number; interestRate: number }[];
 };
+
+// Prefer crypto.randomUUID (browser + jsdom + Node 19+) and fall back to a
+// time-seeded random hex so older JSDOM / test environments still work.
+function makeId(): string {
+  const g = globalThis as { crypto?: { randomUUID?: () => string } };
+  const randomUUID = g.crypto?.randomUUID;
+  if (typeof randomUUID === "function") return randomUUID.call(g.crypto);
+  return `sc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 type State = {
   // Server-assigned id of the persisted Client row. Null until the advisor
@@ -76,6 +91,7 @@ const initialState: State = {
   ],
   scenarios: [
     {
+      id: makeId(),
       name: "Scenario 1",
       model: "",
       goalNames: [],
@@ -86,6 +102,18 @@ const initialState: State = {
   ],
   reportTitle: "Simulation report 1",
 };
+
+// Product constraint mirrored in ScenarioStep.tsx: the simulation report
+// renders at most 4 scenario cards, so we cap the wizard at the same bound
+// for Add + Duplicate. Kept here so the slice can no-op at the cap.
+export const MAX_SCENARIOS_PER_RUN = 4;
+
+// Back-fill `id` on any scenario hydrated from a pre-stable-id localStorage
+// draft. Pure; safe to call on both initial state and persisted state.
+function migrateScenarios(scenarios: Scenario[] | undefined): Scenario[] {
+  if (!scenarios || scenarios.length === 0) return [];
+  return scenarios.map((sc) => (sc.id ? sc : { ...sc, id: makeId() }));
+}
 
 const slice = createSlice({
   name: "draft",
@@ -169,7 +197,9 @@ const slice = createSlice({
       };
     },
     addScenario(state) {
+      if (state.scenarios.length >= MAX_SCENARIOS_PER_RUN) return;
       state.scenarios.push({
+        id: makeId(),
         name: `Scenario ${state.scenarios.length + 1}`,
         model: "",
         goalNames: [],
@@ -177,6 +207,23 @@ const slice = createSlice({
         monthlyInvestments: [],
         loans: [],
       });
+    },
+    duplicateScenario(state, action: PayloadAction<number>) {
+      const idx = action.payload;
+      const original = state.scenarios[idx];
+      if (!original) return;
+      if (state.scenarios.length >= MAX_SCENARIOS_PER_RUN) return;
+      // Deep-enough clone — arrays of primitives / flat objects.
+      const copy: Scenario = {
+        id: makeId(),
+        name: `${original.name} (copy)`,
+        model: original.model,
+        goalNames: [...original.goalNames],
+        investments: original.investments.map((v) => ({ ...v })),
+        monthlyInvestments: original.monthlyInvestments.map((v) => ({ ...v })),
+        loans: original.loans.map((v) => ({ ...v })),
+      };
+      state.scenarios.push(copy);
     },
     removeScenario(state, action: PayloadAction<number>) {
       state.scenarios.splice(action.payload, 1);
@@ -193,9 +240,78 @@ const slice = createSlice({
     setReportTitle(state, action: PayloadAction<string>) {
       state.reportTitle = action.payload;
     },
+    // Load a persisted client into the wizard draft so "Modify" is an
+    // actual edit path (PATCH) rather than a silent new-client reset.
+    // Sets `clientId` so ScenarioStep.runAll takes the updateClient branch.
+    // Missing fields fall back to the initial-state defaults so partial
+    // records don't wipe the wizard into a broken shape.
+    hydrateFromClient(state, action: PayloadAction<ClientRecord>) {
+      const c = action.payload;
+      const p = (c.profile ?? {}) as Partial<State["profile"]> & {
+        coClient?: Partial<State["profile"]["coClient"]>;
+      };
+      state.clientId = c.id;
+      state.profile = {
+        ...initialState.profile,
+        ...p,
+        fullName:
+          p.fullName != null && p.fullName !== ""
+            ? String(p.fullName)
+            : c.name,
+        email: p.email != null && p.email !== "" ? String(p.email) : c.email,
+        phone:
+          p.phone != null && p.phone !== ""
+            ? String(p.phone)
+            : (c.phone ?? ""),
+        coClient: {
+          ...initialState.profile.coClient,
+          ...(p.coClient ?? {}),
+        },
+      };
+      state.goals = (c.goals ?? []).map((g) => ({
+        name: g.name ?? "",
+        amount: Number(g.amount) || 0,
+        year: Number(g.year) || new Date().getFullYear() + 5,
+        payments: Number(g.payments) || 0,
+        inflationRate: Number(g.inflationRate) || 0,
+      }));
+      state.scenarios = migrateScenarios(
+        (c.scenarios ?? []).map((s) => ({
+          id: "",
+          name: s.name ?? "Scenario 1",
+          model: s.model ?? "",
+          goalNames: s.goalNames ?? [],
+          investments: s.investments ?? [],
+          monthlyInvestments: s.monthlyInvestments ?? [],
+          loans: s.loans ?? [],
+        })) as Scenario[]
+      );
+      if (state.scenarios.length === 0) {
+        state.scenarios = [
+          {
+            id: makeId(),
+            name: "Scenario 1",
+            model: "",
+            goalNames: [],
+            investments: [],
+            monthlyInvestments: [],
+            loans: [],
+          },
+        ];
+      }
+      state.reportTitle = "Simulation report 1";
+    },
     reset: () => initialState,
   },
 });
+
+// Back-fill any missing stable-ids on scenarios pulled from a pre-stable-id
+// localStorage draft. Exported so the store bootstrap can migrate the payload
+// before handing it to `preloadedState`.
+export function migrateDraft(draft: State | undefined): State | undefined {
+  if (!draft) return draft;
+  return { ...draft, scenarios: migrateScenarios(draft.scenarios) };
+}
 
 export const actions = slice.actions;
 export default slice.reducer;

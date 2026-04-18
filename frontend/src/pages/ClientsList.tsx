@@ -46,9 +46,15 @@ export default function ClientsList() {
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase();
-    return clients.filter(
-      (c) => c.name.toLowerCase().includes(needle) || c.email.toLowerCase().includes(needle)
-    );
+    return clients.filter((c) => {
+      // ClientRecord types both fields as string, but the backend
+      // quick-add path can return a null email and names can be blank.
+      // Coerce to empty string before lowercasing so the whole page
+      // doesn't blank out inside the filter callback.
+      const name = (c.name ?? "").toLowerCase();
+      const email = (c.email ?? "").toLowerCase();
+      return name.includes(needle) || email.includes(needle);
+    });
   }, [clients, q]);
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const slice = filtered.slice((page - 1) * pageSize, page * pageSize);

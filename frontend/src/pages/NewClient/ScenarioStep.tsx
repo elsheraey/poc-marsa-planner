@@ -1,25 +1,42 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { actions, Scenario } from "./draftSlice";
+import { actions, MAX_SCENARIOS_PER_RUN, Scenario } from "./draftSlice";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { runScenarioBatch } from "../../store/slices/simulationSlice";
 import { createClient, updateClient } from "../../store/slices/clientsSlice";
 import { toast } from "../../components/Toaster";
 import { fmtEGP } from "../../utils/format";
+import { t } from "../../i18n";
 import type { ClientRecord, SimulateRequest } from "../../api/client";
 
 // Backend validators (`schemas.py`) bound inflation_rate, annual_increase and
 // interest_rate to the decimal range [-1, 1]. The wizard lets advisors type
 // either decimals ("0.05") or percents ("5"); normalise to decimal so we never
 // round-trip to a 422.
-function toDecimalRate(v: number | null | undefined): number | undefined {
+export function toDecimalRate(v: number | null | undefined): number | undefined {
   if (v == null || !Number.isFinite(v)) return undefined;
   return Math.abs(v) > 1 ? v / 100 : v;
 }
 
-// Product constraint: the simulation report renders at most 4 scenario cards.
-// Keep in sync with MAX_SCENARIOS_RENDERED in SimulationReport.tsx.
-const MAX_SCENARIOS_PER_RUN = 4;
+// Weighted mean of per-row annualIncrease by row amount. The backend accepts
+// a single `annual_increase_pct`, so when the advisor enters multiple monthly
+// investment rows with different rates we collapse to an amount-weighted
+// average rather than silently dropping rows 2…N.
+//
+// Guard rail: if total amount is zero (all rows empty), return 0 — the caller
+// further guards with `hasMoneyIn` so we never actually ship a weighted
+// average of zero-amount rows to the simulator.
+export function weightedAnnualIncrease(
+  rows: { amount: number; annualIncrease: number }[]
+): number {
+  const sumAmount = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  if (sumAmount <= 0) return 0;
+  const sumWeighted = rows.reduce(
+    (s, r) => s + (Number(r.amount) || 0) * (Number(r.annualIncrease) || 0),
+    0
+  );
+  return sumWeighted / sumAmount;
+}
 
 type BuildCtx = {
   duration: number;
@@ -39,13 +56,16 @@ function buildScenarioRequest(
   const initial = s.investments.reduce((sum, inv) => sum + inv.amount, 0);
   const hasMoneyIn = initial > 0 || monthlyTotal > 0;
   if (hasMoneyIn) {
-    const annualIncrease = (s.monthlyInvestments[0]?.annualIncrease ?? 0) / 100;
+    // Amount-weighted mean across all monthly rows (see weightedAnnualIncrease
+    // docstring). toDecimalRate lets the advisor type either "0.05" or "5".
+    const annualIncrease =
+      toDecimalRate(weightedAnnualIncrease(s.monthlyInvestments)) ?? 0;
     const selectedGoals = s.goalNames.length
       ? ctx.goals.filter((g) => s.goalNames.includes(g.name))
       : ctx.goals;
     const goalTargetAmount = selectedGoals.reduce((sum, g) => {
       const years = Math.max(0, (g.year || ctx.nowYear) - ctx.nowYear);
-      const rate = (g.inflationRate ?? 0) / 100;
+      const rate = toDecimalRate(g.inflationRate) ?? 0;
       const inflated = (g.amount || 0) * Math.pow(1 + rate, years);
       return sum + inflated;
     }, 0);
@@ -146,11 +166,23 @@ function GoalPicker({
 function ScenarioCard({ index }: { index: number }) {
   const dispatch = useAppDispatch();
   const scenario = useAppSelector((s) => s.draft.scenarios[index]);
+  const scenarioCount = useAppSelector((s) => s.draft.scenarios.length);
   const goals = useAppSelector((s) => s.draft.goals);
   const [collapsed, setCollapsed] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const upd = (patch: Partial<Scenario>) =>
     dispatch(actions.updateScenario({ index, patch }));
+
+  function onDuplicate() {
+    if (scenarioCount >= MAX_SCENARIOS_PER_RUN) {
+      toast(
+        t("wizard.scenario.duplicate.atCap", { max: MAX_SCENARIOS_PER_RUN }),
+        "error"
+      );
+      return;
+    }
+    dispatch(actions.duplicateScenario(index));
+  }
 
   return (
     <section className="rounded-2xl bg-az-white ring-1 ring-az-separator p-6">
@@ -165,6 +197,13 @@ function ScenarioCard({ index }: { index: number }) {
             onClick={() => setCollapsed((c) => !c)}
           >
             {collapsed ? "Expand" : "Collapse"}
+          </button>
+          <button
+            type="button"
+            className="btn-plain"
+            onClick={onDuplicate}
+          >
+            {t("wizard.scenario.duplicate")}
           </button>
           <button
             type="button"
@@ -380,6 +419,10 @@ export default function ScenarioStep() {
   const profile = useAppSelector((s) => s.draft.profile);
   const goals = useAppSelector((s) => s.draft.goals);
   const draftClientId = useAppSelector((s) => s.draft.clientId);
+  // In-flight guard: blocks a double-click from racing two POST /api/clients
+  // and two POST /api/simulate. The finally clause below guarantees we
+  // release the latch even on thrown errors / early-return error toasts.
+  const [running, setRunning] = useState(false);
 
   const totalYears = useMemo(() => {
     const now = new Date().getFullYear();
@@ -388,6 +431,16 @@ export default function ScenarioStep() {
   }, [goals]);
 
   async function runAll() {
+    if (running) return;
+    setRunning(true);
+    try {
+      await runAllInner();
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function runAllInner() {
     if (scenarios.length === 0) {
       toast("Add at least one scenario before running a simulation", "error");
       return;
@@ -500,7 +553,7 @@ export default function ScenarioStep() {
 
       <div className="space-y-5">
         {scenarios.map((sc, i) => (
-          <ScenarioCard key={`${sc.name}-${i}`} index={i} />
+          <ScenarioCard key={sc.id} index={i} />
         ))}
       </div>
 
@@ -512,7 +565,12 @@ export default function ScenarioStep() {
         >
           Save for later
         </button>
-        <button type="button" className="btn-primary" onClick={runAll}>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={runAll}
+          disabled={running}
+        >
           Run Simulation
         </button>
       </div>

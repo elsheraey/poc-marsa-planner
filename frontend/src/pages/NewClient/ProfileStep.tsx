@@ -4,6 +4,88 @@ import { actions } from "./draftSlice";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { t } from "../../i18n";
 
+// Mirror of the Login.tsx regex — keep in sync. Loose-but-honest: requires
+// exactly one "@" and one "." in the domain, which is enough to catch the
+// obvious "x" / "foo" / missing-tld mistakes without rejecting legitimate
+// addresses.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// dd/mm/yyyy and yyyy-mm-dd are both acceptable — the underlying input is a
+// free text field. Parse conservatively so we reject "31/02/2000", "99/99/1",
+// and anything that doesn't produce a real past date.
+function parseBirthdate(raw: string): Date | null {
+  const s = raw.trim();
+  if (!s) return null;
+  // dd/mm/yyyy
+  const dmy = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/.exec(s);
+  if (dmy) {
+    const [, d, m, y] = dmy;
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    if (
+      dt.getFullYear() === Number(y) &&
+      dt.getMonth() === Number(m) - 1 &&
+      dt.getDate() === Number(d)
+    ) {
+      return dt;
+    }
+    return null;
+  }
+  // yyyy-mm-dd
+  const ymd = /^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/.exec(s);
+  if (ymd) {
+    const [, y, m, d] = ymd;
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    if (
+      dt.getFullYear() === Number(y) &&
+      dt.getMonth() === Number(m) - 1 &&
+      dt.getDate() === Number(d)
+    ) {
+      return dt;
+    }
+    return null;
+  }
+  return null;
+}
+
+export type ProfileFieldErrors = Partial<{
+  fullName: string;
+  email: string;
+  birthdate: string;
+  phone: string;
+  employmentStatus: string;
+  riskAppetite: string;
+}>;
+
+const RISK_VALUES = ["very_low", "low", "moderate", "high", "very_high"] as const;
+
+export function validateProfile(p: {
+  fullName: string;
+  email: string;
+  birthdate: string;
+  phone: string;
+  employmentStatus: string;
+  riskAppetite: string;
+}): ProfileFieldErrors {
+  const errs: ProfileFieldErrors = {};
+  if (!p.fullName.trim()) errs.fullName = t("wizard.profile.error.fullName");
+  if (!EMAIL_RE.test(p.email)) errs.email = t("wizard.profile.error.email");
+  const dob = parseBirthdate(p.birthdate);
+  if (!dob || dob.getTime() >= Date.now()) {
+    errs.birthdate = t("wizard.profile.error.birthdate");
+  }
+  const phoneLen = p.phone.trim().length;
+  if (phoneLen < 6 || phoneLen > 32) {
+    errs.phone = t("wizard.profile.error.phone");
+  }
+  if (!p.employmentStatus) {
+    errs.employmentStatus = t("wizard.profile.error.employmentStatus");
+  }
+  if (!RISK_VALUES.includes(p.riskAppetite as (typeof RISK_VALUES)[number])) {
+    errs.riskAppetite = t("wizard.profile.error.riskAppetite");
+  }
+  return errs;
+}
+
 // The Profile step used to be a ~400-line wall of inputs — dependents,
 // assets, debts, income sources, co-client, monthly expenses — most of
 // which never reach the simulation engine. Advisors bounced through
@@ -24,10 +106,12 @@ function Field({
   label,
   children,
   required,
+  error,
 }: Readonly<{
   label: string;
   children: React.ReactNode;
   required?: boolean;
+  error?: string;
 }>) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -36,6 +120,7 @@ function Field({
         {required && <span className="text-rose-600"> *</span>}
       </span>
       {children}
+      {error && <div className="text-xs text-rose-600 mt-1.5">{error}</div>}
     </div>
   );
 }
@@ -433,6 +518,15 @@ export default function ProfileStep() {
   const p = useAppSelector((s) => s.draft.profile);
   const upd = (patch: Partial<typeof p>) => dispatch(actions.updateProfile(patch));
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
+
+  function onProceed() {
+    const errs = validateProfile(p);
+    setFieldErrors(errs);
+    if (Object.keys(errs).length === 0) {
+      nav("/clients/new/goals");
+    }
+  }
 
   return (
     <>
@@ -441,41 +535,66 @@ export default function ProfileStep() {
           {t("profile.section.required")}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
-          <Field label={t("profile.field.fullName")} required>
+          <Field
+            label={t("profile.field.fullName")}
+            required
+            error={fieldErrors.fullName}
+          >
             <input
               className="input"
               placeholder="Full name"
               value={p.fullName}
+              aria-invalid={!!fieldErrors.fullName}
               onChange={(e) => upd({ fullName: e.target.value })}
             />
           </Field>
-          <Field label={t("profile.field.email")} required>
+          <Field
+            label={t("profile.field.email")}
+            required
+            error={fieldErrors.email}
+          >
             <input
               className="input"
               type="email"
               value={p.email}
+              aria-invalid={!!fieldErrors.email}
               onChange={(e) => upd({ email: e.target.value })}
             />
           </Field>
-          <Field label={t("profile.field.birthdate")} required>
+          <Field
+            label={t("profile.field.birthdate")}
+            required
+            error={fieldErrors.birthdate}
+          >
             <input
               className="input"
               placeholder="dd/mm/yyyy"
               value={p.birthdate}
+              aria-invalid={!!fieldErrors.birthdate}
               onChange={(e) => upd({ birthdate: e.target.value })}
             />
           </Field>
-          <Field label={t("profile.field.phone")} required>
+          <Field
+            label={t("profile.field.phone")}
+            required
+            error={fieldErrors.phone}
+          >
             <input
               className="input"
               value={p.phone}
+              aria-invalid={!!fieldErrors.phone}
               onChange={(e) => upd({ phone: e.target.value })}
             />
           </Field>
-          <Field label={t("profile.field.employmentStatus")} required>
+          <Field
+            label={t("profile.field.employmentStatus")}
+            required
+            error={fieldErrors.employmentStatus}
+          >
             <select
               className="select"
               value={p.employmentStatus}
+              aria-invalid={!!fieldErrors.employmentStatus}
               onChange={(e) => upd({ employmentStatus: e.target.value })}
             >
               <option value="">{t("profile.employmentStatus.select")}</option>
@@ -487,10 +606,15 @@ export default function ProfileStep() {
               <option value="unemployed">{t("profile.employmentStatus.unemployed")}</option>
             </select>
           </Field>
-          <Field label={t("profile.field.riskAppetite")} required>
+          <Field
+            label={t("profile.field.riskAppetite")}
+            required
+            error={fieldErrors.riskAppetite}
+          >
             <select
               className="select"
               value={p.riskAppetite}
+              aria-invalid={!!fieldErrors.riskAppetite}
               onChange={(e) =>
                 upd({ riskAppetite: e.target.value as typeof p.riskAppetite })
               }
@@ -539,7 +663,7 @@ export default function ProfileStep() {
         <button
           type="button"
           className="btn-primary"
-          onClick={() => nav("/clients/new/goals")}
+          onClick={onProceed}
         >
           {t("profile.cta.proceed")}
         </button>
