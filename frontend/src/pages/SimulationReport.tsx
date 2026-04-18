@@ -396,7 +396,7 @@ export default function SimulationReport() {
         </div>
 
         <p
-          className="text-2xl md:text-3xl font-extrabold leading-snug max-w-3xl"
+          className="text-2xl md:text-3xl font-extrabold tracking-tight leading-snug max-w-3xl"
           data-testid="moment-of-truth-headline"
         >
           {headline}
