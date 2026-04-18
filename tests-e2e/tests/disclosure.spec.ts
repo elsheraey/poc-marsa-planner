@@ -2,17 +2,11 @@ import { expect, Page, test } from "@playwright/test";
 import { registerNewUser } from "./helpers";
 
 /**
- * UX task: land a "disclosure / past-performance" footnote on the simulation
- * report. Accept either:
- *   - a DOM node with data-testid="simulation-disclosure", OR
- *   - any visible element whose text contains "past performance" (case
- *     insensitive)
- *
- * Skips gracefully if UX hasn't landed it yet, so this test isn't a blocker
- * for backend/engineer commits.
- *
- * TODO: drop the graceful-skip once UX lands the disclosure banner
- *       (docs/next.md §UX — disclosure banner).
+ * UX has landed the disclosure banner on the simulation report
+ * (SimulationReport.tsx -> <DisclosureBanner data-testid="simulation-disclosure"/>).
+ * This test hard-asserts the element is present and visible on every run;
+ * the previous graceful-skip branch was removed in the iteration-2 QA
+ * validation pass (see docs/readiness.md).
  */
 async function runWizard(
   page: Page,
@@ -82,25 +76,8 @@ test.describe("simulation report disclosure", () => {
       monthlyInvestment: 20_000,
     });
 
-    // Prefer the stable testid; fall back to the generic past-performance
-    // text. The test is a skip (not a failure) when neither is present so
-    // backend/engineer commits aren't blocked by UX scheduling.
-    const byTestId = page.getByTestId("simulation-disclosure");
-    const byText = page.getByText(/past performance/i);
-
-    const testIdCount = await byTestId.count();
-    const textCount = await byText.count();
-
-    if (testIdCount === 0 && textCount === 0) {
-      test.skip(
-        true,
-        "disclosure banner not on report page yet — waiting for UX commit " +
-          "(docs/next.md §UX — disclosure banner)"
-      );
-      return;
-    }
-
-    const target = testIdCount > 0 ? byTestId.first() : byText.first();
-    await expect(target).toBeVisible();
+    // Stable testid is the contract; hard-fail if missing.
+    const banner = page.getByTestId("simulation-disclosure");
+    await expect(banner).toBeVisible();
   });
 });

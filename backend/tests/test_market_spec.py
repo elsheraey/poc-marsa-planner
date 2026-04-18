@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import time
 from pathlib import Path
 
@@ -568,4 +569,36 @@ def test_real_data_calibration_in_expected_range():
     assert inflation_mu >= 0.005, (
         f"inflation μ={inflation_mu} below 0.005 — Egyptian CPI should not "
         f"be near-zero in this sample"
+    )
+
+
+# -------------------------------------------------------------------
+# Calibration snapshot `calibration_as_of` on the wire (§1 / disclosure)
+# -------------------------------------------------------------------
+#
+# The engineer surfaces the analyst's calibration-manifest `as_of` date on
+# every /api/simulate response so the frontend disclosure banner can show
+# the real snapshot date (not a hardcoded fallback). Accepts either month-
+# precision (`YYYY-MM`) or day-precision (`YYYY-MM-DD`); both ship today.
+
+_CALIBRATION_AS_OF_RE = re.compile(r"^\d{4}-\d{2}(?:-\d{2})?$")
+
+
+def test_simulate_response_has_calibration_as_of(authed_client):
+    """`calibration_as_of` is present on the response and matches
+    `^\\d{4}-\\d{2}$` or `^\\d{4}-\\d{2}-\\d{2}$` (tolerant of either format)."""
+    body = _post(authed_client, goal_target_amount=100_000)
+    assert "calibration_as_of" in body, (
+        "SimulateResponse must include calibration_as_of for the disclosure "
+        "banner (see docs/readiness.md §calibration transparency)"
+    )
+    value = body["calibration_as_of"]
+    assert value is not None, (
+        "calibration_as_of is null — manifest missing/malformed; the "
+        f"data dir should contain calibration_*.json. Response: {body!r}"
+    )
+    assert isinstance(value, str), f"expected str, got {type(value).__name__}: {value!r}"
+    assert _CALIBRATION_AS_OF_RE.match(value), (
+        f"calibration_as_of={value!r} does not match "
+        f"^YYYY-MM$ or ^YYYY-MM-DD$"
     )
