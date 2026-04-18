@@ -129,7 +129,7 @@ class ClientOut(BaseModel):
 
 # ---------- Simulation ----------
 class SimulateRequest(BaseModel):
-    duration_years: Annotated[int, Field(ge=1, le=60)]
+    duration_years: Annotated[int, Field(ge=1, le=40)]
     initial_investment: Annotated[float, Field(ge=0, le=1e12)]
     monthly_investment: Annotated[float, Field(ge=0, le=1e9)]
     annual_increase_pct: Annotated[float, Field(ge=-1.0, le=1.0)] = 0.0

@@ -20,7 +20,7 @@ from scipy import stats
 from ..logging import get_logger
 
 N_SCENARIOS = 10_000
-HORIZON_MONTHS = 1_200  # 100 years
+HORIZON_MONTHS = 480  # 40 years — spec §9 hard cap
 MONTHS_PER_YEAR = 12
 
 _log = get_logger(__name__)

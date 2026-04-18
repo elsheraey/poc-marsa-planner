@@ -182,3 +182,21 @@ def test_probability_of_goal_se_bound() -> None:
     assert se <= 0.005, f"SE {se} exceeds spec §4(c) bound 0.005 at N=10k (p={p})"
     # SE is null when no goal target is supplied.
     assert run_advisor(goal)["probability_of_goal_se"] is None
+
+
+# ---------- 6. Horizon cap — spec §9: duration_years > 40 rejected at the wire ----------
+
+
+def test_horizon_cap_at_40_years(authed_client) -> None:  # noqa: ARG001 — fixture used via client
+    r = authed_client.post(
+        "/api/simulate",
+        json={
+            "duration_years": 50,
+            "initial_investment": 50_000,
+            "monthly_investment": 1_000,
+            "annual_increase_pct": 0.0,
+            "importance": "essential",
+            "risk_tolerance": "high",
+        },
+    )
+    assert r.status_code == 422, r.text
