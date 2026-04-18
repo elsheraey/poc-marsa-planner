@@ -27,6 +27,70 @@ const ar: Record<string, string> = {
   "auth.login": "تسجيل الدخول",
   "auth.register": "إنشاء حساب",
 
+  // TODO: native-speaker review
+  "auth.login.heading": "تسجيل دخول المستشار المالي",
+  // TODO: native-speaker review
+  "auth.login.subheading":
+    "سجّل الدخول لتشغيل خطط مالية موثوقة تراعي التضخم لعملائك المصريين.",
+  // TODO: native-speaker review
+  "auth.login.welcome": "مرحبًا بك في بوابة أوبتوفوليو",
+  // TODO: native-speaker review
+  "auth.login.email": "البريد الإلكتروني",
+  // TODO: native-speaker review
+  "auth.login.email_placeholder": "عنوان البريد الإلكتروني",
+  // TODO: native-speaker review
+  "auth.login.password": "كلمة المرور",
+  // TODO: native-speaker review
+  "auth.login.password_placeholder": "كلمة المرور",
+  // TODO: native-speaker review
+  "auth.login.submit": "دخول",
+  // TODO: native-speaker review
+  "auth.login.submitting": "جارٍ تسجيل الدخول...",
+  // TODO: native-speaker review
+  "auth.login.need_account": "ليس لديك حساب؟",
+  // TODO: native-speaker review
+  "auth.login.sign_up": "إنشاء حساب",
+  // TODO: native-speaker review
+  "auth.login.toast.success": "تم تسجيل الدخول",
+
+  // TODO: native-speaker review
+  "auth.register.heading": "إنشاء حساب",
+  // TODO: native-speaker review
+  "auth.register.subheading": "ابدأ بإدارة محافظ العملاء في دقائق.",
+  // TODO: native-speaker review
+  "auth.register.welcome": "أنشئ حساب أوبتوفوليو الخاص بك",
+  // TODO: native-speaker review
+  "auth.register.name": "الاسم الكامل",
+  // TODO: native-speaker review
+  "auth.register.email": "البريد الإلكتروني",
+  // TODO: native-speaker review
+  "auth.register.password": "كلمة المرور",
+  // TODO: native-speaker review
+  "auth.register.confirm_password": "تأكيد كلمة المرور",
+  // TODO: native-speaker review
+  "auth.register.submit": "إنشاء الحساب",
+  // TODO: native-speaker review
+  "auth.register.submitting": "جارٍ إنشاء الحساب...",
+  // TODO: native-speaker review
+  "auth.register.have_account": "لديك حساب بالفعل؟",
+  // TODO: native-speaker review
+  "auth.register.sign_in": "تسجيل الدخول",
+  // TODO: native-speaker review
+  "auth.register.toast.success": "تم إنشاء الحساب",
+
+  // TODO: native-speaker review
+  "auth.error.email_required": "أدخل بريدًا إلكترونيًا صالحًا",
+  // TODO: native-speaker review
+  "auth.error.email_invalid": "أدخل بريدًا إلكترونيًا صالحًا",
+  // TODO: native-speaker review
+  "auth.error.password_required": "كلمة المرور مطلوبة",
+  // TODO: native-speaker review
+  "auth.error.password_min": "يجب ألا تقل كلمة المرور عن 8 أحرف",
+  // TODO: native-speaker review
+  "auth.error.name_required": "الاسم مطلوب",
+  // TODO: native-speaker review
+  "auth.error.password_mismatch": "كلمتا المرور غير متطابقتين",
+
   "wizard.profile": "البيانات الشخصية",
   "wizard.goals": "الأهداف",
   "wizard.scenario": "منشئ السيناريوهات",

@@ -4,6 +4,7 @@ import Logo from "../components/Logo";
 import { toast } from "../components/Toaster";
 import { login } from "../store/slices/authSlice";
 import { useAppDispatch, useAppSelector } from "../store";
+import { t } from "../i18n";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -18,8 +19,8 @@ export default function Login() {
 
   function validate(): boolean {
     const errs: typeof fieldErrors = {};
-    if (!EMAIL_RE.test(email)) errs.email = "Enter a valid email address";
-    if (password.length < 1) errs.password = "Password is required";
+    if (!EMAIL_RE.test(email)) errs.email = t("auth.error.email_required");
+    if (password.length < 1) errs.password = t("auth.error.password_required");
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -29,7 +30,7 @@ export default function Login() {
     if (!validate()) return;
     const res = await dispatch(login({ email, password }));
     if (login.fulfilled.match(res)) {
-      toast("Signed in", "success");
+      toast(t("auth.login.toast.success"), "success");
       nav("/clients");
     }
   }
@@ -39,26 +40,23 @@ export default function Login() {
       <div className="relative bg-hero-gradient text-white flex flex-col justify-between p-10 overflow-hidden">
         <Logo variant="light" className="self-start" />
         <div className="relative text-center max-w-sm mx-auto">
-          <h2 className="text-2xl font-bold mb-3">Welcome to Marsa Portal</h2>
-          <p className="text-white/80">
-            Log in to run credible, inflation-aware financial plans for your
-            Egyptian clients.
-          </p>
+          <h2 className="text-2xl font-bold mb-3">{t("auth.login.welcome")}</h2>
+          <p className="text-white/80">{t("auth.login.subheading")}</p>
         </div>
         <div />
       </div>
 
       <div className="flex items-center justify-center p-10">
         <form className="w-full max-w-md" onSubmit={onSubmit} noValidate>
-          <h1 className="text-3xl font-extrabold mb-8">Financial Advisor Login</h1>
+          <h1 className="text-3xl font-extrabold mb-8">{t("auth.login.heading")}</h1>
 
           <label className="label block mb-2" htmlFor="login-email">
-            Email
+            {t("auth.login.email")}
           </label>
           <input
             id="login-email"
             className="input mb-1"
-            placeholder="Email address"
+            placeholder={t("auth.login.email_placeholder")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
@@ -72,12 +70,12 @@ export default function Login() {
           {!fieldErrors.email && <div className="mb-4" />}
 
           <label className="label block mb-2" htmlFor="login-password">
-            Password
+            {t("auth.login.password")}
           </label>
           <input
             id="login-password"
             className="input"
-            placeholder="Password"
+            placeholder={t("auth.login.password_placeholder")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
@@ -96,12 +94,12 @@ export default function Login() {
           )}
 
           <button className="btn-primary w-full h-12 mt-6" disabled={status === "loading"}>
-            {status === "loading" ? "Signing in..." : "Login"}
+            {status === "loading" ? t("auth.login.submitting") : t("auth.login.submit")}
           </button>
           <div className="text-center text-xs text-muted mt-4">
-            Don't have an account?{" "}
+            {t("auth.login.need_account")}{" "}
             <Link className="text-primary-500 font-semibold" to="/register">
-              Sign up
+              {t("auth.login.sign_up")}
             </Link>
           </div>
         </form>

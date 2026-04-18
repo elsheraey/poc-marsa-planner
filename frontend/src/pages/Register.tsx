@@ -4,6 +4,7 @@ import Logo from "../components/Logo";
 import { toast } from "../components/Toaster";
 import { register } from "../store/slices/authSlice";
 import { useAppDispatch, useAppSelector } from "../store";
+import { t } from "../i18n";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,10 +21,10 @@ export default function Register() {
 
   function validate(): boolean {
     const e: Record<string, string> = {};
-    if (name.trim().length < 1) e.name = "Name is required";
-    if (!EMAIL_RE.test(email)) e.email = "Enter a valid email";
-    if (password.length < 8) e.password = "Password must be at least 8 characters";
-    if (password !== confirm) e.confirm = "Passwords do not match";
+    if (name.trim().length < 1) e.name = t("auth.error.name_required");
+    if (!EMAIL_RE.test(email)) e.email = t("auth.error.email_invalid");
+    if (password.length < 8) e.password = t("auth.error.password_min");
+    if (password !== confirm) e.confirm = t("auth.error.password_mismatch");
     setErrs(e);
     return Object.keys(e).length === 0;
   }
@@ -33,7 +34,7 @@ export default function Register() {
     if (!validate()) return;
     const res = await dispatch(register({ name: name.trim(), email, password }));
     if (register.fulfilled.match(res)) {
-      toast("Account created", "success");
+      toast(t("auth.register.toast.success"), "success");
       nav("/clients");
     }
   }
@@ -43,18 +44,18 @@ export default function Register() {
       <div className="relative bg-hero-gradient text-white flex flex-col justify-between p-10 overflow-hidden">
         <Logo variant="light" className="self-start" />
         <div className="relative text-center max-w-sm mx-auto mt-20">
-          <h2 className="text-2xl font-bold mb-3">Create your Marsa account</h2>
-          <p className="text-white/80">Start managing client portfolios in minutes.</p>
+          <h2 className="text-2xl font-bold mb-3">{t("auth.register.welcome")}</h2>
+          <p className="text-white/80">{t("auth.register.subheading")}</p>
         </div>
         <div />
       </div>
 
       <div className="flex items-center justify-center p-10">
         <form className="w-full max-w-md" onSubmit={onSubmit} noValidate>
-          <h1 className="text-3xl font-extrabold mb-8">Create account</h1>
+          <h1 className="text-3xl font-extrabold mb-8">{t("auth.register.heading")}</h1>
 
           <label className="label block mb-2" htmlFor="reg-name">
-            Full name
+            {t("auth.register.name")}
           </label>
           <input
             id="reg-name"
@@ -68,7 +69,7 @@ export default function Register() {
           <div className="h-5 text-xs text-red-600">{errs.name}</div>
 
           <label className="label block mb-2" htmlFor="reg-email">
-            Email
+            {t("auth.register.email")}
           </label>
           <input
             id="reg-email"
@@ -83,7 +84,7 @@ export default function Register() {
           <div className="h-5 text-xs text-red-600">{errs.email}</div>
 
           <label className="label block mb-2" htmlFor="reg-password">
-            Password
+            {t("auth.register.password")}
           </label>
           <input
             id="reg-password"
@@ -98,7 +99,7 @@ export default function Register() {
           <div className="h-5 text-xs text-red-600">{errs.password}</div>
 
           <label className="label block mb-2" htmlFor="reg-confirm">
-            Confirm password
+            {t("auth.register.confirm_password")}
           </label>
           <input
             id="reg-confirm"
@@ -119,12 +120,12 @@ export default function Register() {
           )}
 
           <button className="btn-primary w-full h-12 mt-6" disabled={status === "loading"}>
-            {status === "loading" ? "Creating account..." : "Create account"}
+            {status === "loading" ? t("auth.register.submitting") : t("auth.register.submit")}
           </button>
           <div className="text-center text-xs text-muted mt-4">
-            Already have an account?{" "}
+            {t("auth.register.have_account")}{" "}
             <Link className="text-primary-500 font-semibold" to="/login">
-              Sign in
+              {t("auth.register.sign_in")}
             </Link>
           </div>
         </form>
