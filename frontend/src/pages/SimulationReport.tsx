@@ -133,7 +133,7 @@ export default function SimulationReport() {
                 className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[result.attainability]}`}
                 title="Attainability band based on P15 / median real-terms projection"
               >
-                {result.attainability.replace("_", " ")}
+                {result.attainability.replace(/_/g, " ")}
               </span>
             )}
           </div>
