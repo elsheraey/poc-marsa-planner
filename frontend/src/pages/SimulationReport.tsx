@@ -17,6 +17,60 @@ import { useAppSelector } from "../store";
 import { fmtEGP } from "../utils/format";
 import { t } from "../i18n";
 
+// Product constraint: the Goals Achievement Probability grid renders at most
+// 4 donut cards. Keep in sync with MAX_SCENARIOS_PER_RUN in ScenarioStep.tsx.
+const MAX_SCENARIOS_RENDERED = 4;
+
+// Fallback used only when the backend calibration manifest is missing/malformed
+// and the response comes back without `calibration_as_of`.
+const CALIBRATION_FALLBACK = "calibration: 2026-04";
+
+function fmtCalibration(raw: string | null | undefined): string {
+  if (!raw) return CALIBRATION_FALLBACK;
+  // Normalise `YYYY-MM-DD` to `YYYY-MM` for the disclosure line (month-level
+  // precision is what the frontend copy calls for); keep shorter values as-is.
+  const trimmed = raw.length >= 7 ? raw.slice(0, 7) : raw;
+  return `calibration: ${trimmed}`;
+}
+
+function DisclosureBanner({
+  calibrationAsOf,
+}: Readonly<{ calibrationAsOf: string | null | undefined }>) {
+  const [open, setOpen] = useState(false);
+  const now = new Date();
+  const nowStr = now.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  return (
+    <div
+      data-testid="simulation-disclosure"
+      className="mt-5 rounded-xl border border-border bg-surface/60"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-muted hover:text-ink"
+        aria-expanded={open}
+      >
+        <span>{t("report.disclosure")}</span>
+        <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <ul className="px-5 pb-4 space-y-2 text-[11px] leading-relaxed text-muted list-disc list-inside">
+          <li>{t("report.disclosure.mc")}</li>
+          <li>{t("report.disclosure.real")}</li>
+          <li>{t("report.disclosure.past")}</li>
+          <li>
+            {t("report.disclosure.data", {
+              calibration: fmtCalibration(calibrationAsOf),
+              now: nowStr,
+            })}
+          </li>
+          <li>{t("report.disclosure.regulator")}</li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 type Tab = "chart" | "table";
 
 const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach", string> = {
@@ -27,19 +81,44 @@ const ATTAINABILITY_CLASS: Record<"attainable" | "aspirational" | "out_of_reach"
 
 export default function SimulationReport() {
   const nav = useNavigate();
-  const result = useAppSelector((s) => s.simulation.result);
+  const results = useAppSelector((s) => s.simulation.results);
+  // `result` is kept as a backward-compat fallback for callers that set the
+  // legacy single-result shape; prefer `results[0]` when present.
+  const legacyResult = useAppSelector((s) => s.simulation.result);
   const status = useAppSelector((s) => s.simulation.status);
-  const scenarios = useAppSelector((s) => s.draft.scenarios);
   const draftProfile = useAppSelector((s) => s.draft.profile);
   const [tab, setTab] = useState<Tab>("chart");
   const [activeScenario, setActiveScenario] = useState(0);
 
+  // One card per backend-returned scenario (truncated to MAX). The probability
+  // comes straight from `result.probability_of_goal` — no per-index synthesis.
+  const scenarioCards = useMemo(() => {
+    let src: { name: string; result: SimulateResult }[] = [];
+    if (results.length > 0) {
+      src = results.map((r) => ({ name: r.name, result: r.result }));
+    } else if (legacyResult) {
+      src = [{ name: "Scenario 1", result: legacyResult }];
+    }
+    return src.slice(0, MAX_SCENARIOS_RENDERED).map((r) => {
+      const rawPct = r.result.probability_of_goal;
+      const pct = rawPct == null ? 0 : Math.round(rawPct * 100);
+      return {
+        name: r.name,
+        probability: Math.min(100, Math.max(0, pct)),
+        result: r.result,
+      };
+    });
+  }, [results, legacyResult]);
+
+  const activeResult: SimulateResult | null =
+    scenarioCards[activeScenario]?.result ?? scenarioCards[0]?.result ?? null;
+
   const chartData = useMemo(() => {
-    if (!result) return [];
-    return result.projection.years.map((y, i) => {
-      const optimistic = Math.round(result.projection.optimistic[i]);
-      const median = Math.round(result.projection.median[i]);
-      const pessimistic = Math.round(result.projection.pessimistic[i]);
+    if (!activeResult) return [];
+    return activeResult.projection.years.map((y, i) => {
+      const optimistic = Math.round(activeResult.projection.optimistic[i]);
+      const median = Math.round(activeResult.projection.median[i]);
+      const pessimistic = Math.round(activeResult.projection.pessimistic[i]);
       return {
         year: new Date().getFullYear() + y - 1,
         optimistic,
@@ -55,20 +134,7 @@ export default function SimulationReport() {
         bandDelta: Math.max(0, optimistic - pessimistic),
       };
     });
-  }, [result]);
-
-  const scenarioCards = useMemo(() => {
-    if (scenarios.length === 0) return [];
-    return scenarios.slice(0, 4).map((s, i) => ({
-      name: s.name,
-      probability: result
-        ? Math.min(
-            99,
-            Math.max(1, Math.round((result.probability_of_goal || 0) * 100 - i * 10))
-          )
-        : 0,
-    }));
-  }, [scenarios, result]);
+  }, [activeResult]);
 
   if (status === "loading") {
     return (
@@ -355,6 +421,8 @@ export default function SimulationReport() {
           </div>
         )}
       </section>
+
+      <DisclosureBanner calibrationAsOf={result.calibration_as_of} />
 
       <div className="flex items-center justify-between mt-6">
         <button

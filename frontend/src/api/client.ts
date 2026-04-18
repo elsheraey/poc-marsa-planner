@@ -134,5 +134,9 @@ export type SimulateResult = {
     optimistic: number[];
   };
   probability_of_goal: number | null;
+  probability_of_goal_se?: number | null;
   attainability: "attainable" | "aspirational" | "out_of_reach" | null;
+  // ISO date / YYYY-MM from the backend calibration manifest. Surfaces the
+  // real snapshot date the analyst pinned in `calibration_*.json`.
+  calibration_as_of?: string | null;
 };

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import threading
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,44 @@ def load_simulation() -> dict[str, Any]:
 def reset_cache() -> None:
     with _lock:
         _cache.clear()
+
+
+def load_calibration_as_of() -> str | None:
+    """Return the analyst-shipped calibration snapshot date as `YYYY-MM-DD`
+    (or `YYYY-MM`), or None if the manifest is missing / malformed.
+
+    Cached per-process under the shared `_cache` lock so the JSON is read at
+    most once. Looks for the first `calibration_*.json` file under the data
+    dir and reads `as_of` (preferred), `snapshot_date`, or `calibration_id`
+    (tail-stripped) in that order.
+    """
+    with _lock:
+        if "calibration_as_of" in _cache:
+            return _cache["calibration_as_of"]
+        value: str | None = None
+        try:
+            data_dir = _data_dir()
+            candidates = sorted(data_dir.glob("calibration_*.json"))
+            if candidates:
+                with candidates[-1].open("r", encoding="utf-8") as f:
+                    calib = json.load(f)
+                for key in ("as_of", "snapshot_date", "calibration_date"):
+                    raw = calib.get(key)
+                    if isinstance(raw, str) and raw:
+                        value = raw
+                        break
+                if value is None:
+                    # Fall back to deriving from `calibration_id` like
+                    # "calibration_2026-04" -> "2026-04".
+                    cid = calib.get("calibration_id")
+                    if isinstance(cid, str) and "_" in cid:
+                        tail = cid.rsplit("_", 1)[-1]
+                        if tail:
+                            value = tail
+        except (OSError, json.JSONDecodeError, ValueError):
+            value = None
+        _cache["calibration_as_of"] = value
+        return value
 
 
 def _classify_attainability(
@@ -170,4 +209,5 @@ def run_advisor(
         "probability_of_goal": prob,
         "probability_of_goal_se": prob_se,
         "attainability": attainability,
+        "calibration_as_of": load_calibration_as_of(),
     }

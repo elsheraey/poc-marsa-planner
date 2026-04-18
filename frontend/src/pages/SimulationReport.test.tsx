@@ -53,7 +53,7 @@ describe("SimulationReport stacking", () => {
           error: null,
           initialized: true,
         },
-        simulation: { result: baseResult, status: "idle", error: null },
+        simulation: { result: baseResult, results: [], status: "idle", error: null },
         draft: {
           profile: {
             fullName: "Sample Client",

@@ -161,3 +161,7 @@ class SimulateResponse(BaseModel):
     probability_of_goal: float | None
     probability_of_goal_se: float | None = None
     attainability: Attainability | None = None
+    # ISO date (`YYYY-MM-DD`) or `YYYY-MM` from the calibration manifest the
+    # analyst ships at `backend/data/calibration_*.json`. Surfaces the real
+    # snapshot date to the frontend disclosure banner (no hardcoded fallback).
+    calibration_as_of: str | None = None
