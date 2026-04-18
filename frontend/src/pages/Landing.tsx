@@ -9,103 +9,105 @@ function toggleLocale() {
 }
 
 /**
- * Editorial landing page.
+ * Landing page — Apple marketing-page pattern.
  *
- * A single cream column — serif headline, two-sentence lede, one
- * inline-link CTA, three below-the-fold paragraphs separated by
- * hairline rules. No hero gradient, no dual CTAs, no dot grid. Reads as
- * "a considered document" rather than a SaaS marketing splash.
+ *   - Translucent nav at the top (wordmark + "Open the portal" link)
+ *   - Centred hero with a Large Title headline, muted subtitle, system-
+ *     blue primary CTA.
+ *   - Three feature cards below on rounded bg-secondary tiles.
+ *
+ * No gradient, no dot-grid, no paper-cream surfaces. Sits on a subtle
+ * `bg-primary → bg-secondary` vertical gradient for depth.
  */
 export default function Landing() {
   const nav = useNavigate();
   const year = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen bg-paper text-ink flex flex-col">
-      <header className="border-b border-rule">
-        <div className="max-w-5xl mx-auto px-8 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-b from-bg-primary to-bg-secondary text-label flex flex-col">
+      <header className="app-nav">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Logo />
-          <Link
-            to="/login"
-            className="text-sm text-ink hover:underline underline-offset-4"
-          >
-            {t("landing.cta")}
-          </Link>
+          <div className="flex items-center gap-6 text-[15px] font-semibold">
+            <Link
+              to="/login"
+              className="text-system-blue hover:text-system-blue-hover transition"
+            >
+              {t("landing.cta")}
+            </Link>
+            <button
+              type="button"
+              onClick={toggleLocale}
+              className="text-system-blue hover:text-system-blue-hover transition"
+              data-testid="locale-toggle"
+              aria-label="Toggle language"
+            >
+              {t("locale.toggle")}
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="flex-1">
-        <article className="max-w-prose mx-auto px-8 py-24">
-          <h1 className="font-serif tracking-tight text-ink text-5xl md:text-6xl mb-8">
+        <section className="max-w-4xl mx-auto px-6 pt-24 pb-20 text-center">
+          <h1 className="font-display text-5xl md:text-7xl font-bold tracking-tight text-label leading-[1.05]">
             {t("landing.title")}
           </h1>
-          <p className="text-lg text-ink mb-4 leading-relaxed">
+          <p className="mt-6 text-xl text-label-secondary max-w-2xl mx-auto leading-relaxed">
             {t("landing.subtitle")}
           </p>
-          <p className="text-base text-ink-muted mb-8 leading-relaxed">
+          <p className="mt-4 text-base text-label-tertiary max-w-2xl mx-auto leading-relaxed">
             {t("landing.body")}
           </p>
-          <p className="text-base">
+          <div className="mt-10 flex items-center justify-center gap-4">
             <button
               type="button"
               onClick={() => nav("/login")}
-              className="text-ink underline decoration-accent underline-offset-4 hover:decoration-2"
+              className="btn-primary"
             >
-              {t("landing.cta")} →
+              {t("landing.cta")}
             </button>
-          </p>
-
-          <section className="border-t border-rule pt-8 mt-16">
-            <h2 className="font-serif text-2xl mb-3">
-              {t("landing.section.credible.title")}
-            </h2>
-            <p className="text-ink-muted leading-relaxed">
-              {t("landing.section.credible.body")}
-            </p>
-          </section>
-
-          <section className="border-t border-rule pt-8 mt-12">
-            <h2 className="font-serif text-2xl mb-3">
-              {t("landing.section.inflation.title")}
-            </h2>
-            <p className="text-ink-muted leading-relaxed">
-              {t("landing.section.inflation.body")}
-            </p>
-          </section>
-
-          <section className="border-t border-rule pt-8 mt-12">
-            <h2 className="font-serif text-2xl mb-3">
-              {t("landing.section.arabic.title")}
-            </h2>
-            <p className="text-ink-muted leading-relaxed">
-              {t("landing.section.arabic.body")}
-            </p>
-          </section>
-
-          <p className="mt-16">
             <Link
               to="/register"
               data-testid="registerLink"
-              className="text-ink underline decoration-accent underline-offset-4 hover:decoration-2"
+              className="btn-plain"
             >
-              {t("auth.register")} →
+              {t("auth.register")}
             </Link>
-          </p>
-        </article>
+          </div>
+        </section>
+
+        <section className="max-w-6xl mx-auto px-6 pb-20 grid grid-cols-1 md:grid-cols-3 gap-5">
+          <article className="rounded-2xl bg-bg-secondary p-6">
+            <h2 className="text-xl font-semibold tracking-tight text-label">
+              {t("landing.section.credible.title")}
+            </h2>
+            <p className="mt-2 text-[15px] text-label-secondary leading-relaxed">
+              {t("landing.section.credible.body")}
+            </p>
+          </article>
+          <article className="rounded-2xl bg-bg-secondary p-6">
+            <h2 className="text-xl font-semibold tracking-tight text-label">
+              {t("landing.section.inflation.title")}
+            </h2>
+            <p className="mt-2 text-[15px] text-label-secondary leading-relaxed">
+              {t("landing.section.inflation.body")}
+            </p>
+          </article>
+          <article className="rounded-2xl bg-bg-secondary p-6">
+            <h2 className="text-xl font-semibold tracking-tight text-label">
+              {t("landing.section.arabic.title")}
+            </h2>
+            <p className="mt-2 text-[15px] text-label-secondary leading-relaxed">
+              {t("landing.section.arabic.body")}
+            </p>
+          </article>
+        </section>
       </main>
 
-      <footer className="border-t border-rule">
-        <div className="max-w-5xl mx-auto px-8 py-6 flex items-center justify-between text-xs uppercase tracking-widest text-ink-muted">
-          <span>{t("landing.footer", { year })}</span>
-          <button
-            type="button"
-            onClick={toggleLocale}
-            className="hover:text-ink"
-            data-testid="locale-toggle"
-            aria-label="Toggle language"
-          >
-            {t("locale.toggle")}
-          </button>
+      <footer className="border-t border-separator bg-bg-primary/60">
+        <div className="max-w-6xl mx-auto px-6 py-6 text-xs text-label-tertiary">
+          {t("landing.footer", { year })}
         </div>
       </footer>
     </div>

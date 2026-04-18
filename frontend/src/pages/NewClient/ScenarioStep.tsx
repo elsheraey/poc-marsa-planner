@@ -7,10 +7,8 @@ import { toast } from "../../components/Toaster";
 import { fmtEGP } from "../../utils/format";
 import type { SimulateRequest } from "../../api/client";
 
-// Product constraint: the simulation report renders at most 4 donut cards in
-// the Goals Achievement Probability grid. Keep this in sync with
-// SimulationReport.tsx (MAX_SCENARIOS_RENDERED) so the "extra scenarios were
-// dropped" toast matches the visual behaviour.
+// Product constraint: the simulation report renders at most 4 scenario cards.
+// Keep in sync with MAX_SCENARIOS_RENDERED in SimulationReport.tsx.
 const MAX_SCENARIOS_PER_RUN = 4;
 
 type BuildCtx = {
@@ -74,27 +72,29 @@ function GoalPicker({
   const [local, setLocal] = useState(selected);
   if (!open) return null;
   return (
-    <div className="border-t border-b border-rule py-4 mt-2 bg-paper-deep/40">
-      <div className="label mb-3 px-4">Goals</div>
+    <div className="mt-3 rounded-xl bg-bg-secondary p-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-label-secondary mb-3">
+        Goals
+      </div>
       <table className="w-full text-sm tabular">
         <thead>
-          <tr className="text-xs uppercase tracking-widest text-ink-muted">
+          <tr className="text-xs font-semibold uppercase tracking-wider text-label-secondary">
             <th></th>
-            <th className="text-start font-normal pb-2">Goal</th>
-            <th className="text-start font-normal pb-2">Amount</th>
-            <th className="text-start font-normal pb-2">Year</th>
-            <th className="text-start font-normal pb-2">Inflation rate</th>
+            <th className="text-start pb-2">Goal</th>
+            <th className="text-start pb-2">Amount</th>
+            <th className="text-start pb-2">Year</th>
+            <th className="text-start pb-2">Inflation</th>
           </tr>
         </thead>
         <tbody>
           {availableGoals.map((g, i) => {
             const checked = local.includes(g.name);
             return (
-              <tr key={i} className="border-t border-rule">
-                <td className="py-2 w-10">
+              <tr key={i} className="border-t border-separator">
+                <td className="py-2 w-8">
                   <input
                     type="checkbox"
-                    className="accent-ink w-4 h-4"
+                    className="accent-system-blue w-4 h-4"
                     checked={checked}
                     onChange={() =>
                       setLocal((prev) =>
@@ -114,13 +114,13 @@ function GoalPicker({
           })}
         </tbody>
       </table>
-      <div className="flex justify-end gap-4 mt-3 px-4 text-xs uppercase tracking-widest">
-        <button type="button" className="text-ink-muted hover:text-ink" onClick={onClose}>
+      <div className="flex justify-end gap-4 mt-3">
+        <button type="button" className="btn-plain" onClick={onClose}>
           Cancel
         </button>
         <button
           type="button"
-          className="text-ink underline decoration-accent underline-offset-4"
+          className="btn-primary"
           onClick={() => {
             onSelect(local);
             onClose();
@@ -143,32 +143,36 @@ function ScenarioCard({ index }: { index: number }) {
     dispatch(actions.updateScenario({ index, patch }));
 
   return (
-    <section className="border-t border-rule pt-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="font-serif text-2xl tracking-tight">{scenario.name}</div>
-        <div className="flex items-center gap-6 text-xs uppercase tracking-widest">
+    <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
+      <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
+        <div className="text-xl font-semibold tracking-tight text-label">
+          {scenario.name}
+        </div>
+        <div className="flex items-center gap-4">
           <button
             type="button"
-            className="text-ink-muted hover:text-ink"
+            className="btn-plain"
             onClick={() => setCollapsed((c) => !c)}
           >
             {collapsed ? "Expand" : "Collapse"}
           </button>
           <button
             type="button"
-            className="text-accent hover:underline underline-offset-4"
+            className="text-system-red text-[15px] font-semibold hover:opacity-80"
             onClick={() => dispatch(actions.removeScenario(index))}
           >
-            Remove Scenario
+            Remove
           </button>
         </div>
       </div>
 
       {!collapsed && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
             <div>
-              <div className="label mb-2">Scenario Name</div>
+              <div className="text-xs font-semibold text-label-secondary mb-1.5">
+                Scenario Name
+              </div>
               <input
                 className="input"
                 placeholder="Scenario name"
@@ -177,7 +181,9 @@ function ScenarioCard({ index }: { index: number }) {
               />
             </div>
             <div>
-              <div className="label mb-2">Model</div>
+              <div className="text-xs font-semibold text-label-secondary mb-1.5">
+                Model
+              </div>
               <select
                 className="select"
                 value={scenario.model}
@@ -191,23 +197,25 @@ function ScenarioCard({ index }: { index: number }) {
             </div>
           </div>
 
-          <div className="border-t border-rule pt-6 mb-6">
-            <div className="flex items-center gap-4 mb-3">
-              <span className="label">Select Goals</span>
+          <div className="mb-5">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-[15px] font-semibold text-label">
+                Select Goals
+              </span>
               <button
                 type="button"
-                className="text-xs uppercase tracking-widest text-ink underline decoration-accent underline-offset-4"
+                className="btn-plain text-sm"
                 onClick={() => setPickerOpen((o) => !o)}
               >
-                Select
+                {pickerOpen ? "Close" : "Choose"}
               </button>
             </div>
             {scenario.goalNames.length > 0 && (
-              <div className="flex flex-wrap gap-3 mb-3">
+              <div className="flex flex-wrap gap-2 mb-2">
                 {scenario.goalNames.map((name) => (
                   <span
                     key={name}
-                    className="text-xs uppercase tracking-widest px-2 py-0.5 bg-accent-soft text-ink"
+                    className="pill bg-system-blue-tint text-system-blue"
                   >
                     {name}
                   </span>
@@ -304,9 +312,14 @@ function GroupList<T extends Record<string, number>>({
 }) {
   const keys = Object.keys(items[0] ?? {}) as (keyof T)[];
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-4 mb-3">
-        <span className="label">{title}</span>
+    <div className="mb-5">
+      <div className="flex items-center gap-3 mb-3">
+        {/*
+          NOTE: this span / icon-btn-add pair is the stable selector the
+          e2e tests use (`span:text-is("Investments") + button.icon-btn-add`).
+          Do not restructure.
+        */}
+        <span className="text-[15px] font-semibold text-label">{title}</span>
         <button type="button" className="icon-btn-add" onClick={onAdd} aria-label={`Add ${title}`}>
           +
         </button>
@@ -314,14 +327,16 @@ function GroupList<T extends Record<string, number>>({
       {items.map((it, i) => (
         <div
           key={i}
-          className="grid gap-4 items-end mb-2"
+          className="grid gap-3 items-end mb-2"
           style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr)) auto` }}
         >
           {columns.map((label, c) => {
             const key = keys[c];
             return (
               <div key={c}>
-                <div className="label mb-2">{label}</div>
+                <div className="text-xs font-semibold text-label-secondary mb-1.5">
+                  {label}
+                </div>
                 <input
                   className="input"
                   type="number"
@@ -334,7 +349,12 @@ function GroupList<T extends Record<string, number>>({
               </div>
             );
           })}
-          <button className="icon-btn-remove mb-2" onClick={() => onRemove(i)}>
+          <button
+            type="button"
+            className="icon-btn-remove mb-1"
+            onClick={() => onRemove(i)}
+            aria-label={`Remove ${title}`}
+          >
             −
           </button>
         </div>
@@ -369,10 +389,6 @@ export default function ScenarioStep() {
     const duration = Math.min(60, Math.max(1, totalYears));
     const nowYear = new Date().getFullYear();
 
-    // Build one SimulateRequest per scenario: profile + goals are shared,
-    // investments / monthly / loans come from each scenario. Scenarios with
-    // no money in at all are skipped — the backend would reject them anyway
-    // and advisors don't want empty cards.
     const candidates = scenarios.slice(0, MAX_SCENARIOS_PER_RUN);
     const built = candidates.map((s) =>
       buildScenarioRequest(s, { duration, nowYear, goals, riskAppetite: profile.riskAppetite })
@@ -407,31 +423,31 @@ export default function ScenarioStep() {
 
   return (
     <>
-      <div className="flex justify-end mt-4 mb-8">
+      <div className="flex justify-end">
         <button
           type="button"
-          className="btn"
+          className="btn-secondary"
           onClick={() => dispatch(actions.addScenario())}
         >
           Add New Scenario
         </button>
       </div>
 
-      <div className="flex flex-col gap-0">
+      <div className="space-y-5">
         {scenarios.map((sc, i) => (
           <ScenarioCard key={`${sc.name}-${i}`} index={i} />
         ))}
       </div>
 
-      <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-rule">
+      <div className="flex justify-end gap-4 pt-2">
         <button
           type="button"
-          className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
+          className="btn-plain"
           onClick={() => nav("/clients/new/goals")}
         >
           Save for later
         </button>
-        <button type="button" className="btn" onClick={runAll}>
+        <button type="button" className="btn-primary" onClick={runAll}>
           Run Simulation
         </button>
       </div>

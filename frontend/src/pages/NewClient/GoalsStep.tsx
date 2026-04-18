@@ -2,6 +2,17 @@ import { useNavigate } from "react-router-dom";
 import { actions } from "./draftSlice";
 import { useAppDispatch, useAppSelector } from "../../store";
 
+/**
+ * Goals step. A single rounded card on the bg-grouped canvas; each goal
+ * is a 5-column row of grouped-inset inputs with a trailing remove
+ * button. The row separator is a top border on the next row so the
+ * whole block reads as one Apple grouped form.
+ *
+ * NOTE: the "Add goal" button is rendered as a `<span>Goals</span>` +
+ * `<button class="icon-btn-add">` pair because the e2e tests target it
+ * via `span:text-is("Goals") + button.icon-btn-add`. Keep the span /
+ * button pair for every GroupList header in the wizard.
+ */
 export default function GoalsStep() {
   const nav = useNavigate();
   const dispatch = useAppDispatch();
@@ -9,9 +20,11 @@ export default function GoalsStep() {
 
   return (
     <>
-      <section>
-        <div className="flex items-center gap-4 mb-8">
-          <h3 className="font-serif text-2xl tracking-tight">Goals</h3>
+      <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <span className="text-xl font-semibold tracking-tight text-label">
+            Goals
+          </span>
           <button
             type="button"
             className="icon-btn-add"
@@ -22,13 +35,19 @@ export default function GoalsStep() {
           </button>
         </div>
 
+        {goals.length === 0 && (
+          <p className="text-[15px] text-label-secondary py-6 text-center">
+            No goals yet. Tap <span className="text-system-blue font-semibold">+</span> to add one.
+          </p>
+        )}
+
         {goals.map((g, i) => (
           <div
             key={i}
-            className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-end mb-6 pb-6 border-b border-rule last:border-b-0"
+            className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-end mb-5 pb-5 border-b border-separator last:border-b-0 last:pb-0 last:mb-0"
           >
-            <div className="flex flex-col gap-2">
-              <span className="label">Name</span>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-label-secondary">Name</span>
               <input
                 className="input"
                 placeholder="Goal"
@@ -38,8 +57,8 @@ export default function GoalsStep() {
                 }
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <span className="label">Amount</span>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-label-secondary">Amount</span>
               <input
                 className="input"
                 placeholder="Amount"
@@ -52,8 +71,8 @@ export default function GoalsStep() {
                 }
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <span className="label">Year</span>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-label-secondary">Year</span>
               <input
                 className="input"
                 placeholder="Year"
@@ -66,8 +85,8 @@ export default function GoalsStep() {
                 }
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <span className="label">Payments</span>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-label-secondary">Payments</span>
               <input
                 className="input"
                 placeholder="Number"
@@ -83,8 +102,8 @@ export default function GoalsStep() {
                 }
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <span className="label">Inflation Rate</span>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-label-secondary">Inflation %</span>
               <input
                 className="input"
                 placeholder="%"
@@ -102,7 +121,7 @@ export default function GoalsStep() {
             </div>
             <button
               type="button"
-              className="icon-btn-remove mb-2"
+              className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeGoal(i))}
               aria-label="Remove goal"
             >
@@ -112,17 +131,17 @@ export default function GoalsStep() {
         ))}
       </section>
 
-      <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-rule">
+      <div className="flex justify-end gap-4 pt-2">
         <button
           type="button"
-          className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
+          className="btn-plain"
           onClick={() => nav("/clients/new/profile")}
         >
           Cancel
         </button>
         <button
           type="button"
-          className="btn"
+          className="btn-primary"
           onClick={() => nav("/clients/new/scenario")}
         >
           Save

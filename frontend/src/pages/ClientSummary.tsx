@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
-import WizardTabs from "../components/WizardTabs";
 import { toast } from "../components/Toaster";
 import { fetchClient } from "../store/slices/clientsSlice";
 import { useAppDispatch, useAppSelector } from "../store";
@@ -22,16 +21,15 @@ type SavedSimRow = SavedSimulationListItem & {
   detailStatus: "loading" | "ready" | "error";
 };
 
-// Muted attainability palette — 900 ink on 100 tint. Same decision as
-// SimulationReport: the old 700/600 fills were too saturated for the
-// cream surface.
+// iOS tinted pill colours. Mirrors SimulationReport.tsx so the same
+// visual language appears wherever attainability is surfaced.
 const ATTAINABILITY_CLASS: Record<
   "attainable" | "aspirational" | "out_of_reach",
   string
 > = {
-  attainable: "bg-emerald-100 text-emerald-900",
-  aspirational: "bg-amber-100 text-amber-900",
-  out_of_reach: "bg-rose-100 text-rose-900",
+  attainable: "bg-system-green-tint text-system-green",
+  aspirational: "bg-system-orange-tint text-system-orange",
+  out_of_reach: "bg-system-red-tint text-system-red",
 };
 
 function attainabilityLabel(
@@ -97,19 +95,25 @@ function egpOrDash(value: number | undefined | null): string {
 
 function InfoRow({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
-    <div className="grid grid-cols-[minmax(140px,1fr)_2fr] gap-4 py-2 border-t border-rule text-sm">
-      <span className="label self-center">{label}</span>
-      <span className="text-ink">{value}</span>
+    <div className="grouped-row">
+      <span className="text-sm text-label-secondary min-w-[140px] shrink-0">
+        {label}
+      </span>
+      <span className="text-[15px] text-label flex-1 truncate">{value}</span>
     </div>
   );
 }
 
-function EmptyState({ message, cta }: Readonly<{ message: string; cta?: string }>) {
+function SectionHeader({ children }: Readonly<{ children: string }>) {
   return (
-    <p className="font-serif italic text-ink-muted py-4">
+    <h2 className="section-label mb-2 px-1">{children}</h2>
+  );
+}
+
+function EmptyState({ message }: Readonly<{ message: string }>) {
+  return (
+    <p className="text-[15px] text-label-secondary py-3 px-4">
       {message}
-      {cta && <span className="mx-2">·</span>}
-      {cta && <span className="text-ink underline decoration-accent underline-offset-4">{cta}</span>}
     </p>
   );
 }
@@ -126,6 +130,17 @@ function sumOrNull<T>(
   return total;
 }
 
+/**
+ * ClientSummary — Apple grouped-list pattern.
+ *
+ * Each logical section is a grouped-inset white card on the bg-grouped
+ * canvas, preceded by an all-caps section label (iOS settings style).
+ * The summary tiles up top (risk appetite, total assets, total debts,
+ * monthly expenses) render as four equal-width cards in a grid so the
+ * overview reads as a dashboard header before the lists scroll into
+ * view. Saved-simulations stays a grouped list with an attainability
+ * pill per row.
+ */
 export default function ClientSummary() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -253,9 +268,11 @@ export default function ClientSummary() {
   if (!client) {
     return (
       <AppShell>
-        <p className="font-serif italic text-ink-muted py-12 text-center">
-          {t("common.loading")}
-        </p>
+        <div className="px-6 pt-10">
+          <p className="text-label-secondary py-12 text-center">
+            {t("common.loading")}
+          </p>
+        </div>
       </AppShell>
     );
   }
@@ -276,325 +293,288 @@ export default function ClientSummary() {
       trailing={
         <button
           type="button"
-          className="text-ink hover:underline underline-offset-4"
+          className="text-system-blue hover:text-system-blue-hover font-semibold"
           onClick={() => nav("/clients/new/profile")}
         >
           {t("client.modify")}
         </button>
       }
     >
-      <div className="mb-8 text-xs uppercase tracking-widest text-ink-muted">
-        <Link to="/clients" className="hover:text-ink">
-          {t("nav.clients")}
-        </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <span className="text-ink">{client.name}</span>
-      </div>
+      <header className="px-6 pt-10 pb-6">
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-3 text-sm text-label-secondary flex items-center gap-2"
+        >
+          <Link
+            to="/clients"
+            className="text-system-blue hover:text-system-blue-hover"
+          >
+            {t("nav.clients")}
+          </Link>
+          <span aria-hidden="true" className="text-label-tertiary">
+            ›
+          </span>
+          <span>{client.name}</span>
+        </nav>
+        <h1 className="text-4xl font-bold tracking-tight">{client.name}</h1>
+        <p className="mt-1 text-base text-label-secondary">{client.email}</p>
+      </header>
 
-      <h1 className="font-serif text-4xl tracking-tight mb-10">{client.name}</h1>
-
-      <WizardTabs basePath={`/clients/${id}`} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        <section>
-          <h3 className="font-serif text-2xl tracking-tight mb-4">
-            {t("client.section.info")}
-          </h3>
-          <InfoRow label={t("client.field.fullName")} value={dash(profile.fullName ?? client.name)} />
-          <InfoRow label={t("client.field.mobile")} value={dash(client.phone)} />
-          <InfoRow label={t("client.field.email")} value={dash(client.email)} />
-          <InfoRow label={t("client.field.birthdate")} value={dash(profile.birthdate)} />
-          <InfoRow
-            label={t("client.field.employmentStatus")}
-            value={dash(profile.employmentStatus)}
-          />
-          <InfoRow
-            label={t("client.field.employmentIncome")}
-            value={egpOrDash(profile.employmentIncome)}
-          />
+      <div className="px-6 space-y-6">
+        {/* Summary tiles */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: t("client.tile.riskAppetite"), value: dash(profile.riskAppetite) },
+            { label: t("client.tile.totalAssets"), value: egpOrDash(totalAssets) },
+            { label: t("client.tile.totalDebts"), value: egpOrDash(totalDebts) },
+            { label: t("client.tile.monthlyExpenses"), value: egpOrDash(profile.monthlyExpenses) },
+          ].map((tile) => (
+            <div
+              key={tile.label}
+              className="rounded-2xl bg-bg-primary ring-1 ring-separator p-4"
+            >
+              <div className="text-xs font-semibold uppercase tracking-wider text-label-secondary">
+                {tile.label}
+              </div>
+              <div className="mt-2 text-xl font-semibold tracking-tight tabular text-label">
+                {tile.value}
+              </div>
+            </div>
+          ))}
         </section>
 
-        <section>
-          <h3 className="font-serif text-2xl tracking-tight mb-4">
-            {t("client.section.coClient")}
-          </h3>
-          {hasCoClient ? (
-            <>
-              <InfoRow
-                label={t("client.field.fullName")}
-                value={dash(profile.coClient?.fullName)}
-              />
-              <InfoRow
-                label={t("client.field.birthdate")}
-                value={dash(profile.coClient?.birthdate)}
-              />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section>
+            <SectionHeader>{t("client.section.info")}</SectionHeader>
+            <div className="grouped-list">
+              <InfoRow label={t("client.field.fullName")} value={dash(profile.fullName ?? client.name)} />
+              <InfoRow label={t("client.field.mobile")} value={dash(client.phone)} />
+              <InfoRow label={t("client.field.email")} value={dash(client.email)} />
+              <InfoRow label={t("client.field.birthdate")} value={dash(profile.birthdate)} />
               <InfoRow
                 label={t("client.field.employmentStatus")}
-                value={dash(profile.coClient?.employmentStatus)}
+                value={dash(profile.employmentStatus)}
               />
               <InfoRow
                 label={t("client.field.employmentIncome")}
-                value={egpOrDash(profile.coClient?.employmentIncome)}
+                value={egpOrDash(profile.employmentIncome)}
               />
-            </>
-          ) : (
-            <EmptyState message={t("client.empty.coClient")} />
-          )}
-        </section>
-      </div>
+            </div>
+          </section>
 
-      <section className="border-t border-rule pt-8 mt-12 grid grid-cols-2 md:grid-cols-4 gap-8">
-        <div>
-          <div className="label mb-2">{t("client.tile.riskAppetite")}</div>
-          <div className="font-serif text-xl">{dash(profile.riskAppetite)}</div>
+          <section>
+            <SectionHeader>{t("client.section.coClient")}</SectionHeader>
+            <div className="grouped-list">
+              {hasCoClient ? (
+                <>
+                  <InfoRow
+                    label={t("client.field.fullName")}
+                    value={dash(profile.coClient?.fullName)}
+                  />
+                  <InfoRow
+                    label={t("client.field.birthdate")}
+                    value={dash(profile.coClient?.birthdate)}
+                  />
+                  <InfoRow
+                    label={t("client.field.employmentStatus")}
+                    value={dash(profile.coClient?.employmentStatus)}
+                  />
+                  <InfoRow
+                    label={t("client.field.employmentIncome")}
+                    value={egpOrDash(profile.coClient?.employmentIncome)}
+                  />
+                </>
+              ) : (
+                <EmptyState message={t("client.empty.coClient")} />
+              )}
+            </div>
+          </section>
         </div>
-        <div>
-          <div className="label mb-2">{t("client.tile.totalAssets")}</div>
-          <div className="font-serif text-xl tabular">{egpOrDash(totalAssets)}</div>
-        </div>
-        <div>
-          <div className="label mb-2">{t("client.tile.totalDebts")}</div>
-          <div className="font-serif text-xl tabular">{egpOrDash(totalDebts)}</div>
-        </div>
-        <div>
-          <div className="label mb-2">{t("client.tile.monthlyExpenses")}</div>
-          <div className="font-serif text-xl tabular">{egpOrDash(profile.monthlyExpenses)}</div>
-        </div>
-      </section>
 
-      <section className="border-t border-rule pt-8 mt-12">
-        <h3 className="font-serif text-2xl tracking-tight mb-4">
-          {t("client.section.incomeSources")}
-        </h3>
-        {incomeSources.length === 0 ? (
-          <EmptyState message={t("client.empty.incomeSources")} cta={t("client.empty.addOne")} />
-        ) : (
-          <table className="w-full text-sm border-t border-b border-rule tabular">
-            <thead>
-              <tr className="text-xs uppercase tracking-widest text-ink-muted">
-                <th className="text-start font-normal py-3">{t("client.col.source")}</th>
-                <th className="text-start font-normal py-3">{t("client.col.amount")}</th>
-                <th className="text-start font-normal py-3">
-                  {t("client.col.annualIncrease")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {incomeSources.map((row, i) => (
-                <tr key={`income-${i}`} className="border-t border-rule">
-                  <td className="py-2">{dash(row.source)}</td>
-                  <td className="py-2">{egpOrDash(row.amount)}</td>
-                  <td className="py-2">
+        <section>
+          <SectionHeader>{t("client.section.incomeSources")}</SectionHeader>
+          <div className="grouped-list">
+            {incomeSources.length === 0 ? (
+              <EmptyState message={t("client.empty.incomeSources")} />
+            ) : (
+              incomeSources.map((row, i) => (
+                <div key={`income-${i}`} className="grouped-row">
+                  <span className="flex-1 text-[15px]">{dash(row.source)}</span>
+                  <span className="text-[15px] text-label-secondary tabular">
+                    {egpOrDash(row.amount)}
+                  </span>
+                  <span className="text-sm text-label-tertiary tabular min-w-[80px] text-end">
                     {row.annualIncrease != null && Number.isFinite(row.annualIncrease)
                       ? `${row.annualIncrease}%`
                       : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      <section className="border-t border-rule pt-8 mt-12">
-        <h3 className="font-serif text-2xl tracking-tight mb-4">
-          {t("client.section.dependents")}
-        </h3>
-        {dependents.length === 0 ? (
-          <EmptyState message={t("client.empty.dependents")} cta={t("client.empty.addOne")} />
-        ) : (
-          <div className="space-y-4">
-            {dependents.map((d, i) => (
-              <div key={`dep-${i}`} className="border-t border-rule pt-3">
-                <div className="font-serif text-base">{dash(d.name)}</div>
-                <div className="text-xs text-ink-muted">
-                  {dash(d.relation)}
-                  {d.birthdate ? ` · ${d.birthdate}` : ""}
+                  </span>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        )}
-      </section>
+        </section>
 
-      <section className="border-t border-rule pt-8 mt-12 grid grid-cols-1 md:grid-cols-2 gap-12">
-        <div>
-          <h3 className="font-serif text-2xl tracking-tight mb-4">
-            {t("client.section.assets")}
-          </h3>
-          {assets.length === 0 ? (
-            <EmptyState message={t("client.empty.assets")} cta={t("client.empty.addOne")} />
-          ) : (
-            <table className="w-full text-sm border-t border-b border-rule tabular">
-              <thead>
-                <tr className="text-xs uppercase tracking-widest text-ink-muted">
-                  <th className="text-start font-normal py-3">{t("client.col.asset")}</th>
-                  <th className="text-end font-normal py-3">{t("client.col.amount")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assets.map((row, i) => (
-                  <tr key={`asset-${i}`} className="border-t border-rule">
-                    <td className="py-2">{dash(row.name)}</td>
-                    <td className="py-2 text-end">{egpOrDash(row.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <div>
-          <h3 className="font-serif text-2xl tracking-tight mb-4">
-            {t("client.section.debts")}
-          </h3>
-          {debts.length === 0 ? (
-            <EmptyState message={t("client.empty.debts")} cta={t("client.empty.addOne")} />
-          ) : (
-            <table className="w-full text-sm border-t border-b border-rule tabular">
-              <thead>
-                <tr className="text-xs uppercase tracking-widest text-ink-muted">
-                  <th className="text-start font-normal py-3">{t("client.col.debt")}</th>
-                  <th className="text-start font-normal py-3">{t("client.col.amount")}</th>
-                  <th className="text-start font-normal py-3">{t("client.col.duration")}</th>
-                  <th className="text-start font-normal py-3">{t("client.col.interestRate")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {debts.map((row, i) => (
-                  <tr key={`debt-${i}`} className="border-t border-rule">
-                    <td className="py-2">{dash(row.name)}</td>
-                    <td className="py-2">{egpOrDash(row.amount)}</td>
-                    <td className="py-2">
-                      {row.duration != null && Number.isFinite(row.duration)
-                        ? t("client.years", { n: row.duration })
-                        : "—"}
-                    </td>
-                    <td className="py-2">
-                      {row.interestRate != null && Number.isFinite(row.interestRate)
-                        ? `${row.interestRate}%`
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
-
-      <section className="border-t border-rule pt-8 mt-12">
-        <h3 className="font-serif text-2xl tracking-tight mb-4">
-          {t("client.section.goals")}
-        </h3>
-        {goals.length === 0 ? (
-          <EmptyState message={t("client.empty.goals")} cta={t("client.empty.addOne")} />
-        ) : (
-          <table className="w-full text-sm border-t border-b border-rule tabular">
-            <thead>
-              <tr className="text-xs uppercase tracking-widest text-ink-muted">
-                <th className="text-start font-normal py-3">{t("client.col.goal")}</th>
-                <th className="text-start font-normal py-3">{t("client.col.amount")}</th>
-                <th className="text-start font-normal py-3">{t("client.col.year")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {goals.map((g, i) => (
-                <tr key={`goal-${i}`} className="border-t border-rule">
-                  <td className="py-2">{dash(g.name)}</td>
-                  <td className="py-2">{egpOrDash(g.amount)}</td>
-                  <td className="py-2">{dash(g.year)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      <section
-        className="border-t border-rule pt-8 mt-12"
-        data-testid="saved-simulations"
-      >
-        <h3 className="font-serif text-2xl tracking-tight mb-4">
-          {t("client.section.savedSims")}
-        </h3>
-        {savedStatus === "loading" && (
-          <p className="font-serif italic text-ink-muted py-3">{t("common.loading")}</p>
-        )}
-        {savedStatus === "error" && (
-          <div
-            role="alert"
-            className="text-sm text-accent border-t border-b border-accent py-3"
-          >
-            {savedError ?? t("client.savedSims.error")}
+        <section>
+          <SectionHeader>{t("client.section.dependents")}</SectionHeader>
+          <div className="grouped-list">
+            {dependents.length === 0 ? (
+              <EmptyState message={t("client.empty.dependents")} />
+            ) : (
+              dependents.map((d, i) => (
+                <div key={`dep-${i}`} className="grouped-row">
+                  <span className="flex-1">
+                    <span className="block text-[15px] font-semibold text-label">
+                      {dash(d.name)}
+                    </span>
+                    <span className="block text-sm text-label-secondary">
+                      {dash(d.relation)}
+                      {d.birthdate ? ` · ${d.birthdate}` : ""}
+                    </span>
+                  </span>
+                </div>
+              ))
+            )}
           </div>
-        )}
-        {savedStatus === "idle" && savedRows.length === 0 && (
-          <EmptyState message={t("client.savedSims.empty")} />
-        )}
-        {savedStatus === "idle" && savedRows.length > 0 && (
-          <table className="w-full text-sm border-t border-b border-rule tabular">
-            <thead>
-              <tr className="text-xs uppercase tracking-widest text-ink-muted">
-                <th className="text-start font-normal py-3">
-                  {t("client.savedSims.col.name")}
-                </th>
-                <th className="text-start font-normal py-3">
-                  {t("client.savedSims.col.createdAt")}
-                </th>
-                <th className="text-start font-normal py-3">
-                  {t("client.savedSims.col.probability")}
-                </th>
-                <th className="text-start font-normal py-3">
-                  {t("client.savedSims.col.attainability")}
-                </th>
-                <th className="text-end font-normal py-3">
-                  {t("client.savedSims.col.actions")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+        </section>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section>
+            <SectionHeader>{t("client.section.assets")}</SectionHeader>
+            <div className="grouped-list">
+              {assets.length === 0 ? (
+                <EmptyState message={t("client.empty.assets")} />
+              ) : (
+                assets.map((row, i) => (
+                  <div key={`asset-${i}`} className="grouped-row">
+                    <span className="flex-1 text-[15px]">{dash(row.name)}</span>
+                    <span className="text-[15px] tabular text-label-secondary">
+                      {egpOrDash(row.amount)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section>
+            <SectionHeader>{t("client.section.debts")}</SectionHeader>
+            <div className="grouped-list">
+              {debts.length === 0 ? (
+                <EmptyState message={t("client.empty.debts")} />
+              ) : (
+                debts.map((row, i) => (
+                  <div key={`debt-${i}`} className="grouped-row">
+                    <span className="flex-1">
+                      <span className="block text-[15px] font-semibold text-label">
+                        {dash(row.name)}
+                      </span>
+                      <span className="block text-sm text-label-secondary tabular">
+                        {row.duration != null && Number.isFinite(row.duration)
+                          ? t("client.years", { n: row.duration })
+                          : "—"}
+                        {" · "}
+                        {row.interestRate != null && Number.isFinite(row.interestRate)
+                          ? `${row.interestRate}%`
+                          : "—"}
+                      </span>
+                    </span>
+                    <span className="text-[15px] tabular text-label-secondary">
+                      {egpOrDash(row.amount)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+
+        <section>
+          <SectionHeader>{t("client.section.goals")}</SectionHeader>
+          <div className="grouped-list">
+            {goals.length === 0 ? (
+              <EmptyState message={t("client.empty.goals")} />
+            ) : (
+              goals.map((g, i) => (
+                <div key={`goal-${i}`} className="grouped-row">
+                  <span className="flex-1 text-[15px] font-semibold text-label">
+                    {dash(g.name)}
+                  </span>
+                  <span className="text-[15px] tabular text-label-secondary">
+                    {egpOrDash(g.amount)}
+                  </span>
+                  <span className="text-sm text-label-tertiary tabular min-w-[60px] text-end">
+                    {dash(g.year)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section data-testid="saved-simulations">
+          <SectionHeader>{t("client.section.savedSims")}</SectionHeader>
+          {savedStatus === "loading" && (
+            <div className="grouped-list">
+              <EmptyState message={t("common.loading")} />
+            </div>
+          )}
+          {savedStatus === "error" && (
+            <div
+              role="alert"
+              className="rounded-xl bg-system-red-tint text-system-red px-4 py-3 text-sm"
+            >
+              {savedError ?? t("client.savedSims.error")}
+            </div>
+          )}
+          {savedStatus === "idle" && savedRows.length === 0 && (
+            <div className="grouped-list">
+              <EmptyState message={t("client.savedSims.empty")} />
+            </div>
+          )}
+          {savedStatus === "idle" && savedRows.length > 0 && (
+            <div className="grouped-list">
               {savedRows.map((row) => (
-                <tr
+                <div
                   key={row.id}
                   data-testid={`saved-sim-row-${row.id}`}
-                  className="border-t border-rule"
+                  className="grouped-row"
                 >
-                  <td className="py-2 font-serif">{row.name}</td>
-                  <td className="py-2 text-ink-muted">{fmtDate(row.created_at)}</td>
-                  <td className="py-2">
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[15px] font-semibold text-label truncate">
+                      {row.name}
+                    </span>
+                    <span className="block text-sm text-label-secondary">
+                      {fmtDate(row.created_at)}
+                    </span>
+                  </span>
+                  <span className="text-[15px] font-semibold tabular text-label">
                     {row.detailStatus === "loading"
                       ? "…"
                       : fmtProbabilityPct(row.probability)}
-                  </td>
-                  <td className="py-2">
-                    {row.detailStatus === "ready" && row.attainability ? (
-                      <span
-                        className={`px-2 py-0.5 text-[10px] uppercase tracking-widest ${ATTAINABILITY_CLASS[row.attainability]}`}
-                      >
-                        {attainabilityLabel(row.attainability)}
-                      </span>
-                    ) : (
-                      <span className="text-ink-muted">—</span>
-                    )}
-                  </td>
-                  <td className="py-2 text-end">
-                    <button
-                      type="button"
-                      className="text-accent text-xs hover:underline underline-offset-4"
-                      data-testid={`delete-saved-sim-${row.id}`}
-                      onClick={() => handleDeleteSaved(row)}
+                  </span>
+                  {row.detailStatus === "ready" && row.attainability ? (
+                    <span
+                      className={`pill ${ATTAINABILITY_CLASS[row.attainability]}`}
                     >
-                      {t("client.savedSims.delete")}
-                    </button>
-                  </td>
-                </tr>
+                      {attainabilityLabel(row.attainability)}
+                    </span>
+                  ) : (
+                    <span className="text-label-tertiary text-sm">—</span>
+                  )}
+                  <button
+                    type="button"
+                    className="text-system-red text-sm font-semibold hover:opacity-80"
+                    data-testid={`delete-saved-sim-${row.id}`}
+                    onClick={() => handleDeleteSaved(row)}
+                  >
+                    {t("client.savedSims.delete")}
+                  </button>
+                </div>
               ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+            </div>
+          )}
+        </section>
+      </div>
     </AppShell>
   );
 }

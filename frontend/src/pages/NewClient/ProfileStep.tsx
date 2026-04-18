@@ -8,11 +8,11 @@ import { t } from "../../i18n";
 // assets, debts, income sources, co-client, monthly expenses — most of
 // which never reach the simulation engine. Advisors bounced through
 // fields they didn't need before getting to the one that matters (risk
-// appetite). The step is now split into:
+// appetite). The step is split into:
 //
-//   - Required (always visible): six fields that drive onboarding and
-//     the first simulation — name, email, birthdate, phone, employment
-//     status, risk appetite.
+//   - Required (always visible): six fields driving onboarding and the
+//     first simulation — name, email, birthdate, phone, employment,
+//     risk appetite.
 //   - Advanced profile (collapsible <details>): everything else. State
 //     still goes to `draft` so no data is lost, but the CTA does not
 //     require the advisor to open the disclosure.
@@ -30,10 +30,10 @@ function Field({
   required?: boolean;
 }>) {
   return (
-    <div className="flex flex-col gap-2">
-      <span className="label">
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-semibold text-label-secondary">
         {label}
-        {required && <span className="text-accent"> *</span>}
+        {required && <span className="text-system-red"> *</span>}
       </span>
       {children}
     </div>
@@ -48,13 +48,15 @@ function AdvancedDossier() {
   return (
     <div className="space-y-6 pt-4">
       <div className="flex items-center gap-3">
-        <span className="text-sm font-semibold">{t("profile.dossier.coClient")}</span>
+        <span className="text-[15px] font-semibold text-label">
+          {t("profile.dossier.coClient")}
+        </span>
         <button
           type="button"
           aria-pressed={p.hasCoClient}
           aria-label={t("profile.dossier.coClient")}
           className={`w-11 h-6 rounded-full transition ${
-            p.hasCoClient ? "bg-accent" : "bg-rule"
+            p.hasCoClient ? "bg-system-green" : "bg-gray-4"
           }`}
           onClick={() => upd({ hasCoClient: !p.hasCoClient })}
         >
@@ -71,6 +73,7 @@ function AdvancedDossier() {
           <Field label={t("profile.field.fullName")}>
             <input
               className="input"
+              placeholder="Full name"
               value={p.coClient.fullName}
               onChange={(e) =>
                 dispatch(actions.updateCoClient({ fullName: e.target.value }))
@@ -120,7 +123,9 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm font-semibold">{t("profile.dossier.dependents")}</span>
+          <span className="text-[15px] font-semibold text-label">
+            {t("profile.dossier.dependents")}
+          </span>
           <button
             type="button"
             className="icon-btn-add"
@@ -133,7 +138,7 @@ function AdvancedDossier() {
         {p.dependents.map((d, i) => (
           <div
             key={`dep-${i}`}
-            className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 items-end mb-3"
+            className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end mb-3"
           >
             <Field label={t("profile.field.fullName")}>
               <input
@@ -174,7 +179,7 @@ function AdvancedDossier() {
             </Field>
             <button
               type="button"
-              className="icon-btn-remove mb-2"
+              className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeDependent(i))}
               aria-label="remove"
             >
@@ -186,7 +191,7 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm font-semibold">
+          <span className="text-[15px] font-semibold text-label">
             {t("profile.dossier.incomeSources")}
           </span>
           <button
@@ -201,7 +206,7 @@ function AdvancedDossier() {
         {p.incomeSources.map((it, i) => (
           <div
             key={`inc-${i}`}
-            className="grid grid-cols-[1fr_1fr_1fr_auto] gap-4 items-end mb-3"
+            className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end mb-3"
           >
             <Field label={t("profile.dossier.source")}>
               <input
@@ -246,7 +251,7 @@ function AdvancedDossier() {
             </Field>
             <button
               type="button"
-              className="icon-btn-remove mb-2"
+              className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeIncome(i))}
               aria-label="remove"
             >
@@ -258,7 +263,9 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm font-semibold">{t("profile.dossier.assets")}</span>
+          <span className="text-[15px] font-semibold text-label">
+            {t("profile.dossier.assets")}
+          </span>
           <button
             type="button"
             className="icon-btn-add"
@@ -271,7 +278,7 @@ function AdvancedDossier() {
         {p.assets.map((a, i) => (
           <div
             key={`asset-${i}`}
-            className="grid grid-cols-[1fr_1fr_auto] gap-4 items-end mb-3"
+            className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end mb-3"
           >
             <Field label={t("profile.dossier.asset")}>
               <input
@@ -301,7 +308,7 @@ function AdvancedDossier() {
             </Field>
             <button
               type="button"
-              className="icon-btn-remove mb-2"
+              className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeAsset(i))}
               aria-label="remove"
             >
@@ -313,7 +320,9 @@ function AdvancedDossier() {
 
       <div>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-sm font-semibold">{t("profile.dossier.debts")}</span>
+          <span className="text-[15px] font-semibold text-label">
+            {t("profile.dossier.debts")}
+          </span>
           <button
             type="button"
             className="icon-btn-add"
@@ -326,7 +335,7 @@ function AdvancedDossier() {
         {p.debts.map((d, i) => (
           <div
             key={`debt-${i}`}
-            className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 items-end mb-3"
+            className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-end mb-3"
           >
             <Field label={t("profile.dossier.debt")}>
               <input
@@ -386,7 +395,7 @@ function AdvancedDossier() {
             </Field>
             <button
               type="button"
-              className="icon-btn-remove mb-2"
+              className="icon-btn-remove mb-1"
               onClick={() => dispatch(actions.removeDebt(i))}
               aria-label="remove"
             >
@@ -427,14 +436,15 @@ export default function ProfileStep() {
 
   return (
     <>
-      <section>
-        <h3 className="font-serif text-2xl tracking-tight mb-6">
+      <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
+        <h2 className="text-xl font-semibold tracking-tight mb-5">
           {t("profile.section.required")}
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
           <Field label={t("profile.field.fullName")} required>
             <input
               className="input"
+              placeholder="Full name"
               value={p.fullName}
               onChange={(e) => upd({ fullName: e.target.value })}
             />
@@ -495,37 +505,40 @@ export default function ProfileStep() {
         </div>
       </section>
 
-      <section className="border-t border-rule pt-8 mt-12">
+      <section className="rounded-2xl bg-bg-primary ring-1 ring-separator p-6">
         <details
           open={advancedOpen}
           onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
         >
           <summary className="cursor-pointer list-none flex items-center gap-2 select-none">
-            <span aria-hidden="true" className="text-ink-muted text-xs">
-              {advancedOpen ? "–" : "+"}
+            <span
+              aria-hidden="true"
+              className={`text-label-tertiary transition-transform ${advancedOpen ? "rotate-90" : ""}`}
+            >
+              ›
             </span>
-            <span className="font-serif text-2xl tracking-tight">
+            <span className="text-xl font-semibold tracking-tight">
               {t("profile.section.dossier")}
             </span>
           </summary>
-          <p className="text-xs text-ink-muted mt-2 leading-relaxed">
+          <p className="text-sm text-label-secondary mt-2 leading-relaxed">
             {t("profile.section.dossier.help")}
           </p>
           <AdvancedDossier />
         </details>
       </section>
 
-      <div className="flex justify-end gap-6 mt-12 pt-8 border-t border-rule">
+      <div className="flex justify-end gap-4 pt-2">
         <button
           type="button"
-          className="text-sm text-ink-muted hover:text-ink hover:underline underline-offset-4"
+          className="btn-plain"
           onClick={() => nav("/clients")}
         >
           {t("profile.cta.cancel")}
         </button>
         <button
           type="button"
-          className="btn"
+          className="btn-primary"
           onClick={() => nav("/clients/new/goals")}
         >
           {t("profile.cta.proceed")}
