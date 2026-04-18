@@ -38,6 +38,10 @@ Thumbs.db
 *.sqlite3
 backend/data/*.csv
 !backend/data/.gitkeep
+# Real market data CSVs (committed — see docs/data-sources.md for provenance)
+!backend/data/abc_equity_fund.csv
+!backend/data/ebe_money_market_fund.csv
+!backend/data/inflation.csv
 
 # Logs
 *.log
