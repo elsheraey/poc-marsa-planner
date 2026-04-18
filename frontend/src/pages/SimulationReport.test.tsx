@@ -147,6 +147,88 @@ describe("SimulationReport per-scenario probability", () => {
   });
 });
 
+describe("SimulationReport moment-of-truth headline", () => {
+  it("renders a probability sentence for the active scenario", () => {
+    const r1: SimulateResult = { ...baseResult, probability_of_goal: 0.42 };
+    renderWithProviders(<SimulationReport />, {
+      preloadedState: {
+        auth: {
+          user: { id: "u1", name: "Tester", email: "t@e.com" },
+          status: "idle",
+          error: null,
+          initialized: true,
+        },
+        simulation: {
+          result: r1,
+          results: [
+            {
+              name: "Base",
+              request: {
+                duration_years: 5,
+                initial_investment: 500000,
+                monthly_investment: 20000,
+                annual_increase_pct: 0,
+                importance: "essential",
+                risk_tolerance: "high",
+                goal_target_amount: 6_000_000,
+              },
+              result: r1,
+            },
+          ],
+          status: "idle",
+          error: null,
+        },
+        draft: baseDraft as never,
+      },
+    });
+
+    const headline = screen.getByTestId("moment-of-truth-headline");
+    expect(headline).toBeTruthy();
+    // Should mention the rounded probability and the monthly contribution.
+    expect(headline.textContent).toMatch(/42/);
+  });
+
+  it("renders a 'goal met' headline when probability >= 80%", () => {
+    const r1: SimulateResult = { ...baseResult, probability_of_goal: 0.92 };
+    renderWithProviders(<SimulationReport />, {
+      preloadedState: {
+        auth: {
+          user: { id: "u1", name: "Tester", email: "t@e.com" },
+          status: "idle",
+          error: null,
+          initialized: true,
+        },
+        simulation: {
+          result: r1,
+          results: [
+            {
+              name: "Base",
+              request: {
+                duration_years: 5,
+                initial_investment: 500000,
+                monthly_investment: 20000,
+                annual_increase_pct: 0,
+                importance: "essential",
+                risk_tolerance: "high",
+                goal_target_amount: 100000,
+              },
+              result: r1,
+            },
+          ],
+          status: "idle",
+          error: null,
+        },
+        draft: baseDraft as never,
+      },
+    });
+
+    const headline = screen.getByTestId("moment-of-truth-headline");
+    expect(headline.textContent).toMatch(/92/);
+    // Goal-met branch: suggestions list is not rendered.
+    expect(screen.queryByTestId("moment-of-truth-suggestions")).toBeNull();
+  });
+});
+
 describe("SimulationReport stacking", () => {
   it("renders unstacked optimistic >= median >= pessimistic in the table", async () => {
     const { container } = renderWithProviders(<SimulationReport />, {
