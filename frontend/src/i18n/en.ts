@@ -30,6 +30,36 @@ const en: Record<string, string> = {
   "wizard.scenario": "Scenario Builder",
   "wizard.run_simulation": "Run Simulation",
 
+  "report.headline.met":
+    "Plan reaches the goal at ~{pct}% confidence.",
+  "report.headline.shortfall":
+    "At EGP {monthly}/month, this plan reaches the goal with ~{pct}% confidence.",
+  "report.headline.no_goal":
+    "No goal amount set — the projection below is informational.",
+  "report.suggest.monthly":
+    "Raise the monthly contribution to about EGP {monthly} to reach the goal at 80% confidence (approx.).",
+  "report.suggest.year":
+    "Keep contributions as-is and extend the horizon to {year} — the median projection reaches the goal that year.",
+  "report.suggest.none":
+    "No simple inversion available — re-run with different inputs to explore.",
+
+  "report.action.present": "Present to client",
+  "report.action.exit_present": "Exit presentation mode",
+  "report.action.print": "Print",
+  "report.action.save": "Save simulation",
+  "report.action.back": "Back to scenarios",
+
+  "report.section.probability": "Goals Achievement Probability",
+  "report.section.projection": "Projection",
+  "report.section.scenarios": "Scenarios",
+
+  "landing.title": "Answer your client's next question in thirty seconds.",
+  "landing.subtitle":
+    "Marsa turns your Monte Carlo into a conversation — in Arabic or English.",
+  "landing.body":
+    "Built for Egyptian financial advisors to run credible, inflation-aware plans in front of the client. Real EGP, real regimes, real decisions.",
+  "landing.cta": "Advisor sign-in",
+
   "locale.toggle": "العربية",
 };
 

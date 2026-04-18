@@ -32,6 +32,36 @@ const ar: Record<string, string> = {
   "wizard.scenario": "منشئ السيناريوهات",
   "wizard.run_simulation": "تشغيل المحاكاة",
 
+  "report.headline.met":
+    "الخطة تحقق الهدف باحتمال ~{pct}٪.",
+  "report.headline.shortfall":
+    "بمساهمة شهرية {monthly} جنيهًا، تحقق الخطة الهدف باحتمال ~{pct}٪.",
+  "report.headline.no_goal":
+    "لم يُحدَّد مبلغ الهدف — الإسقاطات أدناه للعرض فقط.",
+  "report.suggest.monthly":
+    "ارفع المساهمة الشهرية إلى حوالي {monthly} جنيهًا لبلوغ الهدف باحتمال 80٪ (تقديري).",
+  "report.suggest.year":
+    "إبقِ المساهمة كما هي ومدِّد الأفق حتى عام {year} — يصل المتوسط المتوقع إلى الهدف في تلك السنة.",
+  "report.suggest.none":
+    "لا يوجد حل مباشر — جرِّب إعادة التشغيل بمدخلات مختلفة.",
+
+  "report.action.present": "عرض للعميل",
+  "report.action.exit_present": "الخروج من وضع العرض",
+  "report.action.print": "طباعة",
+  "report.action.save": "حفظ المحاكاة",
+  "report.action.back": "العودة إلى السيناريوهات",
+
+  "report.section.probability": "احتمال تحقيق الأهداف",
+  "report.section.projection": "الإسقاط",
+  "report.section.scenarios": "السيناريوهات",
+
+  "landing.title": "أجب عن سؤال عميلك التالي في ثلاثين ثانية.",
+  "landing.subtitle":
+    "أوبتوفوليو يحوِّل محاكاتك إلى حوار — بالعربية أو الإنجليزية.",
+  "landing.body":
+    "مصمَّم للمستشارين الماليين في مصر لتشغيل خطط موثوقة تراعي التضخم أمام العميل. جنيه مصري حقيقي، أنظمة اقتصادية حقيقية، قرارات حقيقية.",
+  "landing.cta": "دخول المستشار",
+
   "locale.toggle": "English",
 };
 

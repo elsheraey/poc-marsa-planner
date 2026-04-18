@@ -16,6 +16,7 @@ import DonutChart from "../components/DonutChart";
 import { useAppSelector } from "../store";
 import { fmtEGP } from "../utils/format";
 import { t } from "../i18n";
+import { computeInversion } from "../utils/inversion";
 import type { SimulateResult } from "../api/client";
 
 // Product constraint: the Goals Achievement Probability grid renders at most
@@ -87,10 +88,12 @@ function attainabilityLabel(
 ): string {
   const key = `report.${attainability}`;
   const localised = t(key);
-  // Use `replaceAll` (via the /_/g regex) so both underscores in
-  // "out_of_reach" are replaced; an earlier `replace("_", " ")` only hit
-  // the first and rendered "out of_reach".
-  return localised === key ? attainability.replaceAll(/_/g, " ") : localised;
+  // Use the global-regex form of replace so both underscores in
+  // "out_of_reach" are replaced. An earlier `replace("_", " ")` passed a
+  // literal string and only hit the first underscore — "out of_reach"
+  // shipped briefly. (ES2020 target lacks String.prototype.replaceAll;
+  // /_/g is equivalent.)
+  return localised === key ? attainability.replace(/_/g, " ") : localised;
 }
 
 export default function SimulationReport() {
@@ -103,6 +106,7 @@ export default function SimulationReport() {
   const draftProfile = useAppSelector((s) => s.draft.profile);
   const [tab, setTab] = useState<Tab>("chart");
   const [activeScenario, setActiveScenario] = useState(0);
+  const [presenting, setPresenting] = useState(false);
 
   // One card per backend-returned scenario (truncated to MAX). The probability
   // comes straight from `result.probability_of_goal` — no per-index synthesis.
@@ -175,72 +179,142 @@ export default function SimulationReport() {
     );
   }
 
-  return (
-    <AppShell title="New Client">
-      <WizardTabs basePath="/clients/new" />
+  // Moment-of-truth inversion for the active scenario. Uses the scenario
+  // request (monthly, initial, goal_target_amount) alongside the backend
+  // projection to recommend a required-monthly or achievable-year. Falls
+  // back gracefully when fields are missing (e.g. no goal target).
+  const activeRequest = results[activeScenario]?.request ?? results[0]?.request;
+  const inversion = computeInversion({
+    goalTargetAmount: activeRequest?.goal_target_amount,
+    currentMonthly: activeRequest?.monthly_investment ?? 0,
+    initialInvestment: activeRequest?.initial_investment ?? 0,
+    result: activeResult,
+  });
 
-      <section className="rounded-2xl bg-report-gradient text-white relative overflow-hidden p-8">
-        <svg
-          className="absolute inset-0 w-full h-full opacity-60"
-          viewBox="0 0 1200 240"
-          preserveAspectRatio="none"
+  let headlineKey: string;
+  if (inversion.probabilityPct == null) {
+    headlineKey = "report.headline.no_goal";
+  } else if (inversion.meetsEightyPct) {
+    headlineKey = "report.headline.met";
+  } else {
+    headlineKey = "report.headline.shortfall";
+  }
+  const headline = t(headlineKey, {
+    pct: inversion.probabilityPct ?? 0,
+    monthly: activeRequest?.monthly_investment
+      ? fmtEGP(activeRequest.monthly_investment)
+      : "—",
+  });
+
+  const suggestions: string[] = [];
+  if (!inversion.meetsEightyPct && inversion.requiredMonthly != null) {
+    suggestions.push(
+      t("report.suggest.monthly", {
+        monthly: fmtEGP(Math.round(inversion.requiredMonthly / 1000) * 1000),
+      })
+    );
+  }
+  if (!inversion.meetsEightyPct && inversion.achievableYear != null) {
+    suggestions.push(
+      t("report.suggest.year", { year: inversion.achievableYear })
+    );
+  }
+
+  function handlePrint() {
+    if (typeof window !== "undefined") window.print();
+  }
+
+  return (
+    <AppShell title="New Client" focus={presenting}>
+      {!presenting && <WizardTabs basePath="/clients/new" />}
+
+      {/*
+        Moment-of-truth headline. Replaces the decorative purple-hero +
+        cosmetic button row. The advisor now sees one sentence answering
+        "can my client afford this?" as the first thing on the page.
+      */}
+      <section
+        className="rounded-2xl bg-report-gradient text-white p-8 print:bg-white print:text-ink"
+        data-testid="moment-of-truth"
+      >
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold opacity-80 mb-1 print:opacity-100">
+              {t("report.title")}
+            </div>
+            <div className="text-lg font-bold truncate">
+              {draftProfile.fullName || "New client"}
+            </div>
+          </div>
+          {activeResult.attainability && (
+            <span
+              className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[activeResult.attainability]}`}
+              title="Attainability band based on P15 / median real-terms projection"
+            >
+              {attainabilityLabel(activeResult.attainability)}
+            </span>
+          )}
+        </div>
+
+        <p
+          className="text-2xl md:text-3xl font-extrabold leading-snug max-w-3xl"
+          data-testid="moment-of-truth-headline"
         >
-          {Array.from({ length: 30 }).map((_, i) => (
-            <path
-              key={i}
-              d={`M0 ${200 - i * 2} C 300 ${120 + i * 2}, 900 ${200 - i * 3}, 1200 ${
-                80 + i * 4
-              }`}
-              stroke="white"
-              strokeWidth="0.6"
-              fill="none"
-              opacity={0.5 - i * 0.015}
-            />
-          ))}
-        </svg>
-        <div className="relative">
-          <div className="text-xs font-semibold opacity-70 mb-1">Report</div>
-          <div className="text-xl font-bold">{draftProfile.fullName || "New client"}</div>
-          <div className="text-xs opacity-80">{draftProfile.email || "—"}</div>
+          {headline}
+        </p>
+
+        {suggestions.length > 0 && (
+          <ul
+            className="mt-4 space-y-1 text-sm md:text-base text-white/95 print:text-ink"
+            data-testid="moment-of-truth-suggestions"
+          >
+            {suggestions.map((s) => (
+              <li key={s} className="flex items-start gap-2">
+                <span aria-hidden="true" className="mt-1">•</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center gap-2 print:hidden">
+          <button
+            type="button"
+            className="h-9 px-4 rounded-lg bg-white/95 text-primary-600 text-sm font-semibold hover:bg-white"
+            onClick={() => setPresenting((p) => !p)}
+            aria-pressed={presenting}
+          >
+            {presenting ? t("report.action.exit_present") : t("report.action.present")}
+          </button>
+          <button
+            type="button"
+            className="h-9 px-4 rounded-lg border border-white/70 text-white text-sm font-semibold hover:bg-white/10"
+            onClick={handlePrint}
+          >
+            {t("report.action.print")}
+          </button>
+          <button
+            type="button"
+            className="h-9 px-4 rounded-lg border border-white/70 text-white text-sm font-semibold hover:bg-white/10"
+            onClick={() =>
+              // eslint-disable-next-line no-alert
+              alert(
+                "Snapshot save is not yet wired to the backend. Coming in the pilot release."
+              )
+            }
+            title="Requires backend: save the current simulation as a client-shareable snapshot"
+          >
+            {t("report.action.save")}
+          </button>
         </div>
       </section>
 
-      <div className="card mt-[-28px] relative z-10 py-3 flex items-center justify-between">
-        <input
-          className="bg-transparent font-semibold text-sm focus:outline-none"
-          defaultValue="Simulation report 1"
-        />
-        <div className="flex items-center gap-3 text-xs">
-          <button className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border font-semibold">
-            <span>⧉</span> Overview
-          </button>
-          <button className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border font-semibold">
-            <span>🖨</span> Print
-          </button>
-        </div>
-      </div>
-
-      <section className="card mt-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold">Goals Achievement Probability</h3>
-            {activeResult.attainability && (
-              <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[activeResult.attainability]}`}
-                title="Attainability band based on P15 / median real-terms projection"
-              >
-                {attainabilityLabel(activeResult.attainability)}
-              </span>
-            )}
-          </div>
-          <button className="text-muted">⋮</button>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-green-500 mb-5">
-          <span className="w-2 h-2 rounded-full bg-green-500" />
-          10,000 simulations run for {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"}
-        </div>
-        <div className="text-xs text-primary-500 font-semibold mb-5">
-          Probability of funding all goals
+      <section className="card mt-6 print:break-inside-avoid">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold">{t("report.section.scenarios")}</h3>
+          <span className="text-xs text-muted">
+            {scenarioCards.length} scenario{scenarioCards.length === 1 ? "" : "s"} · N=10k
+          </span>
         </div>
 
         <div
@@ -249,15 +323,22 @@ export default function SimulationReport() {
           data-testid="scenario-cards"
         >
           {scenarioCards.map((sc, i) => (
-            <div
+            <button
+              type="button"
               key={sc.name + i}
-              className="flex flex-col items-center"
+              className={`flex flex-col items-center p-3 rounded-xl border ${
+                i === activeScenario
+                  ? "border-primary-500 bg-primary-50"
+                  : "border-border hover:bg-surface"
+              }`}
               data-testid={`scenario-card-${i}`}
               data-scenario-name={sc.name}
               data-probability={sc.probability}
+              onClick={() => setActiveScenario(i)}
+              aria-pressed={i === activeScenario}
             >
               <div className="text-sm font-medium mb-3 text-center">{sc.name}</div>
-              <DonutChart percent={sc.probability} />
+              <DonutChart percent={sc.probability} size={90} stroke={8} />
               {sc.result.attainability && (
                 <span
                   className={`mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${ATTAINABILITY_CLASS[sc.result.attainability]}`}
@@ -266,18 +347,7 @@ export default function SimulationReport() {
                   {attainabilityLabel(sc.result.attainability)}
                 </span>
               )}
-              <button
-                className={`mt-3 px-4 h-8 rounded-full text-xs font-semibold ${
-                  i === activeScenario
-                    ? "text-primary-500"
-                    : "bg-primary-500 text-white"
-                }`}
-                onClick={() => setActiveScenario(i)}
-                aria-pressed={i === activeScenario}
-              >
-                {i === activeScenario ? "Displayed" : "Display"}
-              </button>
-            </div>
+            </button>
           ))}
         </div>
       </section>
