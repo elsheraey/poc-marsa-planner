@@ -3,9 +3,17 @@
 // precision, or the compact-notation rule in one place. Backend responses
 // are never re-shaped here — format at render time only.
 
+import { getLocale } from "../i18n";
+
+// BCP-47 locale tags. `ar-EG` renders Arabic-Indic digits and the "ج.م"
+// currency symbol — only use it when the UI is actually in Arabic.
+function numberLocale(): string {
+  return getLocale() === "ar" ? "ar-EG" : "en-EG";
+}
+
 export const fmtEGP = (value: number, opts: { compact?: boolean } = {}) => {
   if (!Number.isFinite(value)) return "—";
-  return new Intl.NumberFormat("ar-EG", {
+  return new Intl.NumberFormat(numberLocale(), {
     style: "currency",
     currency: "EGP",
     notation: opts.compact ? "compact" : "standard",
@@ -16,7 +24,7 @@ export const fmtEGP = (value: number, opts: { compact?: boolean } = {}) => {
 export const fmtPct = (value: number | null) =>
   value == null
     ? "—"
-    : new Intl.NumberFormat("en-US", {
+    : new Intl.NumberFormat(numberLocale(), {
         style: "percent",
         maximumFractionDigits: 1,
       }).format(value);
