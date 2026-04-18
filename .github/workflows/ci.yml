@@ -63,10 +63,10 @@ jobs:
         with:
           context: ./backend
           push: false
-          tags: marsa-rfa-backend:ci
+          tags: marsa-planner-backend:ci
       - name: Build frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: false
-          tags: marsa-rfa-frontend:ci
+          tags: marsa-planner-frontend:ci
