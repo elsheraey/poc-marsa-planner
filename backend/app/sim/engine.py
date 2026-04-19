@@ -44,8 +44,48 @@ def fit_normal(returns: np.ndarray) -> FitResult:
     return FitResult("norm", (mu, sigma), stats.norm)
 
 
+def _recenter_to_empirical_mean(name: str, params: tuple, returns: np.ndarray) -> tuple:
+    """Shift the fitted distribution's location so E[X] matches sample mean.
+
+    Background: `scipy.stats.{t,laplace}.fit` is MLE-based and, on a sample
+    with an asymmetric heavy tail (common after CPI-deflation for Egyptian
+    MMF / equity — see investigation doc §9), picks a location that is
+    closer to the sample MEDIAN than the sample MEAN. That's statistically
+    correct for shape-fitting but a disaster for Monte Carlo CAGR — the
+    simulated arithmetic mean of monthly returns drives the projection,
+    not the median.
+
+    We preserve the fitted (df, scale) and just set the location so that
+    the resulting distribution has the same sample mean as the data. For
+    `norm` the fit already matches by construction; this is a no-op.
+
+    For `t(df, loc, scale)`: E[X] = loc when df>1, so shifting loc to
+    sample mean makes the moment match exactly. For `laplace(loc, scale)`:
+    E[X] = loc, same.
+    """
+    if name == "norm":
+        return params  # norm MLE already matches sample mean
+    sample_mean = float(np.mean(returns))
+    if name == "t":
+        df, _loc, scale = params
+        return (df, sample_mean, scale)
+    if name == "laplace":
+        _loc, scale = params
+        return (sample_mean, scale)
+    return params  # unknown family — don't touch
+
+
 def fit_best(returns: np.ndarray, candidates: tuple[str, ...] = ("norm", "t", "laplace")) -> FitResult:
-    """Pick the candidate with the best Kolmogorov-Smirnov p-value."""
+    """Pick the candidate with the best Kolmogorov-Smirnov p-value, then
+    recenter its location to preserve the sample mean.
+
+    KS selection gives us the best SHAPE (fat tails vs normal vs double-
+    exponential); recentering gives us the correct MEAN for compounding.
+    Without the recenter step the projection over-reports terminal value
+    whenever the residual asymmetry in the post-deflation series pulls
+    the MLE location above the empirical mean — the subtle remainder of
+    the devaluation bias, even after ±8% winsorization.
+    """
     best: FitResult | None = None
     best_p = -1.0
     for name in candidates:
@@ -56,7 +96,8 @@ def fit_best(returns: np.ndarray, candidates: tuple[str, ...] = ("norm", "t", "l
             best_p = p
             best = FitResult(name, params, dist)
     assert best is not None
-    return best
+    recentered = _recenter_to_empirical_mean(best.name, best.params, returns)
+    return FitResult(best.name, recentered, best.dist)
 
 
 def simulate_monthly(

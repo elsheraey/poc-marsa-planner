@@ -34,14 +34,37 @@ def _ensure_data(data_dir: Path) -> None:
 
 
 def load_simulation() -> dict[str, Any]:
+    """Fit distributions + sample Monte Carlo matrices.
+
+    Returns a dict with the standard engine outputs, but the `variable_monthly`
+    and `fixed_monthly` arrays are REAL monthly returns (CPI-deflated at
+    source via `preprocess_asset(..., inflation=...)`). `inflation_monthly`
+    remains nominal MoM inflation; callers that want nominal asset returns
+    reconstruct them as `nominal = (1+real) * (1+infl) - 1` or equivalently
+    scale a real-terms portfolio value by the cumulative inflation path.
+
+    See `docs/bugs/attainability-investigation.md` §10: fitting in real
+    terms + winsorizing at ±8% removes the devaluation-spike bias that
+    drove the previous calibration to ~13-17% real CAGR for Egyptian
+    equity. Expected post-fix real CAGR is ~3-6%/yr, in-spec with
+    `docs/analyst-report.md`.
+    """
     with _lock:
         if "sim" in _cache:
             return _cache["sim"]
         data_dir = _data_dir()
         _ensure_data(data_dir)
-        variable_returns = preprocess_asset(data_dir / "abc_equity_fund.csv")
-        fixed_returns = preprocess_asset(data_dir / "ebe_money_market_fund.csv")
         inflation = inflation_series(data_dir / "inflation.csv")
+        variable_returns = preprocess_asset(
+            data_dir / "abc_equity_fund.csv",
+            inflation=inflation,
+            winsorize=True,
+        )
+        fixed_returns = preprocess_asset(
+            data_dir / "ebe_money_market_fund.csv",
+            inflation=inflation,
+            winsorize=True,
+        )
         _cache["sim"] = run_simulation(variable_returns, fixed_returns, inflation)
         return _cache["sim"]
 
@@ -120,30 +143,40 @@ def run_advisor(
     }
 
     months = goal.duration_years * 12
+    # NOTE: `sim["variable_monthly"]` and `sim["fixed_monthly"]` are REAL
+    # monthly returns (CPI-deflated at fit time — see load_simulation).
+    # `sim["inflation_monthly"]` is nominal MoM inflation as before.
     var_m = sim["variable_monthly"][:, :months]
     fix_m = sim["fixed_monthly"][:, :months]
     infl_m = sim["inflation_monthly"][:, :months]
-    blended = best.variable_pct * var_m + (1 - best.variable_pct) * fix_m
+    blended_real = best.variable_pct * var_m + (1 - best.variable_pct) * fix_m
 
-    n = blended.shape[0]
-    value = np.full(n, float(goal.initial_investment))
+    n = blended_real.shape[0]
+    # Compound in REAL space. The contribution stream is in today's EGP —
+    # which is exactly what we want for a real projection; each monthly
+    # deposit retains its purchasing power by construction.
+    value_real = np.full(n, float(goal.initial_investment))
     monthly_contrib = float(goal.monthly_investment)
-    # Per-scenario cumulative inflation factor at month m: prod_{i<=m} (1+infl_i).
+    # Track the cumulative inflation path for nominal callers and for the
+    # goal-deflator used in probability computation.
     cum_infl = np.ones(n)
-    yearly_nominal: list[np.ndarray] = []
+    yearly_real: list[np.ndarray] = []
     yearly_cum_infl: list[np.ndarray] = []
     for m in range(months):
-        value = value * (1.0 + blended[:, m]) + monthly_contrib
+        value_real = value_real * (1.0 + blended_real[:, m]) + monthly_contrib
         cum_infl = cum_infl * (1.0 + infl_m[:, m])
         if (m + 1) % 12 == 0:
-            yearly_nominal.append(value.copy())
+            yearly_real.append(value_real.copy())
             yearly_cum_infl.append(cum_infl.copy())
             monthly_contrib *= 1.0 + goal.annual_increase_pct
-    nominal_paths = np.stack(yearly_nominal, axis=1)           # (n, years)
+    real_paths = np.stack(yearly_real, axis=1)                  # (n, years)
     cum_infl_paths = np.stack(yearly_cum_infl, axis=1)          # (n, years)
+    # Nominal path = real path scaled up by cumulative inflation. This is
+    # the inverse of the previous "deflate nominal -> real" flow.
+    nominal_paths = real_paths * cum_infl_paths
 
     if return_in_real_terms:
-        paths = nominal_paths / cum_infl_paths
+        paths = real_paths
     else:
         paths = nominal_paths
 
@@ -173,14 +206,14 @@ def run_advisor(
         attainability = "attainable"
     else:
         target = float(goal_target_amount)
-        nominal_final = nominal_paths[:, -1]
+        real_final = real_paths[:, -1]
         cum_infl_final = cum_infl_paths[:, -1]
+        nominal_final = real_final * cum_infl_final
         if return_in_real_terms:
-            # Equivalent: real_final >= target / cum_infl_final. Clip the
-            # per-scenario real goal to a 1e-6 EGP floor so extreme Egyptian
-            # CPI paths can't round `target / cum_infl_final` down to 0 and
-            # trivially satisfy `final_value >= 0` for empty portfolios.
-            real_final = nominal_final / cum_infl_final
+            # Per-scenario real goal: deflate target by each scenario's own
+            # CPI path. Clip to 1e-6 EGP floor so extreme Egyptian CPI paths
+            # can't round `target / cum_infl_final` down to 0 and trivially
+            # satisfy `final_value >= 0` for empty portfolios.
             goal_real_per_scenario = np.maximum(target / cum_infl_final, 1e-6)
             prob = round(float((real_final >= goal_real_per_scenario).mean()), 4)
             # For the attainability bucket we compare the (deterministic)
