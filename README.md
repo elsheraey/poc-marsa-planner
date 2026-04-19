@@ -1,8 +1,6 @@
 # Marsa: Financial Planning for Egyptian Wealth Advisors
 
-Marsa is a goal-based Monte Carlo planning tool for wealth advisors serving Egyptian clients. Advisors enter a client profile, goals, and scenarios. Marsa runs ten thousand inflation-adjusted simulations against real Egyptian market data (EGX30, CBE rates, CAPMAS CPI) and returns honest attainability verdicts: attainable, aspirational, or out of reach. When a goal misses, Marsa's inversion endpoint tells the advisor exactly what monthly savings or retirement-age change would close the gap.
-
-Marsa is **not a robo-advisor**. It does not hold custody, touch brokerage accounts, or execute trades. Every output is a plan. The human advisor owns the recommendation.
+Marsa is a goal-based Monte Carlo planning tool for wealth advisors serving Egyptian clients. Advisors enter a client profile, goals, and scenarios. Marsa runs ten thousand inflation-adjusted simulations against real Egyptian market data (EGX30, CBE rates, CAPMAS CPI) and returns honest attainability verdicts: attainable, aspirational, or out of reach.
 
 ## Context
 
@@ -23,8 +21,8 @@ Most Egyptians do not have access to a financial advisor. They do have savings g
 
 ### Who should care
 
-- Banks and asset managers such as **Azimut Group**, **QNB Egypt**, **CIB Egypt**, and **National Bank of Egypt**, especially if their relationship managers still plan in Excel.
-- Brokerage-first fintechs such as **Thndr**, **Sarwa**, and other MENA players. Marsa slots in as the "should I invest, and how much?" layer above execution.
+- Banks and asset managers such as **[Azimut Group](https://www.azimut-group.com)**, **[QNB Egypt](https://www.qnbalahli.com)**, **[CIB Egypt](https://www.cibeg.com)**, and **[National Bank of Egypt](https://www.nbe.com.eg)**, especially if their relationship managers still plan in Excel.
+- Brokerage-first fintechs such as **[Thndr](https://www.thndr.app)**, **[Sarwa](https://www.sarwa.co)**, and other MENA players. Marsa slots in as the "should I invest, and how much?" layer above execution.
 - Family offices and independent advisors serving Egyptian HNW clients.
 - Any team ready to build the consumer-facing version.
 
