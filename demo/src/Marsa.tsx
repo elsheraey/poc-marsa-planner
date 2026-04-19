@@ -7,6 +7,13 @@ import {
   useCurrentFrame,
 } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Cairo";
+// @ts-expect-error — .mjs shared with tts.mjs; no .d.ts but the shape is
+// trivial and the Remotion bundler resolves ESM fine.
+import { SECTIONS, defaultDurationMs } from "./sections.mjs";
+// Timing manifest written by demo/capture.ts — pairs each section id
+// with a duration_ms. Captions are NOT read from here (they come from
+// SECTIONS above, which is the single source of truth for narration
+// text so captions and voiceover never drift).
 import manifest from "./walkthrough.manifest.json";
 
 // Cairo is the Marsa brand face. 500 for body / captions, 700 for bar
@@ -30,16 +37,42 @@ const BRAND = {
 
 const FPS = 30;
 
-// Per-section frame counts derived from the capture manifest. No voice
-// this pass — durations come straight from the capture-side minimums
-// in demo/capture.ts's SECTIONS table.
-type ManifestSection = {
-  id: string;
-  caption: string;
-  duration_ms: number;
-};
-const sections = (manifest as { sections: ManifestSection[] }).sections;
-const sectionFrames: number[] = sections.map((s) =>
+// 1-second title buffer at the head, 2-second end-card buffer at the
+// tail. Both get rendered as plain Remotion Sequences around the
+// section stack (see Marsa composition below).
+const TITLE_FRAMES = Math.round(1 * FPS);
+const END_FRAMES = Math.round(2 * FPS);
+
+// ---------------------------------------------------------------------
+// Section timing resolution.
+//
+// `walkthrough.manifest.json` is always written by demo/capture.ts and
+// carries the per-section duration_ms (sourced from the voiceover
+// manifest when available, else `defaultDurationMs(text)`). If the
+// manifest is missing a section (e.g. schema drift) we fall back to
+// the same word-count heuristic right here so the Remotion composition
+// still renders something sane.
+// ---------------------------------------------------------------------
+type SectionShape = { id: string; text: string };
+type ManifestSection = { id: string; duration_ms: number };
+const manifestSections: ManifestSection[] =
+  (manifest as { sections?: ManifestSection[] }).sections ?? [];
+
+function resolveSectionDurationMs(s: SectionShape): number {
+  const row = manifestSections.find((x) => x.id === s.id);
+  if (row && Number.isFinite(row.duration_ms) && row.duration_ms > 0) {
+    return row.duration_ms;
+  }
+  return defaultDurationMs(s.text) as number;
+}
+
+const sectionList = (SECTIONS as SectionShape[]).map((s) => ({
+  id: s.id,
+  caption: s.text,
+  duration_ms: resolveSectionDurationMs(s),
+}));
+
+const sectionFrames: number[] = sectionList.map((s) =>
   Math.round((s.duration_ms / 1000) * FPS)
 );
 const cumulativeStart: number[] = sectionFrames.reduce<number[]>(
@@ -49,28 +82,32 @@ const cumulativeStart: number[] = sectionFrames.reduce<number[]>(
   },
   []
 );
-export const TOTAL_FRAMES = sectionFrames.reduce((s, f) => s + f, 0);
+const BODY_FRAMES = sectionFrames.reduce((s, f) => s + f, 0);
+export const TOTAL_FRAMES = TITLE_FRAMES + BODY_FRAMES + END_FRAMES;
 
-// Scenario-card focus coordinates per report screenshot. The report's
-// moment-of-truth headline card changes height between "attainable" /
-// "out of reach" (the latter adds a suggestion line), which shifts the
-// three scenario cards below it by ~40 px. We hand-tune per shot so
-// the Remotion ring sits tight around the active card in each frame.
+// Scenario-card focus coordinates per report screenshot. The three
+// scenario-comparison shots (04_scenario1 / 05_scenario2 /
+// 06_scenario3) are the same underlying Report page with the
+// matching card promoted to active; Remotion draws a gold ring over
+// the focused row so the viewer's eye lands on the right card.
 //
 // Values are in the 1920×1080 source-pixel space — no scaling needed.
+// The y-offsets are tuned per-shot because the moment-of-truth
+// headline changes height between "attainable" / "out of reach"
+// verdicts, which shifts the three scenario cards below it by ~40 px.
 const SCENARIO_RING_COORDS: Record<
   string,
   { x: number; y: number; width: number; height: number }
 > = {
-  "12_auc": { x: 408, y: 514, width: 1112, height: 80 },
-  "13_guc": { x: 408, y: 560, width: 1112, height: 80 },
-  "14_cairo": { x: 408, y: 648, width: 1112, height: 80 },
+  "04_scenario1": { x: 408, y: 514, width: 1112, height: 80 },
+  "05_scenario2": { x: 408, y: 560, width: 1112, height: 80 },
+  "06_scenario3": { x: 408, y: 648, width: 1112, height: 80 },
 };
 
 // ---------------------------------------------------------------------
 // SectionScene — renders one still image with a subtle Ken-Burns zoom,
 // a lower-third caption bar, and an optional az-gold ring around a
-// specific scenario card for sections 12–14.
+// specific scenario card for sections 04–06.
 // ---------------------------------------------------------------------
 const SectionScene: React.FC<{
   id: string;
@@ -124,7 +161,7 @@ const SectionScene: React.FC<{
         />
       </AbsoluteFill>
 
-      {/* Scenario-card ring + dim on non-focus cards for sections 12/13/14 */}
+      {/* Scenario-card ring for sections 04/05/06 */}
       {ringCoords && <ScenarioHighlight coords={ringCoords} />}
 
       {/* Lower-third caption bar */}
@@ -167,7 +204,7 @@ const ScenarioHighlight: React.FC<{
 // ---------------------------------------------------------------------
 // LowerThirdCaption — semi-opaque black bar along the bottom third
 // with a 3px az-gold hairline on top. Caption text is Cairo, white,
-// 24 px (~text-2xl at the 1920×1080 design grid), center-aligned,
+// ~text-2xl at the 1920×1080 design grid, center-aligned,
 // max-width 1400 px. Fades in over 10 frames on section start and
 // fades out over 10 frames at section end.
 // ---------------------------------------------------------------------
@@ -201,7 +238,7 @@ const LowerThirdCaption: React.FC<{
           opacity,
           transform: `translateY(${translate}px)`,
           width: "100%",
-          background: "rgba(0,0,0,0.7)",
+          background: "rgba(0,0,0,0.75)",
           borderTop: `3px solid ${BRAND.gold}`,
           padding: "28px 80px 36px 80px",
           display: "flex",
@@ -228,7 +265,56 @@ const LowerThirdCaption: React.FC<{
 };
 
 // ---------------------------------------------------------------------
-// EndCard — section 17_tag. Full black background, Marsa wordmark in
+// TitleCard — 1-second opener. Black canvas, Marsa wordmark, hairline
+// az-gold underline. Holds for ~20 frames then fades out as the first
+// section scene fades in.
+// ---------------------------------------------------------------------
+const TitleCard: React.FC<{ duration: number }> = ({ duration }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(
+    frame,
+    [0, 6, duration - 6, duration],
+    [0, 1, 1, 0],
+    { extrapolateRight: "clamp", extrapolateLeft: "clamp" }
+  );
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: BRAND.black,
+        color: BRAND.white,
+        justifyContent: "center",
+        alignItems: "center",
+        fontFamily,
+        opacity,
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            fontSize: 140,
+            fontWeight: 800,
+            letterSpacing: -3,
+            lineHeight: 1,
+          }}
+        >
+          Marsa
+        </div>
+        <div
+          style={{
+            width: 200,
+            height: 6,
+            background: BRAND.gold,
+            borderRadius: 3,
+            margin: "22px auto 0 auto",
+          }}
+        />
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------
+// EndCard — section 09_tag. Full black background, Marsa wordmark in
 // Cairo extra-bold 180 px white, az-gold underline mark beneath. The
 // wordmark scales from 0.95 → 1.00 over the first 30 frames for a
 // subtle settle.
@@ -298,10 +384,9 @@ const EndCard: React.FC<{ duration: number }> = ({ duration }) => {
 };
 
 // ---------------------------------------------------------------------
-// Root composition — 17 section scenes back-to-back, no audio, no
-// title buffer. The last section (17_tag) is rendered as a pure
-// Remotion EndCard, not the captured PNG — the PNG is kept as a
-// fallback if the render ever needs to swap back.
+// Root composition — 1-s title card, 9 section scenes back-to-back,
+// 2-s end card. The final section (09_tag) is rendered as a pure
+// Remotion EndCard (no screenshot needed) per the spec.
 // ---------------------------------------------------------------------
 type Props = {
   lang?: "en"; // AR deferred — kept for forward-compat.
@@ -313,13 +398,19 @@ type Props = {
 export const Marsa: React.FC<Props> = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BRAND.canvas }}>
-      {sections.map((s, i) => {
-        const from = cumulativeStart[i];
+      {/* 1-s opener title card */}
+      <Sequence from={0} durationInFrames={TITLE_FRAMES}>
+        <TitleCard duration={TITLE_FRAMES} />
+      </Sequence>
+
+      {/* Body: 9 narrated sections */}
+      {sectionList.map((s, i) => {
+        const from = TITLE_FRAMES + cumulativeStart[i];
         const duration = sectionFrames[i];
-        const isEnd = s.id === "17_tag";
+        const isTag = s.id === "09_tag";
         return (
           <Sequence key={s.id} from={from} durationInFrames={duration}>
-            {isEnd ? (
+            {isTag ? (
               <EndCardWithCaption caption={s.caption} duration={duration} />
             ) : (
               <SectionScene
@@ -332,6 +423,14 @@ export const Marsa: React.FC<Props> = () => {
           </Sequence>
         );
       })}
+
+      {/* 2-s tail end card (pure brand, no caption) */}
+      <Sequence
+        from={TITLE_FRAMES + BODY_FRAMES}
+        durationInFrames={END_FRAMES}
+      >
+        <EndCard duration={END_FRAMES} />
+      </Sequence>
     </AbsoluteFill>
   );
 };
