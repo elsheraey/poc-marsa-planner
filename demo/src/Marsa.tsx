@@ -376,7 +376,7 @@ const EndCard: React.FC<{ duration: number }> = ({ duration }) => {
             letterSpacing: 0.5,
           }}
         >
-          Egyptian planning.
+          Financial planning.
         </div>
       </div>
     </AbsoluteFill>

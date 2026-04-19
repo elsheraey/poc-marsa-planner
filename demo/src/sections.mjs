@@ -46,7 +46,7 @@ export const SECTIONS = [
   },
   {
     id: "09_tag",
-    text: "Marsa. Egyptian planning, built for the real conversation.",
+    text: "Marsa. Financial planning, built for the real conversation.",
   },
 ];
 
