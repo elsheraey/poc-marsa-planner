@@ -30,6 +30,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from "no
 import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
+import { SECTIONS as SHARED_SECTIONS } from "./src/sections.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ASSETS = resolve(__dirname, "assets");
@@ -47,7 +48,10 @@ const EN_VOICE = "nPczCjzI2devNBz1zQrb"; // Brian
 const EN_MODEL = "eleven_v3";
 
 // ---------------------------------------------------------------------
-// Section-keyed English script.
+// Section-keyed English script — re-exported from the shared source of
+// truth (demo/src/sections.mjs) so captions and voiceover are one
+// string each. Any edit to the narration lives there; both this module
+// and the Remotion composition read the same array.
 //
 // Each entry ends on a natural breath point so the screenshot cut
 // between sections is also an audible silence (≈60–120 ms). The
@@ -55,44 +59,7 @@ const EN_MODEL = "eleven_v3";
 // uses the cumulative start frames as <Sequence from=...> offsets, so
 // each section's visual swaps exactly when its sentence ends.
 // ---------------------------------------------------------------------
-export const SECTIONS = [
-  {
-    id: "01_intro",
-    text: "Omar is 42. Senior manager at a multinational. Wife, two kids — seven and ten. Around 155,000 pounds come in each month. 3 million already invested; 40,000 saved on top.",
-  },
-  {
-    id: "02_goals",
-    text: "Three goals. An apartment in New Cairo by 2028. University for the kids, 2033. Retirement at 60.",
-  },
-  {
-    id: "03_setup",
-    text: `But "university" means different things. AUC. Mid-tier private like GUC or BUE. Or Cairo University, government-supported. The numbers aren't the same. So the advisor runs three scenarios, side by side.`,
-  },
-  {
-    id: "04_auc",
-    text: "Scenario one — AUC. Four million pounds for both kids. Marsa: out of reach. Retirement falls nine million short of what Omar needs.",
-  },
-  {
-    id: "05_guc",
-    text: "Scenario two — GUC or BUE. Three million. Still out of reach. Seven million short.",
-  },
-  {
-    id: "06_cairo",
-    text: "Scenario three — Cairo University. Five hundred thousand. Marsa: aspirational. The median just clears; the pessimistic path misses by two.",
-  },
-  {
-    id: "07_inversion",
-    text: "Marsa's inversion: if Omar saves 60,000 a month instead of 40,000, all three scenarios become attainable. Or he pushes retirement to 63.",
-  },
-  {
-    id: "08_closing",
-    text: "Three choices. One honest conversation about what his plan needs to be.",
-  },
-  {
-    id: "09_tag",
-    text: "Marsa. Egyptian planning, built for the real conversation.",
-  },
-];
+export const SECTIONS = SHARED_SECTIONS;
 
 // Derived — concatenated whole, preserved for any legacy consumer that
 // still expects a single block of narration. Blank line between sections
@@ -395,7 +362,10 @@ async function main() {
 // imported so callers (e.g. capture.ts reading SECTIONS) don't trigger
 // a synthesis pass. Uses top-level await so a thrown error surfaces via
 // the process exit code without a promise-chain .catch.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+const invokedAsScript =
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+if (invokedAsScript) {
   try {
     await main();
   } catch (err) {
