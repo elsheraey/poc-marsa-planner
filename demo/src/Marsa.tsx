@@ -1,5 +1,6 @@
 import {
   AbsoluteFill,
+  Audio,
   Img,
   continueRender,
   delayRender,
@@ -578,6 +579,14 @@ type Props = {
 export const Marsa: React.FC<Props> = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BRAND.canvas }}>
+      {/* Voiceover: concatenated script narration. Starts at the first
+          body section (after the title card). The walkthrough manifest's
+          per-section durations were swapped to match this audio's timings
+          so captions stay synced with the voice. */}
+      <Sequence from={TITLE_FRAMES}>
+        <Audio src={staticFile("voiceover.en.mp3")} />
+      </Sequence>
+
       {/* 1-s opener title card */}
       <Sequence from={0} durationInFrames={TITLE_FRAMES}>
         <TitleCard duration={TITLE_FRAMES} />
