@@ -47,8 +47,10 @@ backend/data/*.csv
 *.log
 logs/
 
-# Demo artifacts (binary)
-demo/out/
+# Demo artifacts (binary). Keep the English walkthrough MP4 in the repo
+# so viewers can download it without re-rendering; ignore everything else.
+demo/out/*
+!demo/out/marsa-walkthrough-en.mp4
 demo/assets/*.mp3
 demo/assets/*.webm
 demo/assets/*.mp4
