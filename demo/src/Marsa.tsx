@@ -108,6 +108,14 @@ const SCENARIO_RING_COORDS: Record<
 // SectionScene — renders one still image with a subtle Ken-Burns zoom,
 // a lower-third caption bar, and an optional az-gold ring around a
 // specific scenario card for sections 04–06.
+//
+// Section 01_intro is special: while the caption narrates Omar's
+// biography, the background crossfades through three UI moments —
+// empty login, filled login, and profile step with client data mid-
+// entry — so the visuals track the implied workflow rather than
+// parking on the Login screen. That branch is handled by
+// IntroCrossfadeBackground below; everything else uses the single
+// still path.
 // ---------------------------------------------------------------------
 const SectionScene: React.FC<{
   id: string;
@@ -134,6 +142,7 @@ const SectionScene: React.FC<{
   });
 
   const ringCoords = SCENARIO_RING_COORDS[id];
+  const isIntro = id === "01_intro";
 
   return (
     <AbsoluteFill
@@ -143,22 +152,28 @@ const SectionScene: React.FC<{
         opacity,
       }}
     >
-      {/* Background: the captured PNG scaled subtly for a Ken-Burns feel */}
+      {/* Background: the captured PNG(s) scaled subtly for a Ken-Burns
+          feel. Intro uses a 3-image crossfade; every other section uses
+          the single frame.<id>.png capture. */}
       <AbsoluteFill
         style={{
           transform: `scale(${scale})`,
           transformOrigin: index % 2 === 0 ? "center center" : "center top",
         }}
       >
-        <Img
-          src={staticFile(`frame.${id}.png`)}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "top",
-          }}
-        />
+        {isIntro ? (
+          <IntroCrossfadeBackground duration={duration} />
+        ) : (
+          <Img
+            src={staticFile(`frame.${id}.png`)}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "top",
+            }}
+          />
+        )}
       </AbsoluteFill>
 
       {/* Scenario-card ring for sections 04/05/06 */}
@@ -166,6 +181,75 @@ const SectionScene: React.FC<{
 
       {/* Lower-third caption bar */}
       <LowerThirdCaption caption={caption} duration={duration} />
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------
+// IntroCrossfadeBackground — three PNGs (login empty → login filled →
+// profile inputting) stacked with opacity interpolations so the
+// visuals progress alongside the 01_intro narration while the caption
+// below stays fixed. Split the section duration into three equal
+// thirds; at each boundary, crossfade over CROSSFADE_FRAMES frames so
+// the transition reads as a soft dissolve, not a cut.
+// ---------------------------------------------------------------------
+const INTRO_SHOTS = [
+  "frame.01_intro_a.png",
+  "frame.01_intro_b.png",
+  "frame.01_intro_c.png",
+] as const;
+const CROSSFADE_FRAMES = 15;
+
+const IntroCrossfadeBackground: React.FC<{ duration: number }> = ({
+  duration,
+}) => {
+  const frame = useCurrentFrame();
+  const third = duration / 3;
+  // Boundary frames between shots A→B and B→C.
+  const b1 = third;
+  const b2 = 2 * third;
+  const half = CROSSFADE_FRAMES / 2;
+
+  // Each shot's opacity ramps in/out over 2*half frames centred on the
+  // boundary. Outside its band an opacity of 0 (for B / C) or 1 (for A
+  // tail) is held via clamped interpolations.
+  const opacityA = interpolate(
+    frame,
+    [b1 - half, b1 + half],
+    [1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const opacityB = interpolate(
+    frame,
+    [b1 - half, b1 + half, b2 - half, b2 + half],
+    [0, 1, 1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const opacityC = interpolate(
+    frame,
+    [b2 - half, b2 + half],
+    [0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+  const opacities = [opacityA, opacityB, opacityC];
+
+  return (
+    <AbsoluteFill>
+      {INTRO_SHOTS.map((file, i) => (
+        <Img
+          key={file}
+          src={staticFile(file)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "top",
+            opacity: opacities[i],
+          }}
+        />
+      ))}
     </AbsoluteFill>
   );
 };
