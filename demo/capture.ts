@@ -82,7 +82,7 @@ const DEMO_CLIENT = {
   birthdate: "01/06/1983", // → 42 on 2026-04-19
   phone: "+20 100 555 7788",
   employmentStatus: "employed",
-  riskAppetite: "high",
+  riskAppetite: "moderate",
 } as const;
 
 // Seven goals. The three retirement variants are the meaningful lever
