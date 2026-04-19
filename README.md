@@ -1,5 +1,7 @@
 # Marsa: Financial Planning for Egyptian Wealth Advisors
 
+> **Note:** This is a vibe-coded proof of concept. Built in a single session with Claude Code as the pair. The engine calibration is defensible and the flows work end to end, but this is not production-hardened software. Treat it as a prompt for what the real thing could look like, not the real thing.
+
 Marsa is a goal-based Monte Carlo planning tool for wealth advisors serving Egyptian clients. Advisors enter a client profile, goals, and scenarios. Marsa runs ten thousand inflation-adjusted simulations against real Egyptian market data (EGX30, CBE rates, CAPMAS CPI) and returns honest attainability verdicts: attainable, aspirational, or out of reach.
 
 ## Context
