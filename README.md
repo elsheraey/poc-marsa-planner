@@ -4,11 +4,43 @@ Marsa is a goal-based Monte Carlo planning tool for wealth advisors serving Egyp
 
 Marsa is **not a robo-advisor**. It does not hold custody, touch brokerage accounts, or execute trades. Every output is a plan. The human advisor owns the recommendation.
 
+## Context
+
+Most Egyptians with savings are watching their purchasing power evaporate. The pound has lost a significant share of its value against the dollar since 2022. Inflation has stayed in double digits, peaking above 30% in 2023. Yet when someone asks the only question that actually matters, *"can I afford a house, my kids' education, or retirement?"*, the answer is still usually built in Excel.
+
+That gap inspired this tool. It was also inspired by two others:
+
+- **[Morgan Stanley's portfolio risk platform](https://players.brightcove.net/644391012001/S1g5wv8HqW_default/index.html?videoId=6128686733001)**, which lets advisors run scenario analysis instantly and show clients the full distribution of outcomes.
+- Closer to home, **[Optomatica](https://www.optomatica.com)** built something similar with **[Optofolio](https://optofolio.com)**. A company I worked with previously. Unclear whether it scaled commercially.
+
+### Why not fully automate the advisor?
+
+In Egypt the human layer still matters. Like real estate, where listings are online but brokers stay in the middle of most transactions. People want two things at once: transparent numbers, and someone they trust to interpret them. Marsa gives the advisor better numbers to defend. The advisor owns the conversation.
+
+### A direct-to-consumer angle
+
+Most Egyptians do not have access to a financial advisor. They do have savings goals. A simplified version of the same engine could let someone open their phone and answer a single question: is this actually achievable in real purchasing-power terms? Same math, lighter interface.
+
+### Who should care
+
+- Banks and asset managers such as **Azimut Group**, **QNB Egypt**, **CIB Egypt**, and **National Bank of Egypt**, especially if their relationship managers still plan in Excel.
+- Brokerage-first fintechs such as **Thndr**, **Sarwa**, and other MENA players. Marsa slots in as the "should I invest, and how much?" layer above execution.
+- Family offices and independent advisors serving Egyptian HNW clients.
+- Any team ready to build the consumer-facing version.
+
 ## Demo
 
 [Download the 90-second walkthrough (24 MB MP4)](demo/out/marsa-walkthrough-en.mp4)
 
-The cut shows: login, creating a client, entering goals and scenarios, running the simulation, and reading the honest three-scenario verdict (Everything I Want / Middle Path / Pragmatic). Built with Remotion for composition, Playwright driving a live build of the app for real screen capture, and ElevenLabs for narration.
+The cut shows: login, creating a client, entering goals and scenarios, running the simulation, and reading the honest three-scenario verdict (Everything I Want, Middle Path, Pragmatic).
+
+The walkthrough was built entirely in code:
+
+- **[Remotion](https://www.remotion.dev)** for video composition.
+- **[Playwright](https://playwright.dev)** driving a live build of the app for real screen capture.
+- **[ElevenLabs](https://elevenlabs.io)** for narration. The current cut uses captions; the voiceover pipeline is wired and ready for the next render.
+
+Every number on screen traces to a real simulation run against the live engine. Source under `demo/`.
 
 ## Repo structure
 
@@ -16,7 +48,7 @@ The cut shows: login, creating a client, entering goals and scenarios, running t
 backend/    FastAPI, SQLAlchemy, Alembic, Monte Carlo simulation engine
 frontend/   Vite, React, Redux Toolkit, Tailwind, i18n (en + ar, Cairo, RTL)
 demo/       Remotion video pipeline (source)
-docs/       Analyst report, data-sources, calibration rationale
+docs/       Analyst report, data sources, calibration rationale
 tests-e2e/  Playwright end-to-end suite
 ```
 
@@ -134,8 +166,14 @@ Each `/api/simulate` response includes:
 - CORS: strict allowlist read from `CORS_ORIGINS`.
 - Secrets: `.env` is gitignored. No credentials in the tree.
 
-## Status
+## Not a startup
 
-Proof of concept. The engine calibration is defensible, the advisor flow works end-to-end, i18n is in place, 78 backend tests and 9 end-to-end tests pass cleanly. It is not production-hardened: no audit logging, no FRA compliance posture, no SSO, no multi-tenancy beyond per-owner row isolation, and the data pipeline is a manual CSV drop rather than a scheduled fetch.
+Marsa is a proof of concept built in a vibe-coding session. The engine calibration is defensible, the advisor flow works end to end, i18n is in place, and 78 backend tests plus 9 end-to-end tests pass cleanly. It is not production-hardened: no audit logging, no FRA compliance posture, no SSO, no multi-tenancy beyond per-owner row isolation, and the data pipeline is a manual CSV drop rather than a scheduled fetch.
 
-If you are an Egyptian wealth manager, fintech, or financial institution who could use a tool like this, take the code and build it. The goal is Egyptian advisors having better numbers, not this specific repo being the product.
+Someone inside an Egyptian financial institution, or as a standalone fintech, should take the engine and build a production-grade product for the local market. Advisor-first, consumer-first, or both. Open an issue or reach out.
+
+If something like this already exists in MENA and I have not found it, please tell me. That team deserves more visibility than they currently have.
+
+***
+
+PS: marsa.com was already taken. Turns out MarkUpgrade got there first. Feels like every good name was registered sometime around 2003.
