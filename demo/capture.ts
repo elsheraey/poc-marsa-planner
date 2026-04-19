@@ -46,8 +46,20 @@ const NARRATED: readonly NarratedSection[] = SHARED_SECTIONS as NarratedSection[
 // that shot. The capture driver walks the wizard linearly; when it
 // reaches a stage that matches a section id, it takes the snap. The
 // 09_tag section is fully rendered in Remotion and doesn't need a PNG.
+//
+// 01_intro is special — the section still exists as one narrated beat
+// (Omar's biography), but its background is rendered in Remotion as a
+// 3-image crossfade (login → signing in → inputting client data) so
+// the visuals progress alongside the narration. The three shots live
+// at frame.01_intro_a.png / _b.png / _c.png and are captured out-of-band
+// inside capture01Intro + walkToGoalsStep; the base "01_intro" id is
+// therefore marked false here so the missing-frames sanity check at
+// the end of main() doesn't look for a single frame.01_intro.png.
 const FRAME_NEEDED: Record<string, boolean> = {
-  "01_intro": true,
+  "01_intro": false,
+  "01_intro_a": true,
+  "01_intro_b": true,
+  "01_intro_c": true,
   "02_goals": true,
   "03_setup": true,
   "04_scenario1": true,
@@ -181,11 +193,46 @@ async function registerAdvisor(page: Page): Promise<void> {
 
 // --- Capture stages -----------------------------------------------------
 
-/** 01_intro — Login page. */
+/**
+ * 01_intro — three intro frames covering the advisor opening the app
+ * and starting to enter a client. The narration ("Omar is 42…") runs
+ * ~15.5s, so we crossfade between three visual moments behind the
+ * same caption:
+ *   _a: login page, empty form
+ *   _b: login page with email + password filled (pre-submit "signing
+ *       in" beat — we don't actually authenticate through /login in
+ *       this driver because the real flow uses /register, but the
+ *       filled-form state is the visual we want for ~3s of narration)
+ *   _c: captured later inside walkToGoalsStep once the profile step
+ *       has Omar's name / email / birthdate typed in.
+ */
 async function capture01Intro(page: Page): Promise<void> {
   await page.goto(`${APP_URL}/login`, { waitUntil: "networkidle" });
   await pause(page, 800);
-  await snap(page, "01_intro");
+  // _a: empty login form. Focus the email field so there's a blinking
+  // caret in-frame (sells "advisor just landed here").
+  try {
+    await page.locator("#login-email").focus();
+  } catch {
+    /* focus is cosmetic — don't fail the run if the selector changes */
+  }
+  await pause(page, 200);
+  await snap(page, "01_intro_a");
+
+  // _b: login filled, pre-submit. Fill the two fields, then move focus
+  // to the submit button so the primary CTA is visually pressed-into.
+  try {
+    await page.locator("#login-email").fill(DEMO_CLIENT.email);
+    await page.locator("#login-password").fill("Passw0rd!");
+    await pause(page, 250);
+    await page.locator('button[type="submit"]').first().focus();
+  } catch (err) {
+    console.warn(
+      `capture: 01_intro_b fill failed — ${(err as Error).message.slice(0, 140)}`
+    );
+  }
+  await pause(page, 250);
+  await snap(page, "01_intro_b");
 }
 
 /**
@@ -211,6 +258,13 @@ async function walkToGoalsStep(page: Page): Promise<void> {
   await inputs.nth(0).fill(p.fullName);
   await inputs.nth(1).fill(p.email);
   await inputs.nth(2).fill(p.birthdate);
+  // Snap 01_intro_c here — three fields typed, phone + dropdowns still
+  // blank. That's the "inputting client data" beat the intro narration
+  // implies; we don't need the form fully populated for this shot
+  // since a full profile frame would undersell the forward-motion the
+  // crossfade is trying to communicate.
+  await pause(page, 300);
+  await snap(page, "01_intro_c");
   await inputs.nth(3).fill(p.phone);
   const selects = section.locator("select");
   await selects.nth(0).selectOption(p.employmentStatus);
@@ -656,9 +710,16 @@ async function main() {
   );
 
   const took = ((Date.now() - start) / 1000).toFixed(1);
-  const missing = NARRATED.filter((s) => FRAME_NEEDED[s.id] !== false)
-    .map((s) => s.id)
-    .filter((id) => !readdirSync(ASSETS_DIR).includes(`frame.${id}.png`));
+  // Expected frame ids = every FRAME_NEEDED entry that's true. That
+  // naturally covers the three 01_intro_{a,b,c} sub-frames which don't
+  // appear in NARRATED but do have a true flag in the map.
+  const expectedFrameIds = Object.keys(FRAME_NEEDED).filter(
+    (id) => FRAME_NEEDED[id] === true
+  );
+  const assetNames = readdirSync(ASSETS_DIR);
+  const missing = expectedFrameIds.filter(
+    (id) => !assetNames.includes(`frame.${id}.png`)
+  );
   if (missing.length > 0) {
     degraded.push(`missing frames: ${missing.join(", ")}`);
   }
