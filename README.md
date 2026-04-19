@@ -11,10 +11,9 @@ Marsa is **not a robo-advisor**. We do not hold custody, touch brokerage
 accounts, or execute trades. Nothing Marsa produces is an order; every
 output is a plan the human advisor walks through with the client.
 
-The simulation engine implements the algorithm originally specified in the
-Azimut academic paper `Marsa_RFA_Simulation_Overview.pdf` — preserved
-as a reference for the math (preprocessing, distribution fitting, copula
-sampling, importance percentiles) — not as a product positioning.
+The simulation engine implements a goal-based Monte Carlo algorithm adapted
+from academic research on portfolio planning under inflation: preprocessing,
+distribution fitting, copula sampling, importance-percentile selection.
 
 The product name (`Marsa` — Arabic مرسى, "harbor") lives in a single
 constant in the frontend (`frontend/src/config.ts`) and an env-var-backed
