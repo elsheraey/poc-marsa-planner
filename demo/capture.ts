@@ -154,10 +154,20 @@ async function pause(page: Page, ms: number) {
 }
 
 /**
- * Full-viewport still (1920×1080). No clipping — Remotion handles
- * focus via overlays in post.
+ * Full-viewport still (1920×1080) by default. No clipping — Remotion
+ * handles focus via overlays in post.
+ *
+ * When `fullPage` is true we capture the entire scrollable document
+ * instead (a tall 1920×N image). This is used for 01_intro_c so the
+ * Remotion composition can animate a scroll-pan over the Profile step,
+ * following the advisor's actual scroll from the six required fields at
+ * the top down to the Advanced-profile dossier below.
  */
-async function snap(page: Page, id: string): Promise<void> {
+async function snap(
+  page: Page,
+  id: string,
+  opts: { fullPage?: boolean } = {}
+): Promise<void> {
   if (FRAME_NEEDED[id] === false) {
     console.log(`snap: ${id} → skipped (rendered by Remotion)`);
     return;
@@ -170,11 +180,13 @@ async function snap(page: Page, id: string): Promise<void> {
   await pause(page, 500);
   await page.screenshot({
     path,
-    fullPage: false,
+    fullPage: opts.fullPage === true,
     scale: "css",
     animations: "disabled",
   });
-  console.log(`snap: ${id} → ${path}`);
+  console.log(
+    `snap: ${id} → ${path}${opts.fullPage ? " (fullPage)" : ""}`
+  );
 }
 
 async function registerAdvisor(page: Page): Promise<void> {
@@ -358,28 +370,17 @@ async function walkToGoalsStep(page: Page): Promise<void> {
       );
     }
 
-    // Scroll so the advanced dossier rows (dependent + income source +
-    // employment income / expenses) are the visual anchor of the shot.
-    // The required-fields block up top is character-sparse and anyone
-    // watching the crossfade's final beat wants to see "yes, the real
-    // dossier is populated" — that lives further down.
+    // Scroll back to the top of the page so the full-page screenshot
+    // below begins its natural document flow at the six required
+    // fields (the visual anchor of the pan's first frame). The
+    // advanced-dossier disclosure stays open — Playwright's
+    // fullPage: true captures the entire expanded document regardless
+    // of the current scroll position.
     try {
-      const numberInputs = dossier.locator('input[type="number"]');
-      const n = await numberInputs.count();
-      if (n >= 2) {
-        // Compute the absolute page offset of the employmentIncome
-        // input and scroll the window so it sits near the bottom of
-        // the 1080px viewport, leaving the Advanced-profile summary
-        // plus the repeater rows above it visible in the same frame.
-        const targetY = await numberInputs.nth(n - 2).evaluate((el) => {
-          const rect = (el as HTMLElement).getBoundingClientRect();
-          return rect.top + window.scrollY;
-        });
-        await page.evaluate((y: number) => {
-          window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
-        }, Math.max(0, targetY - 900));
-        await pause(page, 300);
-      }
+      await page.evaluate(() =>
+        window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
+      );
+      await pause(page, 300);
     } catch {
       /* framing is cosmetic — don't fail the run */
     }
@@ -389,11 +390,16 @@ async function walkToGoalsStep(page: Page): Promise<void> {
     );
   }
 
-  // Snap 01_intro_c — fully-populated profile with advanced dossier
-  // open. This is the final beat of the intro crossfade, so it should
-  // LOOK finished: "the advisor just set Omar up," not mid-typing.
+  // Snap 01_intro_c — FULL PAGE. The Remotion composition reads this
+  // as a tall 1920×N image and animates a linear Y-offset across the
+  // section's shot-C slice so the viewer follows the advisor's scroll
+  // from the six required fields at the top down to the Advanced
+  // profile dossier below. Dimensions are logged so the `render`
+  // report can confirm ≥ 2000 px (otherwise the pan has nothing to
+  // pan through and Marsa.tsx falls back to a static top-aligned
+  // render).
   await pause(page, 400);
-  await snap(page, "01_intro_c");
+  await snap(page, "01_intro_c", { fullPage: true });
 
   // Close the disclosure again so the Proceed button stays visible
   // without scrolling, and scroll back to top for the CTA click.

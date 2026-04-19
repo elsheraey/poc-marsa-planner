@@ -1,11 +1,14 @@
 import {
   AbsoluteFill,
   Img,
+  continueRender,
+  delayRender,
   interpolate,
   Sequence,
   staticFile,
   useCurrentFrame,
 } from "remotion";
+import { useEffect, useState } from "react";
 import { loadFont } from "@remotion/google-fonts/Cairo";
 // @ts-expect-error — .mjs shared with tts.mjs; no .d.ts but the shape is
 // trivial and the Remotion bundler resolves ESM fine.
@@ -192,12 +195,18 @@ const SectionScene: React.FC<{
 // below stays fixed. Split the section duration into three equal
 // thirds; at each boundary, crossfade over CROSSFADE_FRAMES frames so
 // the transition reads as a soft dissolve, not a cut.
+//
+// Shot C (01_intro_c) is a FULL-PAGE capture of the Profile step,
+// typically 1920×~2400-2800 px tall. Rather than cover-crop it to
+// 1920×1080, we render it inside a 1920×1080 overflow-hidden window
+// and animate its `top` offset linearly from 0 → -(imgHeight - 1080)
+// across the shot-C slice so the viewer follows the advisor's actual
+// scroll from the six required fields at the top down to the
+// Advanced-profile dossier below. If the screenshot height is ≤ 1080
+// the pan has nothing to traverse and we fall back to a static
+// top-aligned render.
 // ---------------------------------------------------------------------
-const INTRO_SHOTS = [
-  "frame.01_intro_a.png",
-  "frame.01_intro_b.png",
-  "frame.01_intro_c.png",
-] as const;
+const INTRO_C_SRC = "frame.01_intro_c.png";
 const CROSSFADE_FRAMES = 15;
 
 const IntroCrossfadeBackground: React.FC<{ duration: number }> = ({
@@ -231,25 +240,112 @@ const IntroCrossfadeBackground: React.FC<{ duration: number }> = ({
     [0, 1],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
   );
-  const opacities = [opacityA, opacityB, opacityC];
 
   return (
     <AbsoluteFill>
-      {INTRO_SHOTS.map((file, i) => (
-        <Img
-          key={file}
-          src={staticFile(file)}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "top",
-            opacity: opacities[i],
-          }}
+      <Img
+        key="intro_a"
+        src={staticFile("frame.01_intro_a.png")}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "top",
+          opacity: opacityA,
+        }}
+      />
+      <Img
+        key="intro_b"
+        src={staticFile("frame.01_intro_b.png")}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "top",
+          opacity: opacityB,
+        }}
+      />
+      {/* Shot C: scroll-pan over the tall full-page Profile capture.
+          Start of shot C (b2 - half) = top of the form (required
+          fields visible). End of shot (`duration`) = bottom of the
+          form (Advanced-profile dossier filled in). Linear. */}
+      <AbsoluteFill style={{ opacity: opacityC }}>
+        <IntroCScrollPan
+          startFrame={b2 - half}
+          endFrame={duration}
+          currentFrame={frame}
         />
-      ))}
+      </AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------
+// IntroCScrollPan — renders the tall 01_intro_c.png inside a 1920×1080
+// overflow-hidden window with a linearly-interpolated vertical offset.
+//
+// Uses delayRender + native Image() to measure the intrinsic height of
+// the capture at mount time. Until the measurement resolves, we render
+// the image top-aligned (position: 0) which matches the pan's starting
+// position so there's no visible jump when the real height arrives.
+// If the image height is ≤ 1080 (no pan possible) we hold at top.
+// ---------------------------------------------------------------------
+const IntroCScrollPan: React.FC<{
+  startFrame: number;
+  endFrame: number;
+  currentFrame: number;
+}> = ({ startFrame, endFrame, currentFrame }) => {
+  const [imgHeight, setImgHeight] = useState<number | null>(null);
+  const [handle] = useState(() =>
+    delayRender("Measuring intro_c full-page height")
+  );
+
+  useEffect(() => {
+    const img = new globalThis.Image();
+    img.onload = () => {
+      // Intrinsic height in source pixels. Width is 1920 by capture
+      // convention; we display the image at 100% width so the
+      // effective on-screen pixel ratio is 1:1.
+      setImgHeight(img.naturalHeight);
+      continueRender(handle);
+    };
+    img.onerror = () => {
+      // Fall back to static-top render — no pan, no crash.
+      setImgHeight(1080);
+      continueRender(handle);
+    };
+    img.src = staticFile(INTRO_C_SRC);
+  }, [handle]);
+
+  // Until the intrinsic height is known, render at top-aligned
+  // (top: 0) which is the pan's starting position anyway. No jump.
+  const canPan = imgHeight !== null && imgHeight > 1080;
+  const maxOffset = canPan ? imgHeight - 1080 : 0;
+  const top = canPan
+    ? interpolate(
+        currentFrame,
+        [startFrame, endFrame],
+        [0, -maxOffset],
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+      )
+    : 0;
+
+  return (
+    <AbsoluteFill style={{ overflow: "hidden" }}>
+      <Img
+        src={staticFile(INTRO_C_SRC)}
+        style={{
+          position: "absolute",
+          left: 0,
+          top,
+          width: "100%",
+          height: "auto",
+        }}
+      />
     </AbsoluteFill>
   );
 };
