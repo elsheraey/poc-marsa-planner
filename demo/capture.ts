@@ -282,7 +282,8 @@ async function walkToGoalsStep(page: Page): Promise<void> {
     await summary.click();
     await pause(page, 300);
 
-    // Dependent — one row: Ali Fahmy / son / 01/09/2019.
+    // Dependent — one row: Ali Omar / son / 01/09/2019.
+    // (In Arab naming, a son's middle name is the father's FIRST name.)
     try {
       const depAdd = dossier.getByRole("button", {
         name: /dependents/i,
@@ -301,7 +302,7 @@ async function walkToGoalsStep(page: Page): Promise<void> {
       const depRow = depRows.first();
       const depInputs = depRow.locator("input");
       const depSelects = depRow.locator("select");
-      await depInputs.nth(0).fill("Ali Fahmy");
+      await depInputs.nth(0).fill("Ali Omar");
       await depSelects.nth(0).selectOption("son");
       await depInputs.nth(1).fill("01/09/2019");
       await pause(page, 150);
