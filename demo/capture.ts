@@ -289,10 +289,21 @@ async function capture07Goals(page: Page): Promise<void> {
   const nameInputs = page.getByPlaceholder("Goal");
   const amountInputs = page.getByPlaceholder("Amount");
   const yearInputs = page.getByPlaceholder("Year");
+  // The inflation field uses placeholder "%" which is also used by other
+  // percentage inputs elsewhere in the wizard; inside the Goals step it
+  // maps 1:1 with the goal rows because the row layout is the only place
+  // on this page that renders the per-goal inflation column.
+  const inflationInputs = page.getByPlaceholder("%");
   for (let i = 0; i < GOALS.length; i += 1) {
     await nameInputs.nth(i).fill(GOALS[i].name);
     await amountInputs.nth(i).fill(String(GOALS[i].amount));
     await yearInputs.nth(i).fill(String(GOALS[i].year));
+    // Store as percent ("16") — toDecimalRate on the frontend divides by
+    // 100 when abs > 1, so 16 becomes 0.16 on the wire. Matches the
+    // demo's 16%/yr assumption (backend median CPI 2026-2044).
+    await inflationInputs
+      .nth(i)
+      .fill(String(Math.round(GOALS[i].inflationRate * 100)));
   }
   await pause(page, 500);
   await snap(page, "07_goals");
