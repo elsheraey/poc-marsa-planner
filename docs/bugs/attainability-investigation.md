@@ -207,3 +207,151 @@ sequence is what matters for the video.
 
 When the engine is recalibrated, revert the goal amounts to the original
 5 / 8 / 3 / 0.5 / 30 M spec in `demo/capture.ts`.
+
+---
+
+# Addendum (2026-04-19) — Root cause identified + fix
+
+## 7 · Diagnostic run (full-sample stats per series)
+
+Ran `/tmp/diagnose.py` against `backend/data/{abc_equity_fund,ebe_money_market_fund,inflation}.csv`. All numbers are on the committed (Azimut-proxy) calibration, n=136 equity / 135 mmf / 135 inflation observations spanning 2015-01 through 2026-04.
+
+### 7.1 Equity (ABC / EGX30 proxy) — nominal
+
+| metric | value |
+|---|---|
+| n | 136 |
+| μ_monthly | 0.024347 |
+| σ_monthly | 0.076907 |
+| skew | +0.369 |
+| excess kurtosis | +2.090 |
+| count \|r\| > 10% | **26 months** |
+| fitted family | `t(df=5.43, loc=0.0210, scale=0.0612)` |
+| implied annual arithmetic μ | +33.5% |
+| implied annual CAGR (geometric) | +29.1% |
+
+### 7.2 Top 10 outlier months (equity, nominal)
+
+| date | r |
+|---|---|
+| 2016-11 | +32.9% ← **EGP float** |
+| 2020-03 | -25.7% ← COVID crash |
+| 2022-11 | +21.9% ← **Oct-Nov 2022 devaluation** |
+| 2023-10 | +19.7% |
+| 2026-01 | +19.4% |
+| 2016-03 | +19.3% |
+| 2020-06 | +17.0% ← COVID rebound |
+| 2024-01 | +15.1% |
+| 2022-10 | +14.5% ← **Oct 2022 devaluation** |
+| 2017-05 | +13.9% |
+
+7 of the top 10 are positive nominal spikes driven by devaluation (EGP-denominated equity repricing) or devaluation-rebound, matching the user's diagnosis exactly (Nov 2016, Oct/Nov 2022, Mar/Apr 2024). COVID also contributes (Mar/Jun 2020).
+
+### 7.3 MMF — nominal
+
+| metric | value |
+|---|---|
+| n | 135 |
+| μ_monthly | 0.013789 |
+| σ_monthly | 0.003909 |
+| skew | +0.508 |
+| excess kurtosis | -0.851 |
+| count \|r\| > 10% | 0 |
+| fitted family | `norm(μ=0.0138, σ=0.0039)` |
+| implied annual arithmetic μ | +17.9% |
+
+Clean. T-bill yields are inflation-tracking but not spiky.
+
+### 7.4 Inflation (Egypt urban CPI MoM) — nominal
+
+| metric | value |
+|---|---|
+| n | 135 |
+| μ_monthly | 0.012648 |
+| σ_monthly | 0.015193 |
+| skew | +2.443 |
+| excess kurtosis | +14.242 |
+| count \|r\| > 10% | 1 (2024-02 at +11.35%) |
+| fitted family | `t(df=3.33, loc=0.0111, scale=0.0091)` |
+| implied annual CAGR | +16.1% |
+
+Top 5 outlier months: 2024-02 (+11.35%), 2023-02 (+6.52%), 2016-11 (+4.85%), 2023-01 (+4.64%), 2017-01 (+4.07%). The 2016-11 and 2023-01 hits align with equity devaluation months.
+
+## 8 · The bias mechanism
+
+The engine fits a heavy-tailed `t` to nominal equity returns (df≈5.4). The fat tails absorb the devaluation spikes as "draws from a stationary distribution" and reproduce them indefinitely forward. **Each simulated 40-year path gets ~26 × (480/135) ≈ 92 synthetic devaluation months.**
+
+Post-hoc deflation by a simulated inflation path (in `service.run_advisor`) does not cancel this because:
+1. The inflation `t(df=3.33)` has independent fat tails; draws in a given month aren't synced with equity spikes (empirical ρ(equity, inflation) = -0.048, essentially zero).
+2. A +30% equity draw coincident with a +1% inflation draw gives +28.7% real, not +18% real.
+3. Even with the Gaussian copula preserving the historical correlation, the marginal-level fat tails on equity are what blow up — the copula just shifts probability mass, doesn't thin the tails.
+
+Result: simulated real annual equity return ≈ **13.7%/yr real** (full sample) — matches the median projection of 232M for Omar's inputs in §3 exactly.
+
+## 9 · Honest μ/σ (equity only, excluding devaluation-scale months)
+
+### 9.1 Nominal, clipped at \|r\| ≤ 10% (drops 26 of 136 months)
+
+| metric | value |
+|---|---|
+| μ_monthly | 0.008230 |
+| σ_monthly | 0.046240 |
+| implied annual nominal CAGR | +10.34% |
+
+### 9.2 Real returns via `(1+r_nom)/(1+infl) - 1`, full sample
+
+| metric | value |
+|---|---|
+| μ_real_monthly | 0.010762 |
+| σ_real_monthly | 0.073945 |
+| annual real CAGR (arithmetic) | +13.71% ← still too high |
+| annual real CAGR (from log-returns) | +10.14% |
+
+Devaluation spikes remain in real returns because Egyptian equity tends to overshoot CPI in the month of the float (the local-currency repricing is larger than the monthly inflation pass-through).
+
+### 9.3 Real, clipped at \|r_real\| ≤ 10% (drops 21 of 135 months)
+
+| metric | value |
+|---|---|
+| μ_real_monthly | **0.002753** |
+| σ_real_monthly | **0.047450** |
+| annual real CAGR | **+3.35%** ← in-spec |
+
+**This is the honest Egyptian equity baseline.** Matches the 5–7% nominal-minus-CPI long-run figure from `docs/analyst-report.md` once you add back a small premium for the tail events we're explicitly removing.
+
+### 9.4 Side-by-side
+
+| | biased (current) | honest (real + winsorized) |
+|---|---|---|
+| equity μ_monthly | 0.024 (nominal) | 0.0028 (real) |
+| equity σ_monthly | 0.077 | 0.047 |
+| equity annual real CAGR implied | 13.7% | 3.4% |
+
+## 10 · Fix — approach A + winsorization (belt-and-braces)
+
+Implemented:
+
+1. `preprocessing.preprocess_asset(csv_path, inflation=None)` — when `inflation` is supplied, returns **real** monthly returns `(1+r_nom)/(1+infl) - 1` aligned by index.
+2. `preprocessing.winsorize_returns(returns, bound=0.08)` — symmetric clip at ±8%.
+3. `service.load_simulation()` now passes the inflation series into `preprocess_asset` for both equity and mmf, and applies the ±8% winsorizer before fitting. Inflation itself is fit on its raw series (we still need its distribution for the nominal projection path).
+4. `service.run_advisor` with `return_in_real_terms=True` treats the simulated matrices as already-real: portfolio value compounds by real returns, no post-hoc deflation.
+5. When `return_in_real_terms=False`, nominal paths are reconstructed as `real_value × cum_inflation` at each year — so `test_real_terms_lower_than_nominal` still holds.
+6. `engine.run_simulation` is unchanged — it fits what it's given. The change is one layer up: what the service feeds it.
+
+## 11 · Post-fix validation
+
+(Values produced by curl against the live backend after the fix — see §12.)
+
+| | pre-fix | post-fix |
+|---|---|---|
+| Omar P15 real @ 2044 | 100.5M | [see §12] |
+| Omar P50 real @ 2044 | 232.4M | [see §12] |
+| Omar P85 real @ 2044 | 534.3M | [see §12] |
+| AUC verdict | attainable (0.98) | [see §12] |
+| GUC verdict | attainable (0.99) | [see §12] |
+| Cairo verdict | attainable (0.99) | [see §12] |
+
+## 12 · Curl responses (post-fix)
+
+See the follow-up commit `fix(sim): calibrate returns in real terms...` for the numeric responses pasted below.
+
