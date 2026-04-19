@@ -1,91 +1,51 @@
 {
   "lang": "en",
-  "total_ms": 63000,
+  "total_ms": 88523,
   "sections": [
     {
-      "id": "01_login",
-      "caption": "Omar's advisor opens Marsa.",
-      "duration_ms": 3000
+      "id": "01_intro",
+      "caption": "Omar is 42. Senior manager at a multinational. Wife, two kids, seven and ten. Around 155,000 pounds come in each month. 3 million already invested, 40,000 saved on top.",
+      "duration_ms": 15491
     },
     {
-      "id": "02_signin",
-      "caption": "Signs in.",
-      "duration_ms": 2500
+      "id": "02_goals",
+      "caption": "Three goals. An apartment in New Cairo by 2028. University for the kids in 2033. Retirement at 60.",
+      "duration_ms": 9561
     },
     {
-      "id": "03_clients_empty",
-      "caption": "No clients yet.",
-      "duration_ms": 2500
+      "id": "03_setup",
+      "caption": "But what Omar wants isn't just \"which university.\" It's a whole lifestyle. So the advisor runs three scenarios side by side. Each one a different life path.",
+      "duration_ms": 17006
     },
     {
-      "id": "04_new_client",
-      "caption": "Adds Omar as a new client.",
-      "duration_ms": 2500
+      "id": "04_scenario1",
+      "caption": "Scenario one. \"Everything I want.\" AUC for both kids. Retirement at 60 sustaining today's lifestyle. Target: 55 million. Marsa: out of reach.",
+      "duration_ms": 9240
     },
     {
-      "id": "05_profile",
-      "caption": "Profile: 42, senior manager at a multinational, wife and two kids.",
-      "duration_ms": 5000
+      "id": "05_scenario2",
+      "caption": "Scenario two. Middle path. GUC or BUE. Retirement at 60, slightly leaner. Target: 33 million. Marsa: aspirational. The median just clears.",
+      "duration_ms": 8820
     },
     {
-      "id": "06_proceed_goals",
-      "caption": "Proceeds to goals.",
-      "duration_ms": 2000
+      "id": "06_scenario3",
+      "caption": "Scenario three. Pragmatic. Cairo University. Retirement pushed to 63. Target: 15 million. Marsa: attainable. The pessimistic path clears.",
+      "duration_ms": 7560
     },
     {
-      "id": "07_goals",
-      "caption": "Five goals. Apartment. Three university options. Retirement.",
-      "duration_ms": 5500
+      "id": "07_inversion",
+      "caption": "Marsa's inversion tells the advisor what changes the verdict. The monthly savings needed. Or the retirement date that closes the gap.",
+      "duration_ms": 11311
     },
     {
-      "id": "08_scenarios_setup",
-      "caption": "Three scenarios — one per university choice.",
-      "duration_ms": 5000
+      "id": "08_closing",
+      "caption": "Three paths. Three honest verdicts. One conversation about the trade-off.",
+      "duration_ms": 5381
     },
     {
-      "id": "09_scenario_picker",
-      "caption": "Each scenario picks a different university path.",
-      "duration_ms": 4000
-    },
-    {
-      "id": "10_run_sim",
-      "caption": "Runs the simulation.",
-      "duration_ms": 2000
-    },
-    {
-      "id": "11_report",
-      "caption": "The report.",
-      "duration_ms": 5000
-    },
-    {
-      "id": "12_auc",
-      "caption": "Scenario 1 — AUC. Out of reach.",
-      "duration_ms": 4000
-    },
-    {
-      "id": "13_guc",
-      "caption": "Scenario 2 — GUC. Still out of reach.",
-      "duration_ms": 4000
-    },
-    {
-      "id": "14_cairo",
-      "caption": "Scenario 3 — Cairo University. Still out of reach.",
-      "duration_ms": 4000
-    },
-    {
-      "id": "15_inversion",
-      "caption": "Marsa's inversion suggests the advisor's next move.",
-      "duration_ms": 5000
-    },
-    {
-      "id": "16_closing",
-      "caption": "Three choices. One honest conversation.",
-      "duration_ms": 4000
-    },
-    {
-      "id": "17_tag",
-      "caption": "Marsa. Egyptian planning.",
-      "duration_ms": 3000
+      "id": "09_tag",
+      "caption": "Marsa. Egyptian planning, built for the real conversation.",
+      "duration_ms": 4153
     }
   ]
 }
