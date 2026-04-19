@@ -251,25 +251,155 @@ async function walkToGoalsStep(page: Page): Promise<void> {
   await page.waitForURL("**/clients/new/profile", { timeout: 15000 });
   await pause(page, 600);
 
-  // Fill profile.
+  // Fill profile. All 6 required fields go in BEFORE we snap 01_intro_c
+  // so the intro crossfade's final beat shows a fully-completed dossier
+  // — the advisor has finished setting Omar up, not caught mid-typing.
   const p = DEMO_CLIENT;
   const section = page.locator("section").first();
   const inputs = section.locator("input");
   await inputs.nth(0).fill(p.fullName);
   await inputs.nth(1).fill(p.email);
   await inputs.nth(2).fill(p.birthdate);
-  // Snap 01_intro_c here — three fields typed, phone + dropdowns still
-  // blank. That's the "inputting client data" beat the intro narration
-  // implies; we don't need the form fully populated for this shot
-  // since a full profile frame would undersell the forward-motion the
-  // crossfade is trying to communicate.
-  await pause(page, 300);
-  await snap(page, "01_intro_c");
   await inputs.nth(3).fill(p.phone);
   const selects = section.locator("select");
   await selects.nth(0).selectOption(p.employmentStatus);
   await selects.nth(1).selectOption(p.riskAppetite);
-  await pause(page, 300);
+  await pause(page, 200);
+
+  // Open the "Advanced profile" disclosure and fill the fields that
+  // reinforce the narration ("~155,000 pounds come in each month"):
+  // employment income, monthly expenses, one dependent, one income
+  // source. Matches the AdvancedDossier DOM in ProfileStep.tsx: two
+  // trailing number inputs (employmentIncome, monthlyExpenses), plus
+  // add-buttons for dependents (aria-label on the icon-btn-add) and
+  // income sources. Assets / debts are intentionally skipped — not in
+  // the narration and would clutter the shot.
+  const dossierOpenedAt = Date.now();
+  try {
+    const dossier = page.locator("section").nth(1);
+    const summary = dossier.locator("summary").first();
+    await summary.scrollIntoViewIfNeeded();
+    await summary.click();
+    await pause(page, 300);
+
+    // Dependent — one row: Ali Fahmy / son / 01/09/2019.
+    try {
+      const depAdd = dossier.getByRole("button", {
+        name: /dependents/i,
+        exact: false,
+      });
+      await depAdd.first().click();
+      await pause(page, 200);
+      // After click, the dependents block renders a row with three
+      // inputs (name, relation <select>, birthdate) and a remove btn.
+      // Scope to the block by filtering for the just-created row's
+      // inputs. The dependents block is the only one using a grid
+      // template with 1fr_1fr_1fr_auto immediately under its header.
+      const depRows = dossier
+        .locator("div.grid.grid-cols-\\[1fr_1fr_1fr_auto\\]")
+        .filter({ has: page.locator("select") });
+      const depRow = depRows.first();
+      const depInputs = depRow.locator("input");
+      const depSelects = depRow.locator("select");
+      await depInputs.nth(0).fill("Ali Fahmy");
+      await depSelects.nth(0).selectOption("son");
+      await depInputs.nth(1).fill("01/09/2019");
+      await pause(page, 150);
+    } catch (err) {
+      console.warn(
+        `capture: dependent fill skipped — ${(err as Error).message.slice(0, 140)}`
+      );
+    }
+
+    // Income source — fill the default row the slice seeds with
+    // (draftSlice initial state includes one empty incomeSources row).
+    // No Add click — that would leave an extra blank row beneath the
+    // populated one and dilute the "completed dossier" read.
+    try {
+      // The income-sources row has three inputs (source text + two
+      // number fields) and no <select>; disambiguate from dependents
+      // that way.
+      const incRows = dossier
+        .locator("div.grid.grid-cols-\\[1fr_1fr_1fr_auto\\]")
+        .filter({ hasNot: page.locator("select") });
+      const incRow = incRows.first();
+      const incInputs = incRow.locator("input");
+      await incInputs.nth(0).fill("Salary");
+      await incInputs.nth(1).fill("155000");
+      await incInputs.nth(2).fill("0");
+      await pause(page, 150);
+    } catch (err) {
+      console.warn(
+        `capture: income fill skipped — ${(err as Error).message.slice(0, 140)}`
+      );
+    }
+
+    // Employment income + monthly expenses — the final two number
+    // inputs inside the AdvancedDossier block. They're the last pair
+    // rendered by the component, so locating the last two
+    // `input[type="number"]` under the dossier section is robust
+    // against the repeater rows above.
+    try {
+      const numberInputs = dossier.locator('input[type="number"]');
+      const n = await numberInputs.count();
+      if (n >= 2) {
+        await numberInputs.nth(n - 2).fill("155000"); // employmentIncome
+        await numberInputs.nth(n - 1).fill("95000"); // monthlyExpenses
+        await pause(page, 150);
+      } else {
+        console.warn(
+          `capture: employment income / expenses skipped — expected ≥2 number inputs, got ${n}`
+        );
+      }
+    } catch (err) {
+      console.warn(
+        `capture: employment income / expenses failed — ${(err as Error).message.slice(0, 140)}`
+      );
+    }
+
+    // Scroll so the advanced dossier rows (dependent + income source +
+    // employment income / expenses) are the visual anchor of the shot.
+    // The required-fields block up top is character-sparse and anyone
+    // watching the crossfade's final beat wants to see "yes, the real
+    // dossier is populated" — that lives further down.
+    try {
+      const numberInputs = dossier.locator('input[type="number"]');
+      const n = await numberInputs.count();
+      if (n >= 2) {
+        // Compute the absolute page offset of the employmentIncome
+        // input and scroll the window so it sits near the bottom of
+        // the 1080px viewport, leaving the Advanced-profile summary
+        // plus the repeater rows above it visible in the same frame.
+        const targetY = await numberInputs.nth(n - 2).evaluate((el) => {
+          const rect = (el as HTMLElement).getBoundingClientRect();
+          return rect.top + window.scrollY;
+        });
+        await page.evaluate((y: number) => {
+          window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+        }, Math.max(0, targetY - 900));
+        await pause(page, 300);
+      }
+    } catch {
+      /* framing is cosmetic — don't fail the run */
+    }
+  } catch (err) {
+    console.warn(
+      `capture: advanced-profile disclosure skipped after ${Date.now() - dossierOpenedAt}ms — ${(err as Error).message.slice(0, 140)}`
+    );
+  }
+
+  // Snap 01_intro_c — fully-populated profile with advanced dossier
+  // open. This is the final beat of the intro crossfade, so it should
+  // LOOK finished: "the advisor just set Omar up," not mid-typing.
+  await pause(page, 400);
+  await snap(page, "01_intro_c");
+
+  // Close the disclosure again so the Proceed button stays visible
+  // without scrolling, and scroll back to top for the CTA click.
+  await page.evaluate(() =>
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
+  );
+  await pause(page, 200);
 
   // Proceed to Goals.
   await page
