@@ -100,10 +100,10 @@ const GOALS: readonly {
   year: number;
   inflationRate: number;
 }[] = [
-  { name: "Apartment — New Cairo", amount: 5_000_000, year: 2028, inflationRate: 0.16 },
-  { name: "AUC — both kids", amount: 8_000_000, year: 2033, inflationRate: 0.16 },
-  { name: "GUC / BUE — both kids", amount: 3_000_000, year: 2033, inflationRate: 0.16 },
-  { name: "Cairo Uni — both kids", amount: 500_000, year: 2033, inflationRate: 0.16 },
+  { name: "New Cairo apartment", amount: 5_000_000, year: 2028, inflationRate: 0.16 },
+  { name: "AUC tuition", amount: 8_000_000, year: 2033, inflationRate: 0.16 },
+  { name: "GUC or BUE tuition", amount: 3_000_000, year: 2033, inflationRate: 0.16 },
+  { name: "Cairo University tuition", amount: 500_000, year: 2033, inflationRate: 0.16 },
   { name: "Retire Comfortable (60)", amount: 55_000_000, year: 2044, inflationRate: 0.16 },
   { name: "Retire Standard (60)", amount: 33_000_000, year: 2044, inflationRate: 0.16 },
   { name: "Retire Modest (63)", amount: 15_000_000, year: 2047, inflationRate: 0.16 },
@@ -122,8 +122,8 @@ const SCENARIOS: readonly {
     name: "Everything I Want",
     snapId: "04_scenario1",
     goalNames: [
-      "Apartment — New Cairo",
-      "AUC — both kids",
+      "New Cairo apartment",
+      "AUC tuition",
       "Retire Comfortable (60)",
     ],
   },
@@ -131,8 +131,8 @@ const SCENARIOS: readonly {
     name: "Middle Path",
     snapId: "05_scenario2",
     goalNames: [
-      "Apartment — New Cairo",
-      "GUC / BUE — both kids",
+      "New Cairo apartment",
+      "GUC or BUE tuition",
       "Retire Standard (60)",
     ],
   },
@@ -140,8 +140,8 @@ const SCENARIOS: readonly {
     name: "Pragmatic",
     snapId: "06_scenario3",
     goalNames: [
-      "Apartment — New Cairo",
-      "Cairo Uni — both kids",
+      "New Cairo apartment",
+      "Cairo University tuition",
       "Retire Modest (63)",
     ],
   },
