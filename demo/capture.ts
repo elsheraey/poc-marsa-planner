@@ -218,6 +218,18 @@ async function registerAdvisor(page: Page): Promise<void> {
  *   _c: captured later inside walkToGoalsStep once the profile step
  *       has Omar's name / email / birthdate typed in.
  */
+/**
+ * 00_brand — the Landing page, pre-login. This is the "what is this
+ * product?" establishing shot that runs over Brian's "Marsa is
+ * financial planning software for wealth advisors. Here's one session
+ * in full." line before the Omar narrative begins.
+ */
+async function capture00Brand(page: Page): Promise<void> {
+  await page.goto(`${APP_URL}/`, { waitUntil: "networkidle" });
+  await pause(page, 800);
+  await snap(page, "00_brand");
+}
+
 async function capture01Intro(page: Page): Promise<void> {
   await page.goto(`${APP_URL}/login`, { waitUntil: "networkidle" });
   await pause(page, 800);
@@ -749,6 +761,7 @@ async function main() {
   let scenarioCount = 0;
   let verdicts: Awaited<ReturnType<typeof readVerdicts>> = [];
   try {
+    await capture00Brand(page);
     await capture01Intro(page);
     await walkToGoalsStep(page);
     await capture02Goals(page);

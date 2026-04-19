@@ -13,6 +13,10 @@
  */
 export const SECTIONS = [
   {
+    id: "00_brand",
+    text: "Marsa is financial planning software for wealth advisors. Here's one session in full.",
+  },
+  {
     id: "01_intro",
     text: "Omar is 42. Senior manager at a multinational. Wife, two kids, seven and ten. Around 155,000 pounds come in each month. 3 million already invested, 40,000 saved on top.",
   },
