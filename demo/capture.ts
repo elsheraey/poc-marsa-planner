@@ -15,12 +15,11 @@
  *
  * Run: `npm run capture` (wraps `tsx capture.ts`).
  *
- * Goal amounts intentionally diverge from the script's plain-English
- * recap — see docs/bugs/attainability-investigation.md. The backend's
- * sample-data calibration makes any goal under ~100M EGP trivially
- * attainable for Omar's inputs; the workaround here pushes the goals
- * into the engine's aspirational / out-of-reach bands so the video
- * reads honestly until the calibration bug is fixed.
+ * Goal amounts match the script's plain-English recap now that the
+ * engine is honest (see docs/bugs/attainability-investigation.md §12).
+ * Each goal carries a 16%/yr inflationRate so the frontend inflates
+ * today's EGP figure to 2044 nominal before hitting the backend — the
+ * backend's goal_target_amount semantic is nominal-at-terminal-year.
  */
 import { chromium, type Page, type Browser } from "playwright";
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -67,7 +66,7 @@ const SECTIONS = [
   },
   {
     id: "14_cairo",
-    caption: "Scenario 3 — Cairo University. Aspirational.",
+    caption: "Scenario 3 — Cairo University. Still out of reach.",
     dur_ms: 4000,
   },
   {
@@ -98,21 +97,27 @@ const DEMO_CLIENT = {
   riskAppetite: "high",
 } as const;
 
-// Goal amounts are the Job-2 workaround for the attainability product
-// bug documented in docs/bugs/attainability-investigation.md. When the
-// backend is recalibrated, restore these to the original 5 / 8 / 3 /
-// 0.5 / 30 M spec.
+// Realistic goal amounts restored now that the engine is honest (see
+// `docs/bugs/attainability-investigation.md` §12 — post-fix curl
+// responses). `inflationRate: 0.16` matches the backend's median
+// implied annual CPI over the 2026-2044 horizon (16.1%) so the
+// frontend-side `amount × (1+r)^years` inflation lands the nominal
+// 2044 target that the backend then deflates by its per-scenario
+// cum_inflation path. Result: all three scenarios read as
+// `out_of_reach` at ~38-42% probability — the story is "even Cairo
+// Uni doesn't close the gap without a retirement compromise", which
+// is honest relative to Omar's 3M initial + 40k/mo plan.
 const GOALS: readonly {
   name: string;
   amount: number;
   year: number;
   inflationRate: number;
 }[] = [
-  { name: "Apartment — New Cairo", amount: 5_000_000, year: 2028, inflationRate: 0 },
-  { name: "AUC — both kids", amount: 230_000_000, year: 2033, inflationRate: 0 },
-  { name: "GUC / BUE — both kids", amount: 210_000_000, year: 2033, inflationRate: 0 },
-  { name: "Cairo Uni — both kids", amount: 180_000_000, year: 2033, inflationRate: 0 },
-  { name: "Retirement at 60", amount: 30_000_000, year: 2044, inflationRate: 0 },
+  { name: "Apartment — New Cairo", amount: 5_000_000, year: 2028, inflationRate: 0.16 },
+  { name: "AUC — both kids", amount: 8_000_000, year: 2033, inflationRate: 0.16 },
+  { name: "GUC / BUE — both kids", amount: 3_000_000, year: 2033, inflationRate: 0.16 },
+  { name: "Cairo Uni — both kids", amount: 500_000, year: 2033, inflationRate: 0.16 },
+  { name: "Retirement at 60", amount: 30_000_000, year: 2044, inflationRate: 0.16 },
 ];
 
 const SCENARIOS: readonly {
